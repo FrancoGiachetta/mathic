@@ -1,0 +1,8 @@
+[package]
+name = "mathic"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+llvm-sys = "191.0.0"
+melior = "0.20.1"
