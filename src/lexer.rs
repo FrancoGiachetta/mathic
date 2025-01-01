@@ -44,10 +44,21 @@ pub enum LexError {
     UnableToSubString(u32),
 }
 
+#[derive(Debug)]
+pub enum LexState {
+    Literal,
+    Identifier,
+    Operand,
+    Brace,
+    Paren,
+    None,
+}
+
 pub struct Lexer<'lex> {
     input: Peekable<Chars<'lex>>,
     raw_input: &'lex str,
     tokens: Vec<Token>,
+    state: LexState,
     line: u32,
     start: u16,
     curr: u16,
@@ -61,6 +72,7 @@ impl<'lex> Lexer<'lex> {
             input: input_iter,
             raw_input: input,
             tokens: Vec::new(),
+            state: LexState::None,
             line: 1,
             start: 0,
             curr: 0,
@@ -125,9 +137,9 @@ impl<'lex> Lexer<'lex> {
                 c if c.is_ascii_digit() => self.scan_number()?,
                 '"' => self.scan_string()?,
                 c if c.is_whitespace() => {
-                    dbg!("entered {}", self.curr);
                     if c == '\n' {
                         self.line += 1;
+                        self.curr = 0;
                     }
                 }
                 _ => self.scan_and_error(LexError::UnexpectedLex(
@@ -161,6 +173,7 @@ impl<'lex> Lexer<'lex> {
             }
         } else {
             while self.next_char().is_some_and(|c| c != '\t') {}
+            self.curr = 0;
             self.line += 1;
         }
 
@@ -185,16 +198,8 @@ impl<'lex> Lexer<'lex> {
             }
         }
         let string = self.substring(self.start + 1, self.curr - 1)?;
-        let token = Token {
-            r#type: TokenType::String(string),
-            line: self.line,
-            start: self.start,
-            end: self.curr,
-        };
 
-        //self.check_error(&token)?;
-
-        self.tokens.push(token);
+        self.add_token(TokenType::String(string));
 
         Ok(())
     }
@@ -210,16 +215,8 @@ impl<'lex> Lexer<'lex> {
         }
 
         let number = self.substring(self.start, self.curr)?;
-        let token = Token {
-            r#type: TokenType::Number(number),
-            line: self.line,
-            start: self.start,
-            end: self.curr,
-        };
 
-        self.check_error(&token)?;
-
-        self.tokens.push(token);
+        self.add_token(TokenType::Number(number));
 
         Ok(())
     }
@@ -240,32 +237,25 @@ impl<'lex> Lexer<'lex> {
                 }
                 _ => break,
             };
-            dbg!(self.curr);
         }
 
         let ident = self.substring(self.start, self.curr)?;
-        let token = Token {
-            r#type: TokenType::Identifier(ident.clone()),
-            line: self.line,
-            start: self.start,
-            end: self.curr,
-        };
-
-        self.check_error(&token)?;
 
         if let Some(kw) = keywords.get(ident.as_str()) {
             self.add_token(kw.clone());
             return Ok(());
         }
 
-        self.tokens.push(token);
+        self.add_token(TokenType::Identifier(ident));
 
         Ok(())
     }
 
-    fn add_token(&mut self, r#type: TokenType) {
+    fn add_token(&mut self, token_type: TokenType) {
+        self.next_state(&token_type);
+
         self.tokens.push(Token {
-            r#type,
+            r#type: token_type,
             line: self.line,
             start: self.start,
             end: self.curr,
@@ -299,50 +289,13 @@ impl<'lex> Lexer<'lex> {
         self.input.peek()
     }
 
-    fn peek_pair(&mut self) -> (Option<char>, Option<char>) {
-        (
-            self.input.peek().cloned(),
-            self.input.nth(self.curr as usize + 2),
-        )
-    }
-
     fn match_char(&mut self, expected: char) -> bool {
         self.curr += 1;
         self.input.next_if_eq(&expected).is_some()
     }
 
-    fn check_error(&mut self, token: &Token) -> LexResult<()> {
-        let (fst_next_char, snd_next_char) = self.peek_pair();
-
-        let error = match (fst_next_char, snd_next_char, &token.r#type) {
-            (Some(fst_c), Some(snd_c), TokenType::Number(_))
-                if !fst_c.is_whitespace() && snd_c.is_ascii_digit() =>
-            {
-                Some(LexError::InvalidNumber(
-                    Box::from(format!(
-                        "'{}' is not valid number",
-                        self.substring(self.start, self.curr)?
-                    )),
-                    self.line,
-                    self.curr,
-                ))
-            }
-            (Some(fst_c), Some(snd_c), TokenType::Identifier(_))
-                if !(fst_c.is_ascii_alphanumeric() && fst_c.is_whitespace())
-                    && snd_c.is_ascii_alphanumeric() =>
-            {
-                Some(LexError::InvalidIdentifier(
-                    Box::from(self.substring(self.start, self.curr)?),
-                    self.line,
-                    self.curr,
-                ))
-            }
-            _ => None,
-        };
-
-        if let Some(err) = error {
-            self.scan_and_error(err)?;
-        }
+    fn check_error(&mut self, next_state: LexState) -> LexResult<()> {
+        // match (self.state, next_state) {}
 
         Ok(())
     }
@@ -371,5 +324,31 @@ impl<'lex> Lexer<'lex> {
         }
 
         false
+    }
+
+    fn next_state(&mut self, next_type: &TokenType) {
+        let next_state = match next_type {
+            TokenType::Number(_) | TokenType::String(_) | TokenType::True | TokenType::False => {
+                LexState::Literal
+            }
+            TokenType::Equal
+            | TokenType::EqualEqual
+            | TokenType::Less
+            | TokenType::LessEqual
+            | TokenType::Greater
+            | TokenType::GreaterEqual
+            | TokenType::Not
+            | TokenType::NotEqual
+            | TokenType::Plus
+            | TokenType::Minus
+            | TokenType::Star
+            | TokenType::Slash => LexState::Operand,
+            TokenType::LeftBrace | TokenType::RightBrace => LexState::Brace,
+            TokenType::LeftParen | TokenType::RightParen => LexState::Paren,
+            TokenType::Eof => LexState::None,
+            _ => LexState::Identifier,
+        };
+
+        self.state = next_state;
     }
 }
