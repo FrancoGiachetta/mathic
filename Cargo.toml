@@ -7,6 +7,6 @@ edition = "2021"
 name = "euler"
 
 [dependencies]
-clap = { version = "4.5.23", features = ["derive"] }
+clap = { version = "4.5.24", features = ["derive"] }
 lazy_static = "1.5.0"
-thiserror = "2.0.9"
+thiserror = "2.0.10"

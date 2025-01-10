@@ -99,7 +99,11 @@ pub struct LetStmt {
 }
 
 pub struct SymStmt {
-    pub var_names: Vec<String>,
+    pub var_names: Vec<SymVar>,
+}
+
+pub struct SymVar {
+    pub name: String,
 }
 
 pub struct FuncDeclStmt {

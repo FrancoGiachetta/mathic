@@ -1,0 +1,53 @@
+program := (<func_decl_stmt> | <struct_def>)+
+
+func_decl_stmt := 'df' <identifier> '(' <parameters>? ')' ('->' <type>)? <block>
+struct_def := 'struct' <identifier> '{' <parameters> '}'
+
+==== STATEMENTS ====
+
+statement := <var_decl_stmt>
+	| <var_assign_stmt>
+	| <sym_decl_stmt>
+	| <if_stmt>
+	| <for_stmt>
+	| <while_stmt>
+	| <fn_call>
+	| <block>
+
+var_decl_stmt := 'let' <identifier> '=' <expression> ';'
+var_assign_stmt := <identifier> '=' <expression> ';'
+sym_delc_stmt := 'sym' <identifier> (',' <identifier>)* ';'
+if_stmt := 'if' <expression> <block>
+	(
+		('elif' <expression> <block>)+ | else <block>
+	)?
+while_stmt := 'while' <expression> <block>
+fn_call := <identifier> '(' <arguments>? ')'
+block := '{' statement+ '}'
+
+==== EXPRESSIONS ====
+
+expression := <logical>
+
+logical := <logical_and> ('||' <logical_and>)*
+logical_and := <equality> ('&&' <equality>)*
+equality := <comp_tem> ('==' | '!=' <comp_term>)*
+comp_term := <additive> ('>' | '<' | '>=' | '<=' <additive>)*
+additive := <factor> ('+' | '-' <factor>)*
+factor := <unary> ('*' | '/' <unary>)*
+unary := ('!' | '-')? <primary>) | fn_call
+primary := <identifier> | <number> | <string>
+
+parameters := <identifier>: <type> (',' <identifier>: <type>)*
+arguments := <expression> (',' <expression>)*
+
+==== PRIMARIES ====
+
+identifier := <alpha> (<alpha> | <numeric>)*
+string := '"' <word>* '"'
+number = <numeric>+
+
+alpha := [A-Za-z]
+numeric := [0-9]
+
+
