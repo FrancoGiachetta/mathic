@@ -62,7 +62,7 @@ pub struct UnaryOpExpr {
 
 pub struct CallExpr {
     pub func_name: String,
-    pub params: Option<Vec<Self>>,
+    pub params: Option<Vec<Expression>>,
 }
 
 pub struct Block {

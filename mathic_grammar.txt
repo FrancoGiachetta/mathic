@@ -12,6 +12,7 @@ statement := <var_decl_stmt>
 	| <for_stmt>
 	| <while_stmt>
 	| <fn_call>
+	| <return_stmt>
 	| <block>
 
 var_decl_stmt := 'let' <identifier> '=' <expression> ';'
@@ -19,10 +20,11 @@ var_assign_stmt := <identifier> '=' <expression> ';'
 sym_delc_stmt := 'sym' <identifier> (',' <identifier>)* ';'
 if_stmt := 'if' <expression> <block>
 	(
-		('elif' <expression> <block>)+ | else <block>
+		('elif' <expression> <block>)* | else <block>
 	)?
 while_stmt := 'while' <expression> <block>
-fn_call := <identifier> '(' <arguments>? ')'
+fn_call := <identifier> '(' <arguments>? ')' ';'
+return_stmt := 'return' <expression> ;
 block := '{' statement+ '}'
 
 ==== EXPRESSIONS ====

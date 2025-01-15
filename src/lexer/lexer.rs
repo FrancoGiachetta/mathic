@@ -2,7 +2,10 @@ use std::{collections::HashMap, iter::Peekable, str::Chars};
 
 use lazy_static::lazy_static;
 
-use super::{error::LexError, token::{Token, TokenType}};
+use super::{
+    error::LexError,
+    token::{Token, TokenType},
+};
 
 type LexResult<T> = Result<T, LexError>;
 
