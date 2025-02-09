@@ -1,10 +1,10 @@
 use std::fmt::Display;
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub(crate) enum TokenType {
     // Literals
-    Number(String),
-    String(String),
+    Number,
+    String,
     True,
     False,
     // Keywords
@@ -18,7 +18,7 @@ pub(crate) enum TokenType {
     Def,
     Return,
     // Rest
-    Identifier(String),
+    Identifier,
     LeftParen,
     RightParen,
     LeftBrace,
@@ -36,15 +36,23 @@ pub(crate) enum TokenType {
     Slash,
     Not,
     SemiColon,
+    Colon,
     Eof,
 }
 
 #[derive(Debug, Clone)]
 pub struct Token {
     pub r#type: TokenType,
+    pub lexeme: Option<String>,
     pub line: u32,
     pub start: u16,
     pub end: u16,
+}
+
+impl Display for TokenType {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "{}", self)
+    }
 }
 
 impl Display for Token {

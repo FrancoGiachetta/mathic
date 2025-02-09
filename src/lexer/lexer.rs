@@ -2,7 +2,10 @@ use std::{collections::HashMap, iter::Peekable, str::Chars};
 
 use lazy_static::lazy_static;
 
-use super::{error::LexError, token::{Token, TokenType}};
+use super::{
+    error::LexError,
+    token::{Token, TokenType},
+};
 
 type LexResult<T> = Result<T, LexError>;
 
@@ -74,49 +77,50 @@ impl<'lex> Lexer<'lex> {
             self.start = self.curr - 1;
 
             match c {
-                '{' => self.add_token(TokenType::LeftBrace),
-                '}' => self.add_token(TokenType::RightBrace),
-                '(' => self.add_token(TokenType::LeftParen),
-                ')' => self.add_token(TokenType::RightParen),
+                '{' => self.add_token(TokenType::LeftBrace, None),
+                '}' => self.add_token(TokenType::RightBrace, None),
+                '(' => self.add_token(TokenType::LeftParen, None),
+                ')' => self.add_token(TokenType::RightParen, None),
                 '=' => {
                     if self.match_char('=') {
-                        self.add_token(TokenType::EqualEqual);
+                        self.add_token(TokenType::EqualEqual, None);
                     } else {
-                        self.add_token(TokenType::Equal);
+                        self.add_token(TokenType::Equal, None);
                     }
                 }
                 '<' => {
                     if self.match_char('=') {
-                        self.add_token(TokenType::LessEqual);
+                        self.add_token(TokenType::LessEqual, None);
                     } else {
-                        self.add_token(TokenType::Less);
+                        self.add_token(TokenType::Less, None);
                     }
                 }
                 '>' => {
                     if self.match_char('=') {
-                        self.add_token(TokenType::GreaterEqual);
+                        self.add_token(TokenType::GreaterEqual, None);
                     } else {
-                        self.add_token(TokenType::Greater);
+                        self.add_token(TokenType::Greater, None);
                     }
                 }
                 '!' => {
                     if self.match_char('=') {
-                        self.add_token(TokenType::NotEqual);
+                        self.add_token(TokenType::NotEqual, None);
                     } else {
-                        self.add_token(TokenType::Not);
+                        self.add_token(TokenType::Not, None);
                     }
                 }
-                '+' => self.add_token(TokenType::Plus),
-                '-' => self.add_token(TokenType::Minus),
-                '*' => self.add_token(TokenType::Star),
+                '+' => self.add_token(TokenType::Plus, None),
+                '-' => self.add_token(TokenType::Minus, None),
+                '*' => self.add_token(TokenType::Star, None),
                 '/' => {
                     if self.match_char('/') {
                         self.scan_comment()?;
                     } else {
-                        self.add_token(TokenType::Slash);
+                        self.add_token(TokenType::Slash, None);
                     }
                 }
-                ';' => self.add_token(TokenType::SemiColon),
+                ':' => self.add_token(TokenType::Colon, None),
+                ';' => self.add_token(TokenType::SemiColon, None),
                 c if c.is_ascii_alphabetic() => self.scan_identifier()?,
                 c if c.is_ascii_digit() => self.scan_number()?,
                 '"' => self.scan_string()?,
@@ -129,7 +133,7 @@ impl<'lex> Lexer<'lex> {
             }
         }
 
-        self.add_token(TokenType::Eof);
+        self.add_token(TokenType::Eof, None);
 
         Ok(())
     }
@@ -178,7 +182,7 @@ impl<'lex> Lexer<'lex> {
         }
         let string = self.substring(self.start + 1, self.curr - 1)?;
 
-        self.add_token(TokenType::String(string));
+        self.add_token(TokenType::String, Some(string));
 
         Ok(())
     }
@@ -195,7 +199,7 @@ impl<'lex> Lexer<'lex> {
 
         let number = self.substring(self.start, self.curr)?;
 
-        self.add_token(TokenType::Number(number));
+        self.add_token(TokenType::Number, Some(number));
 
         Ok(())
     }
@@ -221,20 +225,21 @@ impl<'lex> Lexer<'lex> {
         let ident = self.substring(self.start, self.curr)?;
 
         if let Some(kw) = keywords.get(ident.as_str()) {
-            self.add_token(kw.clone());
+            self.add_token(kw.clone(), None);
             return Ok(());
         }
 
-        self.add_token(TokenType::Identifier(ident));
+        self.add_token(TokenType::Identifier, Some(ident));
 
         Ok(())
     }
 
-    fn add_token(&mut self, token_type: TokenType) {
+    fn add_token(&mut self, token_type: TokenType, lexeme: Option<String>) {
         self.next_state(&token_type);
 
         self.tokens.push(Token {
             r#type: token_type,
+            lexeme,
             line: self.line,
             start: self.start,
             end: self.curr,
@@ -319,8 +324,8 @@ impl<'lex> Lexer<'lex> {
 
     fn next_state(&mut self, next_type: &TokenType) {
         let next_state = match next_type {
-            TokenType::Number(_) => LexState::Number,
-            TokenType::String(_) => LexState::String,
+            TokenType::Number => LexState::Number,
+            TokenType::String => LexState::String,
             TokenType::Equal
             | TokenType::True
             | TokenType::False

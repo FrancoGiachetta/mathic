@@ -108,14 +108,13 @@ pub struct SymVar {
 
 pub struct FuncDeclStmt {
     pub name: String,
-    pub params: Vec<String>,
+    pub params: Vec<(String, String)>,
     pub body: Block,
 }
 
 pub struct StructDeclStmt {
     pub name: String,
-    pub params: Vec<String>,
-    pub param_ty: Vec<String>,
+    pub attrs: Vec<(String, String)>,
 }
 
 pub struct AssingStmt {
