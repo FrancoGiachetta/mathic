@@ -1,4 +1,4 @@
-use super::types::{IdentType, NumberType};
+use super::types::{MathicType, NumberType};
 
 /// A program
 pub struct Program {
@@ -21,7 +21,11 @@ pub enum Statement {
         cond: Expression,
         block: Block,
     },
-    For {},
+    For {
+        initial: Expression,
+        until: Expression,
+        action: Expression,
+    },
     Return {
         rtn_expr: Expression,
     },
@@ -82,7 +86,7 @@ pub struct NumberExpr {
 
 pub struct IdentifierExpr {
     pub ident_name: String,
-    pub ty: IdentType,
+    pub ty: MathicType,
 }
 
 /// All possible declaration statements
@@ -108,8 +112,9 @@ pub struct SymVar {
 
 pub struct FuncDeclStmt {
     pub name: String,
-    pub params: Vec<(String, String)>,
+    pub params: Option<Vec<IdentifierExpr>>,
     pub body: Block,
+    pub return_type: Option<MathicType>,
 }
 
 pub struct StructDeclStmt {

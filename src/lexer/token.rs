@@ -7,6 +7,7 @@ pub(crate) enum TokenType {
     String,
     True,
     False,
+    Type,
     // Keywords
     Struct,
     Let,
@@ -37,6 +38,8 @@ pub(crate) enum TokenType {
     Not,
     SemiColon,
     Colon,
+    Comma,
+    Arrow,
     Eof,
 }
 
@@ -59,8 +62,12 @@ impl Display for Token {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         write!(
             f,
-            "Token:\n\ttype -> {:?}\n\tline -> {}\n\tstart -> {}\n\tend -> {}",
-            self.r#type, self.line, self.start, self.end
+            "{{ type: {}, lexeme: {} }}",
+            self.r#type,
+            match &self.lexeme {
+                Some(l) => l,
+                None => "none",
+            }
         )
     }
 }

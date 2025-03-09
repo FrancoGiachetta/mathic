@@ -23,6 +23,16 @@ lazy_static! {
             ("return", TokenType::Return),
             ("true", TokenType::True),
             ("false", TokenType::False),
+            ("u8", TokenType::Type),
+            ("u16", TokenType::Type),
+            ("u32", TokenType::Type),
+            ("u64", TokenType::Type),
+            ("i8", TokenType::Type),
+            ("i16", TokenType::Type),
+            ("i32", TokenType::Type),
+            ("i64", TokenType::Type),
+            ("bool", TokenType::Type),
+            ("str", TokenType::Type),
         ];
 
         HashMap::from_iter(words)
@@ -110,7 +120,13 @@ impl<'lex> Lexer<'lex> {
                     }
                 }
                 '+' => self.add_token(TokenType::Plus, None),
-                '-' => self.add_token(TokenType::Minus, None),
+                '-' => {
+                    if self.match_char('>') {
+                        self.add_token(TokenType::Arrow, None);
+                    } else {
+                        self.add_token(TokenType::Minus, None)
+                    }
+                }
                 '*' => self.add_token(TokenType::Star, None),
                 '/' => {
                     if self.match_char('/') {
@@ -121,6 +137,7 @@ impl<'lex> Lexer<'lex> {
                 }
                 ':' => self.add_token(TokenType::Colon, None),
                 ';' => self.add_token(TokenType::SemiColon, None),
+                ',' => self.add_token(TokenType::Comma, None),
                 c if c.is_ascii_alphabetic() => self.scan_identifier()?,
                 c if c.is_ascii_digit() => self.scan_number()?,
                 '"' => self.scan_string()?,

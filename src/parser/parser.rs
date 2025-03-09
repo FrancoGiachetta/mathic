@@ -1,6 +1,8 @@
-use std::iter::Peekable;
+use std::{any::Any, iter::Peekable};
 
-use super::grammar::{DeclStmt, Program, Statement, StructDeclStmt};
+use super::grammar::{
+    Block, DeclStmt, FuncDeclStmt, IdentifierExpr, Program, Statement, StructDeclStmt,
+};
 
 use crate::lexer::token::{Token, TokenType};
 
@@ -21,79 +23,134 @@ impl MathParser {
     }
 
     pub fn parse(&mut self) -> ParseResult<Program> {
-        loop {
-            let tk = self.next();
-            let mut vec_decls = vec![];
+        let mut functions = vec![];
 
-            let decl = match tk.r#type {
-                TokenType::Def => self.parse_function()?,
-                TokenType::Struct => self.parse_struct()?,
-                TokenType::Eof => {
-                    return Ok(Program {
-                        functions: vec_decls,
-                    })
-                }
+        while let Some(tk) = self.next() {
+            match tk.r#type {
+                TokenType::Def => functions.push(self.function_declaration()?),
+                TokenType::Struct => self.struct_declaration()?,
                 _ => {
                     return Err(ParseError::UnexpectedToken(
                         tk.line,
                         tk.start,
-                        Box::from("Expected struct, function declaration"),
+                        Box::from(
+                            format!(
+                                "Unexpected token {}: expected function or struct declarations",
+                                tk,
+                            )
+                            .as_str(),
+                        ),
                     ))
                 }
-            };
-            vec_decls.push(decl);
+            }
+        }
+
+        let program = Program { functions };
+
+        Ok(program)
+    }
+
+    #[allow(unused)]
+    fn struct_declaration(&mut self) -> ParseResult<()> {
+        Ok(())
+    }
+
+    fn function_declaration(&mut self) -> ParseResult<FuncDeclStmt> {
+        let function_name = self.consume_token(
+            TokenType::Identifier,
+            "Expected function name after 'def' keyword.",
+        )?;
+
+        self.consume_token(TokenType::LeftParen, "Expected '(' after function name")?;
+
+        let params = self.function_params()?;
+
+        self.consume_token(TokenType::RightParen, "Expected ')' after function name")?;
+
+        let body = self.block()?;
+
+        let return_type = if self.next_if(TokenType::Arrow).is_some() {
+            let ty = self.consume_token(TokenType::Type, "Expected type after '->'")?;
+
+            Some(ty.lexeme.unwrap().into())
+        } else {
+            None
+        };
+
+        Ok(FuncDeclStmt {
+            name: function_name.lexeme.unwrap(),
+            params,
+            body,
+            return_type,
+        })
+    }
+
+    fn function_params(&mut self) -> ParseResult<Option<Vec<IdentifierExpr>>> {
+        if let TokenType::Identifier = self.next_tk_type()? {
+            let mut parameters = Vec::new();
+
+            parameters.push(self.identifer_type()?);
+
+            while self.next_if(TokenType::Comma).is_some() {
+                parameters.push(self.identifer_type()?);
+            }
+
+            return Ok(Some(parameters));
+        }
+
+        Ok(None)
+    }
+
+    fn identifer_type(&mut self) -> ParseResult<IdentifierExpr> {
+        let param_name = self.consume_token(TokenType::Identifier, "Expected identifier name")?;
+
+        self.consume_token(TokenType::Colon, "Expected ':' after identifier name")?;
+
+        let param_type =
+            self.consume_token(TokenType::Type, "Expected parameter type after ':'")?;
+
+        Ok(IdentifierExpr {
+            ident_name: param_name.lexeme.unwrap(),
+            ty: param_type.lexeme.unwrap().into(),
+        })
+    }
+
+    fn block(&mut self) -> ParseResult<Block> {
+        let stmts = Vec::new();
+
+        Ok(Block { stmts })
+    }
+
+    fn consume_token(&mut self, ty: TokenType, err: &str) -> ParseResult<Token> {
+        let next_token = self.next();
+
+        if let Some(t) = next_token {
+            if t.r#type == ty {
+                return Ok(t);
+            }
+
+            return Err(ParseError::UnexpectedToken(t.line, t.start, Box::from("")));
+        }
+
+        Err(ParseError::UnexpectedEnd)
+    }
+
+    fn next_tk_type(&mut self) -> ParseResult<TokenType> {
+        match self.peek() {
+            Some(tk) => Ok(tk.r#type.clone()),
+            None => Err(ParseError::UnexpectedEnd),
         }
     }
 
-    fn parse_struct(&mut self) -> ParseResult<Statement> {
-        let tk =
-            self.consume_token(TokenType::Identifier, "Expected identifier after 'struct'.")?;
-        let attrs = self.parse_parameters()?;
-
-        Ok(Statement::Decl(DeclStmt::Struct(StructDeclStmt {
-            name: tk.lexeme.unwrap(),
-            attrs,
-        })))
+    fn next_if(&mut self, ty: TokenType) -> Option<Token> {
+        self.tokens.next_if(|tk| tk.r#type == ty)
     }
 
-    fn parse_parameters(&mut self) -> ParseResult<Vec<(String, String)>> {
-        let mut attrs = vec![];
-
-        while let TokenType::Identifier = self.peek().r#type {
-            let name = self.next().lexeme.unwrap();
-
-            self.consume_token(TokenType::Colon, "expected ':' after attribute.")?;
-
-            let ty = self
-                .consume_token(TokenType::Type, "Expected type after ':'.")?
-                .lexeme
-                .unwrap();
-
-            attrs.push((name, ty));
-        }
-
-        Ok(attrs)
+    fn next(&mut self) -> Option<Token> {
+        self.tokens.next()
     }
 
-    fn consume_token(&mut self, ty: TokenType, msg: &str) -> ParseResult<Token> {
-        let tk = self.peek();
-
-        if ty == tk.r#type {
-            return Ok(self.next());
-        }
-
-        Err(ParseError::UnexpectedToken(
-            tk.line,
-            tk.start,
-            Box::from(msg),
-        ))
-    }
-
-    fn peek(&mut self) -> &Token {
-        self.tokens.peek().unwrap()
-    }
-
-    fn next(&mut self) -> Token {
-        self.tokens.next().unwrap()
+    fn peek(&mut self) -> Option<&Token> {
+        self.tokens.peek()
     }
 }
