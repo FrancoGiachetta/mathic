@@ -1,6 +1,5 @@
 use thiserror::Error;
 
-// (error description, line, column)
 #[derive(Error, Debug)]
 pub enum LexError {
     #[error("[line: {1}, column: {2}] '{0}' is not a valid lex")]

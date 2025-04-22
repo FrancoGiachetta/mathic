@@ -1,23 +1,22 @@
+#[derive(Debug, PartialEq, Eq)]
 pub enum MathicType {
     Number(NumberType),
     String,
     Symbol,
     Struct(String),
     Bool,
-    Void,
 }
 
+#[derive(Debug, PartialEq, Eq)]
 pub enum NumberType {
     I8,
     I16,
     I32,
     I64,
-    I128,
     U8,
     U16,
     U32,
     U64,
-    U128,
     F32,
     F64,
 }
@@ -32,7 +31,9 @@ impl From<String> for MathicType {
             "i8" => MathicType::Number(NumberType::I8),
             "i16" => MathicType::Number(NumberType::I16),
             "i32" => MathicType::Number(NumberType::I32),
-            "64" => MathicType::Number(NumberType::I64),
+            "i64" => MathicType::Number(NumberType::I64),
+            "f32" => MathicType::Number(NumberType::F32),
+            "f64" => MathicType::Number(NumberType::F64),
             "str" => MathicType::String,
             "bool" => MathicType::Bool,
             name => MathicType::Struct(format!("{name}")),

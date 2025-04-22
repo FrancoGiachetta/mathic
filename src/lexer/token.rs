@@ -1,6 +1,4 @@
-use std::fmt::Display;
-
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub(crate) enum TokenType {
     // Literals
     Number,
@@ -50,24 +48,4 @@ pub struct Token {
     pub line: u32,
     pub start: u16,
     pub end: u16,
-}
-
-impl Display for TokenType {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(f, "{}", self)
-    }
-}
-
-impl Display for Token {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(
-            f,
-            "{{ type: {}, lexeme: {} }}",
-            self.r#type,
-            match &self.lexeme {
-                Some(l) => l,
-                None => "none",
-            }
-        )
-    }
 }

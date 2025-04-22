@@ -1,2 +1,4 @@
-pub(crate) mod lexer;
-pub(crate) mod parser;
+pub mod lexer;
+pub mod parser;
+
+pub use lexer as mathic_lexer;

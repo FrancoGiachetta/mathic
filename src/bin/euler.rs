@@ -1,7 +1,7 @@
 use std::{fs::File, io::Read};
 
 use clap::Parser;
-use mathic::lexer::Lexer;
+use mathic::mathic_lexer::Lexer;
 
 #[derive(Debug, Parser)]
 struct MathCli {
@@ -20,7 +20,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     lexer.lex()?;
 
     for t in lexer.tokens().iter() {
-        println!("{t}");
+        println!("{t:?}");
     }
 
     Ok(())
