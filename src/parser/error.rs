@@ -1,9 +1,9 @@
-use thiserror::Error;
+use std::ops::Range;
 
-#[derive(Error, Debug)]
+use crate::parser::lexer::LexError;
+
+#[derive(Debug)]
 pub enum ParseError {
-    #[error("[line: {1}, column: {2}] Expected '{0}'")]
-    UnexpectedToken(u32, u16, Box<str>),
-    #[error("Unexptect end of program while still parsing")]
+    UnexpectedToken((LexError, Range<usize>)),
     UnexpectedEnd,
 }
