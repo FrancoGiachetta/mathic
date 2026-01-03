@@ -2,9 +2,9 @@ use logos::Logos;
 
 use crate::parser::lexer::LexError;
 
-#[derive(logos_display::Display, logos_display::Debug, Logos, PartialEq, Eq)]
+#[derive(logos_display::Display, logos_display::Debug, Logos, PartialEq, Eq, Clone)]
 #[logos( error = LexError, skip r"[ \t\r\n\f]+", skip r"//[^/][^\n]*")]
-pub enum Token<'src> {
+pub enum Token {
     // Single char
     #[token("(")]
     LParen,
@@ -75,9 +75,9 @@ pub enum Token<'src> {
 
     // Literals
     #[regex(r#""([^"])""#)]
-    Str(&'src str),
-    #[regex(r"(?:0|[1-9]\d+)(?:\.)?")]
-    Num(&'src str),
+    Str,
+    #[regex(r"(?:0|[1-9]\d+)(?:\.\d+)?")]
+    Num,
     #[regex(r"[[:alpha:]][[:alnum:]]*")]
-    Ident(&'src str),
+    Ident,
 }
