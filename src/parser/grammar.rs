@@ -5,7 +5,7 @@ pub mod declaration;
 pub mod expression;
 pub mod statement;
 
-#[derive(Debug)]
+#[derive(Debug, PartialEq, Eq)]
 pub struct Program {
     pub structs: Vec<StructDecl>,
     pub funcs: Vec<FuncDecl>,

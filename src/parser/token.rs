@@ -62,6 +62,8 @@ pub enum Token {
     For,
     #[token("struct")]
     Struct,
+    #[token("sym")]
+    Sym,
     #[token("df")]
     Df,
     #[token("let")]

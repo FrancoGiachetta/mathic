@@ -1,25 +1,25 @@
 use crate::parser::grammar::statement::BlockStmt;
 
-#[derive(Debug)]
+#[derive(Debug, PartialEq, Eq)]
 pub enum DeclStmt {
     StructDeclStmt(StructDecl),
     FuncDeclStmt(FuncDecl),
 }
 
-#[derive(Debug)]
+#[derive(Debug, PartialEq, Eq)]
 pub struct StructDecl {
     pub name: String,
     pub fields: Vec<Param>,
 }
 
-#[derive(Debug)]
+#[derive(Debug, PartialEq, Eq)]
 pub struct FuncDecl {
     pub name: String,
     pub params: Vec<Param>,
-    pub body: BlockStmt
+    pub body: BlockStmt,
 }
 
-#[derive(Debug)]
+#[derive(Debug, PartialEq, Eq)]
 pub struct Param {
     pub name: String,
 }

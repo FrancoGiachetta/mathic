@@ -61,7 +61,7 @@ impl<'a> MathicParser<'a> {
     }
 
     fn consume_token(&self, expected: Token) -> ParserResult<SpannedToken<'a>> {
-        if let Some(res) = self.peek()? {
+        if let Some(res) = self.next()? {
             if res.token == expected {
                 Ok(res)
             } else {

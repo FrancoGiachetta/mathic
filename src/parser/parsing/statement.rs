@@ -1,12 +1,25 @@
 use crate::parser::{
     MathicParser, ParserResult,
+    error::ParseError,
     grammar::statement::{BlockStmt, Stmt},
     token::Token,
 };
 
 impl<'a> MathicParser<'a> {
     pub fn parse_stmt(&self) -> ParserResult<Stmt> {
-        todo!()
+        let Some(lookahead) = self.peek()? else {
+            return Err(ParseError::UnexpectedEnd);
+        };
+
+        Ok(match lookahead.token {
+            Token::Df | Token::Struct | Token::Let | Token::Sym => todo!(),
+            Token::If => todo!(),
+            Token::For => todo!(),
+            Token::While => todo!(),
+            Token::Return => todo!(),
+            Token::LBrace => Stmt::Block(self.parse_block()?),
+            _ => todo!(),
+        })
     }
 
     pub fn parse_block(&self) -> ParserResult<BlockStmt> {

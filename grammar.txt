@@ -34,9 +34,9 @@ block       := "{" <statement>* "}"
 
 ==== EXPRESSIONS ====
 
-expr_stmt := <expr> ";"
+expr_stmt := <assignment> ";"
 
-expr       := <logic_or> ("=" <logic_or>)?
+assignment  := <ident> "=" <logic_or>
 logic_or   := <logic_and> ("or" <logic_and>)*
 logic_and  := <equality> ("and" <equality>)*
 equality   := <inequality> (("==" | "!=") <inequality>)*
