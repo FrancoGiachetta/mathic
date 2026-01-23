@@ -21,7 +21,7 @@ pub enum Token {
     #[token("<")]
     Less,
     #[token(">")]
-    Grater,
+    Greater,
     #[token("=")]
     Eq,
     #[token("!")]
@@ -32,6 +32,8 @@ pub enum Token {
     Dot,
     #[token(",")]
     Comma,
+    #[token(";")]
+    Semicolon,
     #[token("+")]
     Plus,
     #[token("-")]
@@ -42,7 +44,7 @@ pub enum Token {
     Slash,
 
     // Multi char
-    #[token("=<")]
+    #[token("<=")]
     EqLess,
     #[token("=>")]
     EqGrater,
@@ -74,9 +76,13 @@ pub enum Token {
     And,
     #[token("or")]
     Or,
+    #[token("true")]
+    True,
+    #[token("false")]
+    False,
 
     // Literals
-    #[regex(r#""([^"])""#)]
+    #[regex(r#""[^"]*""#)]
     Str,
     #[regex(r"(?:0|[1-9]\d+)(?:\.\d+)?")]
     Num,

@@ -1,7 +1,7 @@
 use crate::parser::{
-    MathicParser, ParserResult,
     grammar::declaration::{FuncDecl, Param},
     token::Token,
+    MathicParser, ParserResult,
 };
 
 impl<'a> MathicParser<'a> {
@@ -45,39 +45,5 @@ impl<'a> MathicParser<'a> {
         }
 
         Ok(params)
-    }
-}
-
-#[cfg(test)]
-mod tests {
-    use crate::parser::{
-        MathicParser,
-        grammar::{Program, declaration::FuncDecl, statement::BlockStmt},
-    };
-
-    fn check_ast(source: &str, expected_ast: Program) {
-        let parser = MathicParser::new(source);
-        let ast = parser.parse().unwrap();
-
-        assert_eq!(expected_ast, ast);
-    }
-
-    #[test]
-    fn empty_func() {
-        let source = "
-            df main() {}
-        ";
-
-        check_ast(
-            source,
-            Program {
-                structs: vec![],
-                funcs: vec![FuncDecl {
-                    name: "main".to_string(),
-                    params: vec![],
-                    body: BlockStmt { stmts: vec![] },
-                }],
-            },
-        );
     }
 }

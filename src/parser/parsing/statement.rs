@@ -1,8 +1,11 @@
 use crate::parser::{
-    MathicParser, ParserResult,
     error::ParseError,
-    grammar::statement::{BlockStmt, Stmt},
+    grammar::{
+        declaration::DeclStmt,
+        statement::{BlockStmt, ReturnStmt, Stmt},
+    },
     token::Token,
+    MathicParser, ParserResult,
 };
 
 impl<'a> MathicParser<'a> {
@@ -12,13 +15,17 @@ impl<'a> MathicParser<'a> {
         };
 
         Ok(match lookahead.token {
-            Token::Df | Token::Struct | Token::Let | Token::Sym => todo!(),
-            Token::If => todo!(),
-            Token::For => todo!(),
-            Token::While => todo!(),
-            Token::Return => todo!(),
+            Token::Df => Stmt::Decl(DeclStmt::FuncDeclStmt(self.parse_func()?)),
+            Token::Struct | Token::Let | Token::Sym | Token::If | Token::For | Token::While => {
+                todo!()
+            }
+            Token::Return => Stmt::Return(self.parse_return()?),
             Token::LBrace => Stmt::Block(self.parse_block()?),
-            _ => todo!(),
+            _ => {
+                return Err(ParseError::UnexpectedToken(
+                    format!("Unexpected token: {}", lookahead.lexeme).into_boxed_str(),
+                ));
+            }
         })
     }
 
@@ -34,5 +41,15 @@ impl<'a> MathicParser<'a> {
         self.consume_token(Token::RBrace)?;
 
         Ok(BlockStmt { stmts })
+    }
+
+    pub fn parse_return(&self) -> ParserResult<ReturnStmt> {
+        self.consume_token(Token::Return)?;
+
+        let value = self.parse_expr()?;
+
+        self.consume_token(Token::Semicolon)?;
+
+        Ok(ReturnStmt { value })
     }
 }

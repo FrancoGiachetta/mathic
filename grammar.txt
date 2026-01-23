@@ -1,62 +1,63 @@
 ==== PROGRAM ====
 
-program := (<func_decl> | <struct_decl>)+
+<program> := (<func_decl> | <struct_decl>)+
 
 ==== STATEMENTS ====
 
-statement := <declaration>
-           | <for_stmt>
-           | <while_stmt>
-           | <if_stmt>
-           | <return_stmt>
-           | <expr_stmt>
-           | <block>
+<statement> := <declaration>
+             | <for_stmt>
+             | <while_stmt>
+             | <if_stmt>
+             | <return_stmt>
+             | <expr_stmt>
+             | <block>
 
 ==== DECLARATIONS ====
 
-declaration := <func_decl>
-             | <struct_decl>
-             | <var_decl>
-             | <sym_decl>
+<declaration> := <func_decl>
+               | <struct_decl>
+               | <var_decl>
+               | <sym_decl>
 
-func_decl   := "df" <ident> "(" <params>? ")" ("->" <type>)? <block>
-struct_decl := "struct" <ident> "{" <params>? "}"
-var_decl    := "let" <ident> "=" <expr> ";"
-sym_decl    := "sym" <ident> "=" <ident> ";"
+<func_decl>   := "df" <ident> "(" <params>? ")" ("->" <type>)? <block>
+<struct_decl> := "struct" <ident> "{" <params>? "}"
+<var_decl>    := "let" <ident> "=" <expr> ";"
+<sym_decl>    := "sym" <ident> "=" <ident> ";"
 
 ==== CONTROL FLOW ====
 
-for_stmt    := "for" <digit> ".." <digit> <block>
-while_stmt  := "while" <expr> <block>
-if_stmt     := "if" <expr> <block> ("else" <block>)?
-return_stmt := "return" <expr> ";"
-block       := "{" <statement>* "}"
+<for_stmt>    := "for" <expr> ".." <expr> <block>
+<while_stmt>  := "while" <expr> <block>
+<if_stmt>     := "if" <expr> <block> ("else" <block>)?
+<return_stmt> := "return" <expr> ";"
+<block>       := "{" <statement>* "}"
 
 ==== EXPRESSIONS ====
 
-expr_stmt := <assignment> ";"
+<expr_stmt> := <expr> ";"
 
-assignment  := <ident> "=" <logic_or>
-logic_or   := <logic_and> ("or" <logic_and>)*
-logic_and  := <equality> ("and" <equality>)*
-equality   := <inequality> (("==" | "!=") <inequality>)*
-inequality := <term> ((">" | ">=" | "<" | "<=") <term>)*
-term       := <factor> (("+" | "-") <factor>)*
-factor     := <unary> (("*" | "/") <unary>)*
-unary      := ("!" | "-") <unary> | <call>
-call       := <primary> ("(" <args>? ")" | "[" <expr> "]")*
-primary    := "true" | "false" | <ident> | <num> | <str> | "(" <expr> ")"
+<expr> := <assignment> | <logic_or>
+<assignment>  := <ident> "=" <logic_or>
+<logic_or>   := <logic_and> ("or" <logic_and>)*
+<logic_and>  := <equality> ("and" <equality>)*
+<equality>   := <inequality> (("==" | "!=") <inequality>)*
+<inequality> := <term> ((">" | ">=" | "<" | "<=") <term>)*
+<term>       := <factor> (("+" | "-") <factor>)*
+<factor>     := <unary> (("*" | "/") <unary>)*
+<unary>      := ("!" | "-") <unary> | <call>
+<call>       := <primary> ("(" <args>? ")" | "[" <expr> "]")*
+<primary>    := "true" | "false" | <ident> | <num> | <str> | "(" <expr> ")"
 
 ==== TERMINALS ====
 
-ident := <alpha> (<alpha> | <digit> | "_")*
-str   := \" [^"]* \"
-num   := "0" | [1-9] <digit>+ ("." <digit>+)?
+<ident> := <alpha> (<alpha> | <digit> | "_")*
+<str>   := \" [^"]* \"
+<num>   := "0" | [1-9] <digit>+ ("." <digit>+)?
 
 ==== UTILITIES ====
 
-alpha  := [a-zA-Z]
-digit  := [0-9]
-params := <ident> ("," <ident>)*
-args   := <expr> ("," <expr>)*
-type   := <ident>
+<alpha>  := [a-zA-Z]
+<digit>  := [0-9]
+<params> := <ident> ("," <ident>)*
+<args>   := <expr> ("," <expr>)*
+<type>   := <ident>

@@ -89,3 +89,63 @@ impl<'a> MathicParser<'a> {
         })
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::parser::grammar::{
+        declaration::FuncDecl,
+        expression::{ExprStmt, PrimaryExpr},
+        statement::{BlockStmt, ReturnStmt, Stmt},
+        Program,
+    };
+
+    fn check_ast(source: &str, expected_ast: Program) {
+        let parser = MathicParser::new(source);
+        let ast = parser.parse().unwrap();
+
+        assert_eq!(expected_ast, ast);
+    }
+
+    #[test]
+    fn empty_func() {
+        let source = "
+            df main() {}
+        ";
+
+        check_ast(
+            source,
+            Program {
+                structs: vec![],
+                funcs: vec![FuncDecl {
+                    name: "main".to_string(),
+                    params: vec![],
+                    body: BlockStmt { stmts: vec![] },
+                }],
+            },
+        );
+    }
+
+    #[test]
+    fn func_with_return() {
+        let source = "
+            df main() { return 42; }
+        ";
+
+        check_ast(
+            source,
+            Program {
+                structs: vec![],
+                funcs: vec![FuncDecl {
+                    name: "main".to_string(),
+                    params: vec![],
+                    body: BlockStmt {
+                        stmts: vec![Stmt::Return(ReturnStmt {
+                            value: ExprStmt::Primary(PrimaryExpr::Num("42".to_string())),
+                        })],
+                    },
+                }],
+            },
+        );
+    }
+}
