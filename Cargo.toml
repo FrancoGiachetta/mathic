@@ -9,6 +9,8 @@ name = "euler"
 [dependencies]
 clap = { version = "4.5.24", features = ["derive"] }
 lazy_static = "1.5.0"
+llvm-sys = "211.0.0"
 logos = "0.16.0"
 logos-display = "0.1.3"
+melior = "0.26.3"
 thiserror = "2.0.10"

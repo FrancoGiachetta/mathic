@@ -1,7 +1,7 @@
 use crate::parser::{
+    MathicParser, ParserResult,
     grammar::declaration::{FuncDecl, Param},
     token::Token,
-    MathicParser, ParserResult,
 };
 
 impl<'a> MathicParser<'a> {

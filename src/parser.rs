@@ -94,10 +94,10 @@ impl<'a> MathicParser<'a> {
 mod tests {
     use super::*;
     use crate::parser::grammar::{
+        Program,
         declaration::FuncDecl,
         expression::{ExprStmt, PrimaryExpr},
         statement::{BlockStmt, ReturnStmt, Stmt},
-        Program,
     };
 
     fn check_ast(source: &str, expected_ast: Program) {
