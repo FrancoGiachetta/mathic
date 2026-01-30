@@ -10,7 +10,7 @@ This project is currently in early development.
 
 **Statements**
 - **Declarations**
-  - ✅ Function declarations 
+  - ❌ Function declarations 
   - ❌ Struct declarations 
   - ❌ Variable declarations
   - ❌ Symbolic declarations
@@ -19,10 +19,10 @@ This project is currently in early development.
   - ❌ For loops
   - ❌ While loops  
   - ❌ If statements
-  - ✅ Return statements
+  - ❌ Return statements
 
 **Expressions**
-- ✅ Primary expressions (identifiers, numbers, strings, booleans)
+- ❌ Primary expressions (identifiers, numbers, strings, booleans)
 - ❌ Assignment expressions
 - ❌ Arithmetic operations (+, -, *, /)
 - ❌ Comparison operations (==, !=, >, >=, <, <=)

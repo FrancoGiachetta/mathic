@@ -12,5 +12,5 @@ lazy_static = "1.5.0"
 llvm-sys = "211.0.0"
 logos = "0.16.0"
 logos-display = "0.1.3"
-melior = "0.26.3"
+melior = { version = "0.26.3", features = ["helpers"]}
 thiserror = "2.0.10"
