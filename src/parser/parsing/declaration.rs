@@ -1,6 +1,9 @@
 use crate::parser::{
     MathicParser, ParserResult,
-    grammar::declaration::{FuncDecl, Param},
+    grammar::{
+        declaration::{FuncDecl, Param},
+        statement::BlockStmt,
+    },
     token::Token,
 };
 
@@ -23,9 +26,13 @@ impl<'a> MathicParser<'a> {
 
         // Return type parsing should be here.
 
-        let body = self.parse_block()?;
+        let BlockStmt { stmts } = self.parse_block()?;
 
-        Ok(FuncDecl { name, params, body })
+        Ok(FuncDecl {
+            name,
+            params,
+            body: stmts,
+        })
     }
 
     fn parse_params(&self) -> ParserResult<Vec<Param>> {
