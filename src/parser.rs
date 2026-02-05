@@ -97,7 +97,7 @@ mod tests {
         Program,
         declaration::FuncDecl,
         expression::{ExprStmt, PrimaryExpr},
-        statement::{BlockStmt, ReturnStmt, Stmt},
+        statement::{ReturnStmt, Stmt},
     };
 
     fn check_ast(source: &str, expected_ast: Program) {
@@ -120,7 +120,7 @@ mod tests {
                 funcs: vec![FuncDecl {
                     name: "main".to_string(),
                     params: vec![],
-                    body: BlockStmt { stmts: vec![] },
+                    body: vec![],
                 }],
             },
         );
@@ -139,11 +139,9 @@ mod tests {
                 funcs: vec![FuncDecl {
                     name: "main".to_string(),
                     params: vec![],
-                    body: BlockStmt {
-                        stmts: vec![Stmt::Return(ReturnStmt {
-                            value: ExprStmt::Primary(PrimaryExpr::Num("42".to_string())),
-                        })],
-                    },
+                    body: vec![Stmt::Return(ReturnStmt {
+                        value: ExprStmt::Primary(PrimaryExpr::Num("42".to_string())),
+                    })],
                 }],
             },
         );

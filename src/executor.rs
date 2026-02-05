@@ -1,24 +1,23 @@
 use melior::{ExecutionEngine, ir::Module};
-use std::ffi::c_void;
 
-use crate::error::{MathicError, Result};
+use crate::{MathicResult, codegen::error::CodegenError, compiler::OptLvl};
 
 pub struct MathicExecutor {
     engine: ExecutionEngine,
 }
 
 impl MathicExecutor {
-    pub fn new(module: &Module, optimization_level: u32) -> Result<Self> {
-        let engine = ExecutionEngine::new(module, optimization_level, &[], false)?;
+    pub fn new(module: &Module, opt_lvl: OptLvl) -> MathicResult<Self> {
+        let engine = ExecutionEngine::new(module, opt_lvl as usize, &[], false);
 
         Ok(Self { engine })
     }
 
-    pub fn execute_main(&self) -> Result<i64> {
+    pub fn execute_main(&self) -> Result<i64, CodegenError> {
         // For invoke_packed, the result pointer should be the last argument
         let mut result: i64 = 0;
-        let args: &mut [*mut c_void] = &mut [
-            &mut result as *mut i64 as *mut c_void, // result pointer
+        let args: &mut [*mut ()] = &mut [
+            &mut result as *mut i64 as *mut (), // result pointer
         ];
 
         unsafe {
@@ -28,10 +27,9 @@ impl MathicExecutor {
         Ok(result)
     }
 
-    pub fn lookup_symbol(&self, symbol_name: &str) -> Option<*mut c_void> {
-        match self.engine.lookup(symbol_name) {
-            Ok(ptr) => Some(ptr),
-            Err(_) => None,
-        }
+    pub fn lookup_symbol(&self, symbol_name: &str) -> Option<*mut ()> {
+        let ptr = self.engine.lookup(symbol_name);
+
+        if ptr.is_null() { None } else { Some(ptr) }
     }
 }

@@ -1,71 +1,83 @@
-use llvm_sys::target::LLVMInitializeHexagonTarget;
 use melior::{
     dialect::llvm,
     ir::{
-        Block, BlockLike, Region, RegionLike,
+        Attribute, Block, BlockLike, Identifier, Location, Region, RegionLike,
         attribute::{StringAttribute, TypeAttribute},
-        r#type::FunctionType,
+        r#type::{FunctionType, IntegerType},
     },
 };
 
 use crate::{
     codegen::{MathicCodeGen, error::CodegenError},
-    error::{MathicError, Result},
     parser::grammar::{
         declaration::FuncDecl,
         statement::{ReturnStmt, Stmt},
     },
 };
 
-impl MathicCodeGen {
-    fn compile_statement<'ctx: 'this, 'this>(
-        &self,
-        block: &'this Block<'ctx>,
-        stmt: Stmt,
-    ) -> Result<()> {
+impl<'this, 'ctx> MathicCodeGen<'this, 'ctx>
+where
+    'this: 'ctx,
+{
+    fn compile_statement(&self, block: &'this Block<'ctx>, stmt: Stmt) -> Result<(), CodegenError> {
         match stmt {
-            Stmt::Decl(decl_stmt) => Err(MathicError::Codegen(CodegenError::MeliorError(
-                melior::Error::Operation("Declaration not implemented".into()),
-            ))),
-            Stmt::Block(block_stmt) => Err(MathicError::Codegen(CodegenError::MeliorError(
-                melior::Error::Operation("Block statement not implemented".into()),
-            ))),
+            Stmt::Decl(_decl_stmt) => unimplemented!("Declaration not implemented"),
+            Stmt::Block(_block_stmt) => unimplemented!("Block statement not implemented"),
             Stmt::Return(return_stmt) => self.compile_return(block, return_stmt),
-            Stmt::Expr(expr_stmt) => Err(MathicError::Codegen(CodegenError::MeliorError(
-                melior::Error::Operation("Expression statement not implemented".into()),
-            ))),
+            Stmt::Expr(_expr_stmt) => unimplemented!("Expression statement not implemented"),
         }
     }
 
-    pub fn compile_function(&self, func: &FuncDecl) -> Result<()> {
-        let params = vec![];
+    pub fn compile_function(&self, func: FuncDecl) -> Result<(), CodegenError> {
+        // let params = vec![];
 
         let region = Region::new();
         let block = region.append_block(Block::new(&[]));
 
         for stmt in func.body {
-            self.compile_statement(block, stmt)?;
+            self.compile_statement(&block, stmt)?;
         }
 
-        let location = Location::unknown(&self.context);
-        let i64_type = melior::ir::r#type::IntegerType::new(&self.context, 64).into();
-        let func_ty = TypeAttribute::new(FunctionType::new(&self.context, &[], &[i64_type]));
+        let location = Location::unknown(&self.ctx);
+        let i64_type = IntegerType::new(&self.ctx, 64).into();
+        let func_ty = TypeAttribute::new(llvm::r#type::function(i64_type, &[], false).into());
 
         self.module.body().append_operation(llvm::func(
-            &self.context,
-            StringAttribute::new(&self.context, &func.name),
+            &self.ctx,
+            StringAttribute::new(&self.ctx, &func.name),
             func_ty,
             region,
-            &[],
+            &[
+                (
+                    Identifier::new(&self.ctx, "sym_visibility"),
+                    StringAttribute::new(&self.ctx, "private").into(),
+                ),
+                (
+                    Identifier::new(&self.ctx, "linkage"),
+                    Attribute::parse(&self.ctx, "#llvm.linkage<private>")
+                        .ok_or(CodegenError::ParseAttributeError)?,
+                ),
+                (
+                    Identifier::new(&self.ctx, "CConv"),
+                    Attribute::parse(&self.ctx, "#llvm.cconv<fastcc>")
+                        .ok_or(CodegenError::ParseAttributeError)?,
+                ),
+            ],
             location,
         ));
+
+        Ok(())
     }
 
-    fn compile_return(&self, block: &'this Block<'ctx>, return_stmt: ReturnStmt) -> Result<()> {
+    fn compile_return(
+        &self,
+        block: &'this Block<'ctx>,
+        return_stmt: ReturnStmt,
+    ) -> Result<(), CodegenError> {
         let value = self.compile_expression(block, return_stmt.value)?;
-        let location = Location::unknown(&self.context);
+        let location = Location::unknown(&self.ctx);
 
-        block.append_operation(llvm::r#return(&[&value], &location));
+        block.append_operation(llvm::r#return(Some(value), location));
         Ok(())
     }
 }

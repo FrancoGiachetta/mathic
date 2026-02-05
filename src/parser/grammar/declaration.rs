@@ -1,4 +1,4 @@
-use crate::parser::grammar::statement::BlockStmt;
+use crate::parser::grammar::statement::Stmt;
 
 #[derive(Debug, PartialEq, Eq)]
 pub enum DeclStmt {
@@ -16,7 +16,7 @@ pub struct StructDecl {
 pub struct FuncDecl {
     pub name: String,
     pub params: Vec<Param>,
-    pub body: BlockStmt,
+    pub body: Vec<Stmt>,
 }
 
 #[derive(Debug, PartialEq, Eq)]

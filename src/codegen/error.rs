@@ -1,3 +1,5 @@
+use std::num::ParseIntError;
+
 use thiserror::Error;
 
 #[derive(Debug, Error)]
@@ -6,4 +8,12 @@ pub enum CodegenError {
     MissingMainFunction,
     #[error(transparent)]
     MeliorError(#[from] melior::Error),
+    #[error("llvm erorr: {0}")]
+    LLVMError(String),
+    #[error(transparent)]
+    ParseIntError(#[from] ParseIntError),
+    #[error("Couldn't not parse attribute")]
+    ParseAttributeError,
+    #[error("{0}")]
+    Custom(String),
 }

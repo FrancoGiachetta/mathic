@@ -6,4 +6,4 @@ pub mod error;
 pub mod executor;
 mod parser;
 
-pub type Result<T> = std::result::Result<T, MathicError>;
+pub type MathicResult<T> = std::result::Result<T, MathicError>;
