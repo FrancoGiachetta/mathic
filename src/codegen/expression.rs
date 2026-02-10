@@ -47,16 +47,16 @@ where
         block: &'this Block<'ctx>,
         expr: PrimaryExpr,
     ) -> Result<Value<'ctx, 'this>, CodegenError> {
-        let location = Location::unknown(&self.ctx);
+        let location = Location::unknown(self.ctx);
 
         match expr {
             PrimaryExpr::Ident(_token) => unimplemented!("Identifier lookup not implemented"),
             PrimaryExpr::Num(val) => {
                 let parsed_val: u64 = val.parse()?;
-                Ok(block.const_int(&self.ctx, location, parsed_val, 64)?)
+                Ok(block.const_int(self.ctx, location, parsed_val, 64)?)
             }
             PrimaryExpr::Str(_) => unimplemented!("String literals not implemented"),
-            PrimaryExpr::Bool(val) => Ok(block.const_int(&self.ctx, location, val, 1)?),
+            PrimaryExpr::Bool(val) => Ok(block.const_int(self.ctx, location, val, 1)?),
         }
     }
 }

@@ -1,6 +1,9 @@
 #!/bin/sh
 
-set -gx LLVM_SYS_211_PREFIX "/opt/llvm-21"
-set -gx MLIR_SYS_210_PREFIX "/opt/llvm-21"
-set -gx TABLEGEN_210_PREFIX "/opt/llvm-21"
+export LLVM_BUILD_PREFIX="/home/franco/llvm-21"
 
+export LLVM_SYS_211_PREFIX="$LLVM_BUILD_PREFIX"
+export MLIR_SYS_210_PREFIX="$LLVM_BUILD_PREFIX"
+export TABLEGEN_210_PREFIX="$LLVM_BUILD_PREFIX"
+
+# set -x LD_LIBRARY_PATH "$LLVM_BUILD_PREFIX/lib:/usr/lib:$LD_LIBRARY_PATH"

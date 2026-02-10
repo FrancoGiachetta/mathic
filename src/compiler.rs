@@ -72,10 +72,7 @@ impl<'a> MathicCompiler<'a> {
         pass_manager.add_pass(create_scf_to_control_flow()); // needed because to_llvm doesn't include it.
         pass_manager.add_pass(create_to_llvm());
 
-        Ok(Self {
-            ctx: Self::create_context()?,
-            pass_manager,
-        })
+        Ok(Self { ctx, pass_manager })
     }
 
     pub fn compile(&'a self, file_path: &'a Path, _opt_lvl: OptLvl) -> MathicResult<Module<'a>> {
@@ -102,7 +99,7 @@ impl<'a> MathicCompiler<'a> {
         dbg!("Passes Done");
         let mut f = fs::File::create("module.mlir").unwrap();
 
-        write!(f, "{}", module.as_operation().to_string()).unwrap();
+        write!(f, "{}", module.as_operation()).unwrap();
 
         Ok(module)
     }
@@ -184,11 +181,10 @@ impl<'a> MathicCompiler<'a> {
 
     /// Gets the target triple, which identifies the platform and ABI.
     pub fn get_target_triple() -> String {
-        let target_triple = unsafe {
+        unsafe {
             let value = LLVMGetDefaultTargetTriple();
             CStr::from_ptr(value).to_string_lossy().into_owned()
-        };
-        target_triple
+        }
     }
 
     /// Gets the data layout reprrsentation as a string, to be given to the MLIR module.

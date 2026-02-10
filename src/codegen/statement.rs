@@ -1,5 +1,5 @@
 use melior::{
-    dialect::llvm,
+    dialect::func,
     ir::{
         Attribute, Block, BlockLike, Identifier, Location, Region, RegionLike,
         attribute::{StringAttribute, TypeAttribute},
@@ -38,31 +38,18 @@ where
             self.compile_statement(&block, stmt)?;
         }
 
-        let location = Location::unknown(&self.ctx);
-        let i64_type = IntegerType::new(&self.ctx, 64).into();
-        let func_ty = TypeAttribute::new(llvm::r#type::function(i64_type, &[], false).into());
+        let location = Location::unknown(self.ctx);
+        let i64_type = IntegerType::new(self.ctx, 64).into();
 
-        self.module.body().append_operation(llvm::func(
-            &self.ctx,
-            StringAttribute::new(&self.ctx, &func.name),
-            func_ty,
+        self.module.body().append_operation(func::func(
+            self.ctx,
+            StringAttribute::new(self.ctx, &format!("mathic_{}", func.name)),
+            TypeAttribute::new(FunctionType::new(self.ctx, &[], &[i64_type]).into()),
             region,
-            &[
-                (
-                    Identifier::new(&self.ctx, "sym_visibility"),
-                    StringAttribute::new(&self.ctx, "private").into(),
-                ),
-                (
-                    Identifier::new(&self.ctx, "linkage"),
-                    Attribute::parse(&self.ctx, "#llvm.linkage<private>")
-                        .ok_or(CodegenError::ParseAttributeError)?,
-                ),
-                (
-                    Identifier::new(&self.ctx, "CConv"),
-                    Attribute::parse(&self.ctx, "#llvm.cconv<fastcc>")
-                        .ok_or(CodegenError::ParseAttributeError)?,
-                ),
-            ],
+            &[(
+                Identifier::new(self.ctx, "llvm.emit_c_interface"),
+                Attribute::unit(self.ctx),
+            )],
             location,
         ));
 
@@ -75,9 +62,9 @@ where
         return_stmt: ReturnStmt,
     ) -> Result<(), CodegenError> {
         let value = self.compile_expression(block, return_stmt.value)?;
-        let location = Location::unknown(&self.ctx);
+        let location = Location::unknown(self.ctx);
 
-        block.append_operation(llvm::r#return(Some(value), location));
+        block.append_operation(func::r#return(&[value], location));
         Ok(())
     }
 }

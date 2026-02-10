@@ -20,10 +20,10 @@ fn main() -> MathicResult<()> {
     let executor = MathicExecutor::new(&module, OptLvl::O1)?;
 
     dbg!("Executor Created");
-    let result = executor.execute_main()?;
+    let result = executor.call_function("main");
 
     dbg!("Execution Done");
-    println!("RESULT: {}", result);
+    println!("RESULT: {:?}", result);
 
     Ok(())
 }

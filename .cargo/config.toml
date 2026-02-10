@@ -1,4 +1,0 @@
-[env]
-LLVM_SYS_211_PREFIX="/opt/llvm-21"
-MLIR_SYS_210_PREFIX="/opt/llvm-21" 
-TABLEGEN_210_PREFIX="/opt/llvm-21"
