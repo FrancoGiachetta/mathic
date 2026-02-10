@@ -1,0 +1,93 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  merge_group:
+    types: [checks_requested]
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: ${{ github.ref != 'refs/heads/main' }}
+
+env:
+  LLVM_SYS_211_PREFIX: "/usr/lib/llvm-21"
+  MLIR_SYS_210_PREFIX: "/usr/lib/llvm-21"
+  TABLEGEN_210_PREFIX: "/usr/lib/llvm-21"
+
+jobs:
+  test:
+    name: Test Suite
+    runs-on: ubuntu-24.04
+    steps:
+    - uses: actions/checkout@v4
+    
+    - name: Install LLVM Dependencies
+      uses: ./.github/actions/install-llvm-deps
+    
+    - name: Install Rust
+      uses: dtolnay/rust-toolchain@1.93.0
+      with:
+        components: rustfmt, clippy
+    
+    - name: Rust Cache
+      uses: Swatinem/rust-cache@v2
+    
+    - name: Run tests
+      run: cargo test --verbose
+
+  clippy:
+    name: Clippy Linting
+    runs-on: ubuntu-24.04
+    steps:
+    - uses: actions/checkout@v4
+    
+    - name: Install LLVM Dependencies
+      uses: ./.github/actions/install-llvm-deps
+    
+    - name: Install Rust
+      uses: dtolnay/rust-toolchain@1.93.0
+      with:
+        components: clippy
+    
+    - name: Rust Cache
+      uses: Swatinem/rust-cache@v2
+    
+    - name: Run clippy
+      run: cargo clippy -- -D warnings
+
+  format:
+    name: Check Formatting
+    runs-on: ubuntu-24.04
+    steps:
+    - uses: actions/checkout@v4
+    
+    - name: Install Rust
+      uses: dtolnay/rust-toolchain@1.93.0
+      with:
+        components: rustfmt
+    
+    - name: Rust Cache
+      uses: Swatinem/rust-cache@v2
+    
+    - name: Check formatting
+      run: cargo fmt --all -- --check
+
+  unused-deps:
+    name: Check Unused Dependencies
+    runs-on: ubuntu-24.04
+    steps:
+    - uses: actions/checkout@v4
+    
+    - name: Install Rust
+      uses: dtolnay/rust-toolchain@1.93.0
+    
+    - name: Rust Cache
+      uses: Swatinem/rust-cache@v2
+    
+    - name: Install cargo-machete
+      run: cargo install cargo-machete
+    
+    - name: Check for unused dependencies
+      run: cargo machete

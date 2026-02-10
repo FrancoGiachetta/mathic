@@ -1,71 +1,90 @@
-# Overview
+<div align="center">
 
-Mathic is a programming language with symbolic algebra capabilities, using LLVM/MLIR for code generation.
+# 🧮 Mathic
 
-# Dependencies
+*A programming language with builtin symbolic algebra capabilities, powered by LLVM/MLIR*
 
-## LLVM/MLIR
+---
 
-LLVM can be install in many different ways, the common one is by building it from the source code.
+Mathic is a modern programming language designed for symbolic algebra and mathematical computation, leveraging the power of LLVM/MLIR for efficient code generation.
 
-1. Clone llvm-project repository.
-2. Create a build/ directory in it.
-3. Inside build/, run this command to build llvm/mlir:
+</div>
 
-```shell
-cmake -G Ninja ../llvm \
-    -DLLVM_ENABLE_PROJECTS="mlir" \
-    -DCMAKE_BUILD_TYPE=RelWithDebInfo \
-    -DLLVM_ENABLE_ASSERTIONS=On \
-    -DLLVM_USE_LINKER=mold \
-    -DLLVM_BUILD_LLVM_DYLIB=On \
-    -DLLVM_LINK_LLVM_DYLIB=On \
-    -DMLIR_BUILD_MLIR_C_DYLIB=On \
-    -DLLVM_TARGETS_TO_BUILD=host \
-    -DLLVM_PARALLEL_COMPILE_JOBS=4 \
-    -DLLVM_PARALLEL_LINK_JOBS=2 \
-    -DCMAKE_INSTALL_PREFIX=<llvm-install-prefix>
-```
+## 🔧 Dependencies
 
-4. Finally, install the build:
+- **Rust** 1.93 or higher
+- **LLVM/MLIR** 21.x.x 
 
-```
-ninja install
-```
+### LLVM/MLIR Installation
 
-## Current State
+There are many was of installing LLVM. The most commong one it by building it from source.
 
-This project is currently in early development.
+1. **Clone LLVM Project**
+   ```bash
+   git clone https://github.com/llvm/llvm-project.git
+   cd llvm-project
+   mkdir build && cd build
+   ```
 
-### Language Features
+2. **Configure Build**
+   ```bash
+   cmake -G Ninja ../llvm \
+       -DLLVM_ENABLE_PROJECTS="mlir" \
+       -DCMAKE_BUILD_TYPE=RelWithDebInfo \
+       -DLLVM_ENABLE_ASSERTIONS=On \
+       -DLLVM_USE_LINKER=mold \
+       -DLLVM_BUILD_LLVM_DYLIB=On \
+       -DLLVM_LINK_LLVM_DYLIB=On \
+       -DMLIR_BUILD_MLIR_C_DYLIB=On \
+       -DLLVM_TARGETS_TO_BUILD=host \
+       -DCMAKE_INSTALL_PREFIX=/opt/llvm-21
+   ```
 
-**Statements**
-- **Declarations**
-  - 󰡢 Function declarations 
-  - ❌ Struct declarations 
-  - ❌ Variable declarations
-  - ❌ Symbolic declarations
+3. **Build and Install**
+   ```bash
+   ninja install
+   ```
 
-- **Control Flow**
-  - ❌ For loops
-  - ❌ While loops  
-  - ❌ If statements
-  - ❌ Return statements
+## 📖 Current Status
 
-**Expressions**
-- ❌ Primary expressions (identifiers, numbers, strings, booleans)
-- ❌ Assignment expressions
-- ❌ Arithmetic operations (+, -, *, /)
-- ❌ Comparison operations (==, !=, >, >=, <, <=)
-- ❌ Logical operations (and, or)
-- ❌ Unary operations (!, -)
-- ❌ Function calls
+> ⚠️ **Note**: This project is in early development. Features are being added incrementally.
 
-### Code Generation
+### 🏗️ Language Features
 
-**Infrastructure:**
-- ✅ MLIR context and module setup
-- ✅ Dialect registry configuration
-- ❌ AST-to-MLIR conversion
-- ❌ Function compilation
-- ❌ Expression compilation
+#### Statements
+- ✅ **Function declarations**
+- 🚧 **Struct declarations** 
+- 🚧 **Variable declarations** 
+- 🚧 **Symbolic declarations** 
+
+#### Control Flow
+- 🚧 **For loops** 
+- 🚧 **While loops** 
+- 🚧 **If statements** 
+- 🚧 **Return statements** 
+
+#### Expressions
+- 🚧 **Primary expressions** (identifiers, numbers, strings, booleans)
+- 🚧 **Assignment expressions**
+- 🚧 **Arithmetic operations** (+, -, *, /)
+- 🚧 **Comparison operations** (==, !=, >, >=, <, <=)
+- 🚧 **Logical operations** (and, or)
+- 🚧 **Unary operations** (!, -)
+- 🚧 **Function calls**
+
+### ⚙️ Code Generation Infrastructure
+
+#### Backend Components
+- ✅ **MLIR context and module setup**
+- ✅ **Dialect registry configuration**
+- 🚧 **AST-to-MLIR conversion** (in progress)
+- 🚧 **Function compilation** (planned)
+- 🚧 **Expression compilation** (planned)
+
+---
+
+<div align="center">
+
+**Built with ❤️ and 🦀 Rust**
+
+</div>
