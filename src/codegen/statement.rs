@@ -1,4 +1,5 @@
 use melior::{
+    Context,
     dialect::func,
     ir::{
         Attribute, Block, BlockLike, Identifier, Location, Region, RegionLike,
@@ -19,37 +20,42 @@ impl<'this, 'ctx> MathicCodeGen<'this, 'ctx>
 where
     'this: 'ctx,
 {
-    fn compile_statement(&self, block: &'this Block<'ctx>, stmt: Stmt) -> Result<(), CodegenError> {
+    fn compile_statement(
+        &self,
+        ctx: &'ctx Context,
+        block: &'this Block<'ctx>,
+        stmt: Stmt,
+    ) -> Result<(), CodegenError> {
         match stmt {
             Stmt::Decl(_decl_stmt) => unimplemented!("Declaration not implemented"),
             Stmt::Block(_block_stmt) => unimplemented!("Block statement not implemented"),
-            Stmt::Return(return_stmt) => self.compile_return(block, return_stmt),
+            Stmt::Return(return_stmt) => self.compile_return(ctx, block, return_stmt),
             Stmt::Expr(_expr_stmt) => unimplemented!("Expression statement not implemented"),
         }
     }
 
-    pub fn compile_function(&self, func: FuncDecl) -> Result<(), CodegenError> {
+    pub fn compile_function(&self, ctx: &'ctx Context, func: FuncDecl) -> Result<(), CodegenError> {
         // let params = vec![];
 
         let region = Region::new();
         let block = region.append_block(Block::new(&[]));
 
         for stmt in func.body {
-            self.compile_statement(&block, stmt)?;
+            self.compile_statement(ctx, &block, stmt)?;
         }
 
-        let location = Location::unknown(self.ctx);
-        let i64_type = IntegerType::new(self.ctx, 64).into();
+        let location = Location::unknown(ctx);
+        let i64_type = IntegerType::new(ctx, 64).into();
 
         self.module.body().append_operation(func::func(
-            self.ctx,
-            StringAttribute::new(self.ctx, &format!("mathic_{}", func.name)),
-            TypeAttribute::new(FunctionType::new(self.ctx, &[], &[i64_type]).into()),
+            ctx,
+            StringAttribute::new(ctx, &format!("mathic_{}", func.name)),
+            TypeAttribute::new(FunctionType::new(ctx, &[], &[i64_type]).into()),
             region,
             // This is necessary for the ExecutorEngine to execute a function.
             &[(
-                Identifier::new(self.ctx, "llvm.emit_c_interface"),
-                Attribute::unit(self.ctx),
+                Identifier::new(ctx, "llvm.emit_c_interface"),
+                Attribute::unit(ctx),
             )],
             location,
         ));
@@ -59,11 +65,12 @@ where
 
     fn compile_return(
         &self,
+        ctx: &'ctx Context,
         block: &'this Block<'ctx>,
         return_stmt: ReturnStmt,
     ) -> Result<(), CodegenError> {
-        let value = self.compile_expression(block, return_stmt.value)?;
-        let location = Location::unknown(self.ctx);
+        let value = self.compile_expression(ctx, block, return_stmt.value)?;
+        let location = Location::unknown(ctx);
 
         block.append_operation(func::r#return(&[value], location));
         Ok(())

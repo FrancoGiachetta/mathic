@@ -84,7 +84,7 @@ pub enum Token {
     // Literals
     #[regex(r#""[^"]*""#)]
     Str,
-    #[regex(r"(?:0|[1-9]\d+)(?:\.\d+)?")]
+    #[regex(r"(?:0|[1-9]\d*)(?:\.\d+)?")]
     Num,
     #[regex(r"[[:alpha:]][[:alnum:]]*")]
     Ident,

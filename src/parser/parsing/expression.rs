@@ -44,7 +44,6 @@ impl<'a> MathicParser<'a> {
     }
 
     fn parse_equality(&self) -> ParserResult<ExprStmt> {
-        // Placeholder for now - just parse primary expressions
         self.parse_primary_expr()
     }
 
