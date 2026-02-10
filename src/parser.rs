@@ -72,12 +72,11 @@ impl<'a> MathicParser<'a> {
         }
     }
 
-    fn match_token(&self, expected: Token) -> ParserResult<bool> {
+    fn match_token(&self, expected: Token) -> ParserResult<LexerOutput<'a>> {
         Ok(if self.check_next(expected)? {
-            self.next()?;
-            true
+            self.next()?
         } else {
-            false
+            None
         })
     }
 
@@ -141,6 +140,85 @@ mod tests {
                     params: vec![],
                     body: vec![Stmt::Return(ReturnStmt {
                         value: ExprStmt::Primary(PrimaryExpr::Num("42".to_string())),
+                    })],
+                }],
+            },
+        );
+    }
+
+    #[test]
+    fn func_with_logical_or() {
+        let source = "
+            df main() { return true or false; }
+        ";
+
+        check_ast(
+            source,
+            Program {
+                structs: vec![],
+                funcs: vec![FuncDecl {
+                    name: "main".to_string(),
+                    params: vec![],
+                    body: vec![Stmt::Return(ReturnStmt {
+                        value: ExprStmt::Logical {
+                            lhs: Box::new(ExprStmt::Primary(PrimaryExpr::Bool(true))),
+                            op: Token::Or,
+                            rhs: Box::new(ExprStmt::Primary(PrimaryExpr::Bool(false))),
+                        },
+                    })],
+                }],
+            },
+        );
+    }
+
+    #[test]
+    fn func_with_logical_and() {
+        let source = "
+            df main() { return true and false; }
+        ";
+
+        check_ast(
+            source,
+            Program {
+                structs: vec![],
+                funcs: vec![FuncDecl {
+                    name: "main".to_string(),
+                    params: vec![],
+                    body: vec![Stmt::Return(ReturnStmt {
+                        value: ExprStmt::Logical {
+                            lhs: Box::new(ExprStmt::Primary(PrimaryExpr::Bool(true))),
+                            op: Token::And,
+                            rhs: Box::new(ExprStmt::Primary(PrimaryExpr::Bool(false))),
+                        },
+                    })],
+                }],
+            },
+        );
+    }
+
+    #[test]
+    fn func_with_mixed_logical() {
+        let source = "
+            df main() { return true or false and true; }
+        ";
+
+        check_ast(
+            source,
+            Program {
+                structs: vec![],
+                funcs: vec![FuncDecl {
+                    name: "main".to_string(),
+                    params: vec![],
+                    body: vec![Stmt::Return(ReturnStmt {
+                        value: ExprStmt::Logical {
+                            lhs: Box::new(ExprStmt::Primary(PrimaryExpr::Bool(true))),
+                            op: Token::Or,
+                            rhs: Box::new(ExprStmt::Logical {
+                                lhs: Box::new(ExprStmt::Primary(PrimaryExpr::Bool(false))),
+                                op: Token::And,
+                                rhs: Box::new(ExprStmt::Primary(PrimaryExpr::Bool(true))),
+                            }),
+                        },
                     })],
                 }],
             },

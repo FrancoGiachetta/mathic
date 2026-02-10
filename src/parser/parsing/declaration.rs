@@ -41,7 +41,7 @@ impl<'a> MathicParser<'a> {
             name: identifier.lexeme.to_string(),
         }];
 
-        while self.match_token(Token::Comma)? {
+        while self.match_token(Token::Comma)?.is_some() {
             let identifier = self.consume_token(Token::Ident)?;
 
             // Param's type parsing should be here.
