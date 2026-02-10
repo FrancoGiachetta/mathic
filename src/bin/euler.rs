@@ -2,9 +2,9 @@ use std::path::PathBuf;
 
 use clap::Parser;
 use mathic::{
+    MathicResult,
     compiler::{MathicCompiler, OptLvl},
     executor::MathicExecutor,
-    MathicResult,
 };
 use tracing_subscriber::{EnvFilter, FmtSubscriber};
 
@@ -26,10 +26,10 @@ fn main() -> MathicResult<()> {
     let module = compiler.compile(&args.file_path, OptLvl::default())?;
     let executor = MathicExecutor::new(&module, OptLvl::O1)?;
 
-    tracing::info!("Executor Created");
+    tracing::debug!("Executor Created");
     let result = executor.call_function("main");
 
-    tracing::info!("Execution Done");
+    tracing::debug!("Execution Done");
     println!("RESULT: {:?}", result);
 
     Ok(())
