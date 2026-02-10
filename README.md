@@ -4,10 +4,6 @@
 
 *A programming language with builtin symbolic algebra capabilities, powered by LLVM/MLIR*
 
----
-
-Mathic is a modern programming language designed for symbolic algebra and mathematical computation, leveraging the power of LLVM/MLIR for efficient code generation.
-
 </div>
 
 ## 🔧 Dependencies
