@@ -55,7 +55,7 @@ jobs:
       uses: Swatinem/rust-cache@v2
     
     - name: Run clippy
-      run: cargo clippy -- -D warnings
+      run: make clippy
 
   format:
     name: Check Formatting
