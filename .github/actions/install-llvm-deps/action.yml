@@ -1,0 +1,18 @@
+name: 'Install LLVM Dependencies'
+description: 'Install LLVM and related dependencies'
+runs:
+  using: "composite"
+  steps:
+    - name: Add LLVM Debian repository
+      uses: myci-actions/add-deb-repo@11
+      with:
+        repo: deb http://apt.llvm.org/jammy/ llvm-toolchain-jammy-21 main
+        repo-name: llvm-repo
+        keys-asc: https://apt.llvm.org/llvm-snapshot.gpg.key
+    - name: Update and upgrade APT
+      shell: bash
+      run: sudo apt-get update && sudo apt-get upgrade -y
+    - name: Install LLVM
+      shell: bash
+      run: sudo apt-get install llvm-21 llvm-21-dev llvm-21-runtime clang-21 clang-tools-21 lld-21 libpolly-21-dev libmlir-21-dev mlir-21-tools
+      

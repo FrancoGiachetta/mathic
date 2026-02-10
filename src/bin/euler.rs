@@ -6,6 +6,7 @@ use mathic::{
     compiler::{MathicCompiler, OptLvl},
     executor::MathicExecutor,
 };
+use tracing_subscriber::{EnvFilter, FmtSubscriber};
 
 #[derive(Debug, Parser)]
 struct MathiCLI {
@@ -13,16 +14,23 @@ struct MathiCLI {
 }
 
 fn main() -> MathicResult<()> {
+    tracing::subscriber::set_global_default(
+        FmtSubscriber::builder()
+            .with_env_filter(EnvFilter::from_default_env())
+            .finish(),
+    )
+    .expect("Failed to set global suscriber");
+
     let args = MathiCLI::parse();
 
     let compiler = MathicCompiler::new()?;
     let module = compiler.compile(&args.file_path, OptLvl::default())?;
     let executor = MathicExecutor::new(&module, OptLvl::O1)?;
 
-    dbg!("Executor Created");
+    tracing::debug!("Executor Created");
     let result = executor.call_function("main");
 
-    dbg!("Execution Done");
+    tracing::debug!("Execution Done");
     println!("RESULT: {:?}", result);
 
     Ok(())
