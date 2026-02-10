@@ -1,6 +1,7 @@
 use crate::parser::token::Token;
 
 #[derive(Debug, PartialEq, Eq)]
+#[allow(dead_code)]
 pub enum ExprStmt {
     Primary(PrimaryExpr),
     Assign {
@@ -32,6 +33,7 @@ pub enum ExprStmt {
 }
 
 #[derive(Debug, PartialEq, Eq)]
+#[allow(dead_code)]
 pub enum PrimaryExpr {
     Ident(Token),
     Num(String),

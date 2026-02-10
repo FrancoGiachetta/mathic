@@ -1,6 +1,7 @@
 use crate::parser::grammar::statement::Stmt;
 
 #[derive(Debug, PartialEq, Eq)]
+#[allow(dead_code)]
 pub enum DeclStmt {
     StructDeclStmt(StructDecl),
     FuncDeclStmt(FuncDecl),

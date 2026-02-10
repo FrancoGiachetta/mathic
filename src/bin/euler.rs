@@ -18,7 +18,8 @@ fn main() -> MathicResult<()> {
         FmtSubscriber::builder()
             .with_env_filter(EnvFilter::from_default_env())
             .finish(),
-    )?;
+    )
+    .expect("Failed to set global suscriber");
 
     let args = MathiCLI::parse();
 
