@@ -2,7 +2,7 @@ def main() {
 	fib(10);
 }
 
-def fib(num#ber) {
+def fib(number) {
 	if (number <= 0) {
 		return 0;
 	} else if (number == 1) {

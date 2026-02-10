@@ -46,6 +46,7 @@ where
             StringAttribute::new(self.ctx, &format!("mathic_{}", func.name)),
             TypeAttribute::new(FunctionType::new(self.ctx, &[], &[i64_type]).into()),
             region,
+            // This is necessary for the ExecutorEngine to execute a function.
             &[(
                 Identifier::new(self.ctx, "llvm.emit_c_interface"),
                 Attribute::unit(self.ctx),
