@@ -60,17 +60,93 @@ impl<'a> MathicParser<'a> {
     }
 
     fn parse_inequality(&self) -> ParserResult<ExprStmt> {
-        let mut expr = self.parse_primary_expr()?;
+        let mut expr = self.parse_term()?;
 
         while let Some(op) =
             self.match_any_token(&[Token::Greater, Token::EqLess, Token::Less, Token::EqGrater])?
         {
-            let rhs = self.parse_primary_expr()?;
+            let rhs = self.parse_term()?;
             expr = ExprStmt::BinOp {
                 lhs: Box::new(expr),
                 op: op.token,
                 rhs: Box::new(rhs),
             };
+        }
+
+        Ok(expr)
+    }
+
+    fn parse_term(&self) -> ParserResult<ExprStmt> {
+        let mut expr = self.parse_factor()?;
+
+        while let Some(op) = self.match_any_token(&[Token::Plus, Token::Minus])? {
+            let rhs = self.parse_factor()?;
+
+            expr = ExprStmt::BinOp {
+                lhs: Box::new(expr),
+                op: op.token,
+                rhs: Box::new(rhs),
+            };
+        }
+
+        Ok(expr)
+    }
+
+    fn parse_factor(&self) -> ParserResult<ExprStmt> {
+        let mut expr = self.parse_unary()?;
+
+        while let Some(op) = self.match_any_token(&[Token::Star, Token::Slash])? {
+            let rhs = self.parse_unary()?;
+
+            expr = ExprStmt::BinOp {
+                lhs: Box::new(expr),
+                op: op.token,
+                rhs: Box::new(rhs),
+            };
+        }
+
+        Ok(expr)
+    }
+
+    fn parse_unary(&self) -> ParserResult<ExprStmt> {
+        if let Some(op) = self.match_any_token(&[Token::Bang, Token::Minus])? {
+            let rhs = self.parse_unary()?;
+
+            return Ok(ExprStmt::Unary {
+                op: op.token,
+                rhs: Box::new(rhs),
+            });
+        }
+
+        self.parse_call()
+    }
+
+    fn parse_call(&self) -> ParserResult<ExprStmt> {
+        let mut expr = self.parse_primary_expr()?;
+
+        while let Some(_) = self.match_token(Token::LParen)? {
+            let args = if self.check_next(Token::RParen)? {
+                Vec::new()
+            } else {
+                let mut args = Vec::new();
+                args.push(self.parse_expr()?);
+
+                while let Some(_) = self.match_token(Token::Comma)? {
+                    args.push(self.parse_expr()?);
+                }
+
+                self.consume_token(Token::RParen)?;
+
+                args
+            };
+
+            if let ExprStmt::Primary(PrimaryExpr::Ident(calle)) = expr {
+                expr = ExprStmt::Call { calle, args };
+            } else {
+                return Err(ParseError::UnexpectedToken(
+                    "Expected identifier for function call".into(),
+                ));
+            }
         }
 
         Ok(expr)
