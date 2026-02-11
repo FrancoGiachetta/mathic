@@ -13,6 +13,15 @@ pub enum ExprStmt {
         op: Token,
         rhs: Box<Self>,
     },
+    Call {
+        calle: Token,
+        args: Vec<Self>,
+    },
+    Group(Box<Self>),
+    Index {
+        name: Token,
+        pos: Token,
+    },
     Logical {
         lhs: Box<Self>,
         op: Token,
@@ -21,14 +30,6 @@ pub enum ExprStmt {
     Unary {
         op: Token,
         rhs: Box<Self>,
-    },
-    Call {
-        calle: Token,
-        args: Vec<Self>,
-    },
-    Index {
-        name: Token,
-        pos: Token,
     },
 }
 

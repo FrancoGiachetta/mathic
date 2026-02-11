@@ -2,7 +2,7 @@ use melior::{
     Context,
     dialect::arith::CmpiPredicate,
     helpers::ArithBlockExt,
-    ir::{Block, Location, Value, r#type::IntegerType},
+    ir::{Block, Location, Value, ValueLike, r#type::IntegerType},
 };
 
 use crate::{
@@ -25,15 +25,41 @@ where
     ) -> Result<Value<'ctx, 'this>, CodegenError> {
         match expr {
             ExprStmt::Primary(primary_expr) => self.compile_primary(ctx, block, primary_expr),
+            ExprStmt::Group(expr) => self.compile_expression(ctx, block, dbg!(*expr)),
             ExprStmt::Assign { name: _, value: _ } => {
                 unimplemented!("Assignment not implemented");
             }
             ExprStmt::BinOp { lhs, op, rhs } => self.compile_binop(ctx, block, *lhs, op, *rhs),
             ExprStmt::Logical { lhs, op, rhs } => self.compile_logical(ctx, block, *lhs, op, *rhs),
-            ExprStmt::Unary { op: _, rhs: _ } => unimplemented!("Unary operation not implemented"),
+            ExprStmt::Unary { op, rhs } => self.compile_unary(ctx, block, op, *rhs),
             ExprStmt::Call { calle: _, args: _ } => unimplemented!("Function call not implemented"),
             ExprStmt::Index { name: _, pos: _ } => unimplemented!("Indexing not implemented"),
         }
+    }
+
+    fn compile_logical(
+        &self,
+        ctx: &'ctx Context,
+        block: &'this Block<'ctx>,
+        lhs: ExprStmt,
+        op: Token,
+        rhs: ExprStmt,
+    ) -> Result<Value<'ctx, 'this>, CodegenError> {
+        let location = Location::unknown(ctx);
+
+        let lhs_val = self.compile_expression(ctx, block, lhs)?;
+        let rhs_val = self.compile_expression(ctx, block, rhs)?;
+
+        Ok(match op {
+            Token::And => block.andi(lhs_val, rhs_val, location)?,
+            Token::Or => block.ori(lhs_val, rhs_val, location)?,
+            _ => {
+                return Err(CodegenError::InvalidOperation(format!(
+                    "expected logical operation, got: {:?}",
+                    op
+                )));
+            }
+        })
     }
 
     fn compile_binop(
@@ -97,6 +123,16 @@ where
                 rhs_val,
                 location,
             )?,
+            Token::Plus => block.addi(lhs_val, rhs_val, location)?,
+            Token::Minus => block.subi(lhs_val, rhs_val, location)?,
+            Token::Star => block.muli(lhs_val, rhs_val, location)?,
+            Token::Slash => {
+                if true {
+                    block.divsi(lhs_val, rhs_val, location)?
+                } else {
+                    block.divui(lhs_val, rhs_val, location)?
+                }
+            }
             _ => {
                 return Err(CodegenError::InvalidOperation(format!(
                     "expected binary operation operation, got: {:?}",
@@ -105,28 +141,32 @@ where
             }
         };
 
-        Ok(block.extui(val, IntegerType::new(ctx, 64).into(), location)?)
+        // Ok(block.extui(val, IntegerType::new(ctx, 64).into(), location)?)
+        Ok(val)
     }
 
-    fn compile_logical(
+    fn compile_unary(
         &self,
         ctx: &'ctx Context,
         block: &'this Block<'ctx>,
-        lhs: ExprStmt,
         op: Token,
         rhs: ExprStmt,
     ) -> Result<Value<'ctx, 'this>, CodegenError> {
         let location = Location::unknown(ctx);
-
-        let lhs_val = self.compile_expression(ctx, block, lhs)?;
         let rhs_val = self.compile_expression(ctx, block, rhs)?;
 
         Ok(match op {
-            Token::And => block.andi(lhs_val, rhs_val, location)?,
-            Token::Or => block.ori(lhs_val, rhs_val, location)?,
+            Token::Bang => {
+                let k0 = block.const_int_from_type(ctx, location, 0, rhs_val.r#type())?;
+                block.andi(k0, rhs_val, location)?
+            }
+            Token::Minus => {
+                let k_neg_1 = block.const_int_from_type(ctx, location, -1, rhs_val.r#type())?;
+                block.muli(k_neg_1, rhs_val, location)?
+            }
             _ => {
                 return Err(CodegenError::InvalidOperation(format!(
-                    "expected logical operation, got: {:?}",
+                    "expected unary operation operation, got: {:?}",
                     op
                 )));
             }
@@ -176,7 +216,19 @@ mod tests {
     #[case("df main() { return true or true; }", 1)]
     #[case("df main() { return true or false; }", 1)]
     #[case("df main() { return false or false; }", 0)]
+    #[case("df main() { return (true and false) or true; }", 1)]
+    #[case("df main() { return true and (false or true); }", 1)]
+    #[case("df main() { return (false or false) and true; }", 0)]
     fn test_logical_operations(#[case] source: &str, #[case] expected: i64) {
+        assert_eq!(compile_and_execute(source), expected);
+    }
+
+    #[rstest]
+    #[case("df main() { return 2 + 3 * 4; }", 14)]
+    #[case("df main() { return (2 + 3) * 4; }", 20)]
+    #[case("df main() { return 10 - 2 * 3; }", 4)]
+    #[case("df main() { return (10 - 2) * 3; }", 24)]
+    fn test_arithmetic_precedence(#[case] source: &str, #[case] expected: i64) {
         assert_eq!(compile_and_execute(source), expected);
     }
 }

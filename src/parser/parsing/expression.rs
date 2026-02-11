@@ -174,6 +174,13 @@ impl<'a> MathicParser<'a> {
                 let ident = self.consume_token(Token::Ident)?;
                 ExprStmt::Primary(PrimaryExpr::Ident(ident.token))
             }
+            Token::LParen => {
+                let expr = self.parse_expr()?;
+
+                self.consume_token(Token::RParen)?;
+
+                ExprStmt::Group(Box::new(expr))
+            }
             _ => {
                 return Err(ParseError::UnexpectedToken(
                     format!("Expected expression, found: {}", lookahead.lexeme).into_boxed_str(),
