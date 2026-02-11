@@ -64,7 +64,7 @@ impl MathicCompiler {
 
     pub fn compile_source(&self, source: &str, _opt_lvl: OptLvl) -> MathicResult<Module<'_>> {
         // Parse the source code
-        let parser = MathicParser::new(&source);
+        let parser = MathicParser::new(source);
         let ast = parser.parse()?;
 
         // Generate MLIR code

@@ -44,7 +44,36 @@ impl<'a> MathicParser<'a> {
     }
 
     fn parse_equality(&self) -> ParserResult<ExprStmt> {
-        self.parse_primary_expr()
+        let mut expr = self.parse_inequality()?;
+
+        while let Some(op) = self.match_any_token(&[Token::EqEq, Token::BangEq])? {
+            let rhs = self.parse_inequality()?;
+
+            expr = ExprStmt::BinOp {
+                lhs: Box::new(expr),
+                op: op.token,
+                rhs: Box::new(rhs),
+            };
+        }
+
+        Ok(expr)
+    }
+
+    fn parse_inequality(&self) -> ParserResult<ExprStmt> {
+        let mut expr = self.parse_primary_expr()?;
+
+        while let Some(op) =
+            self.match_any_token(&[Token::Greater, Token::EqLess, Token::Less, Token::EqGrater])?
+        {
+            let rhs = self.parse_primary_expr()?;
+            expr = ExprStmt::BinOp {
+                lhs: Box::new(expr),
+                op: op.token,
+                rhs: Box::new(rhs),
+            };
+        }
+
+        Ok(expr)
     }
 
     fn parse_primary_expr(&self) -> ParserResult<ExprStmt> {

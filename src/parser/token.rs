@@ -46,7 +46,7 @@ pub enum Token {
     // Multi char
     #[token("<=")]
     EqLess,
-    #[token("=>")]
+    #[token(">=")]
     EqGrater,
     #[token("==")]
     EqEq,

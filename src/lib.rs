@@ -7,4 +7,7 @@ pub mod executor;
 mod ffi;
 mod parser;
 
+#[cfg(test)]
+mod test_utils;
+
 pub type MathicResult<T> = std::result::Result<T, MathicError>;
