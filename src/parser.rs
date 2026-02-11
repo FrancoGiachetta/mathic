@@ -80,6 +80,16 @@ impl<'a> MathicParser<'a> {
         })
     }
 
+    fn match_any_token(&self, expected: &[Token]) -> ParserResult<LexerOutput<'a>> {
+        for t in expected.iter() {
+            if self.check_next(t.to_owned())? {
+                return Ok(self.next()?);
+            }
+        }
+
+        Ok(None)
+    }
+
     fn check_next(&self, expected: Token) -> ParserResult<bool> {
         Ok(if let Some(res) = self.peek()? {
             res.token == expected
@@ -218,6 +228,130 @@ mod tests {
                                 op: Token::And,
                                 rhs: Box::new(ExprStmt::Primary(PrimaryExpr::Bool(true))),
                             }),
+                        },
+                    })],
+                }],
+            },
+        );
+    }
+
+    #[test]
+    fn func_with_equality() {
+        let source = "
+            df main() { return 42 == 42; }
+        ";
+
+        check_ast(
+            source,
+            Program {
+                structs: vec![],
+                funcs: vec![FuncDecl {
+                    name: "main".to_string(),
+                    params: vec![],
+                    body: vec![Stmt::Return(ReturnStmt {
+                        value: ExprStmt::BinOp {
+                            lhs: Box::new(ExprStmt::Primary(PrimaryExpr::Num("42".to_string()))),
+                            op: Token::EqEq,
+                            rhs: Box::new(ExprStmt::Primary(PrimaryExpr::Num("42".to_string()))),
+                        },
+                    })],
+                }],
+            },
+        );
+    }
+
+    #[test]
+    fn func_with_inequality() {
+        let source = "
+            df main() { return 42 > 21; }
+        ";
+
+        check_ast(
+            source,
+            Program {
+                structs: vec![],
+                funcs: vec![FuncDecl {
+                    name: "main".to_string(),
+                    params: vec![],
+                    body: vec![Stmt::Return(ReturnStmt {
+                        value: ExprStmt::BinOp {
+                            lhs: Box::new(ExprStmt::Primary(PrimaryExpr::Num("42".to_string()))),
+                            op: Token::Greater,
+                            rhs: Box::new(ExprStmt::Primary(PrimaryExpr::Num("21".to_string()))),
+                        },
+                    })],
+                }],
+            },
+        );
+    }
+
+    #[test]
+    fn func_with_mixed_equality_inequality() {
+        let source = "
+            df main() { return 42 == 42 and 21 > 10; }
+        ";
+
+        check_ast(
+            source,
+            Program {
+                structs: vec![],
+                funcs: vec![FuncDecl {
+                    name: "main".to_string(),
+                    params: vec![],
+                    body: vec![Stmt::Return(ReturnStmt {
+                        value: ExprStmt::Logical {
+                            lhs: Box::new(ExprStmt::BinOp {
+                                lhs: Box::new(ExprStmt::Primary(PrimaryExpr::Num(
+                                    "42".to_string(),
+                                ))),
+                                op: Token::EqEq,
+                                rhs: Box::new(ExprStmt::Primary(PrimaryExpr::Num(
+                                    "42".to_string(),
+                                ))),
+                            }),
+                            op: Token::And,
+                            rhs: Box::new(ExprStmt::BinOp {
+                                lhs: Box::new(ExprStmt::Primary(PrimaryExpr::Num(
+                                    "21".to_string(),
+                                ))),
+                                op: Token::Greater,
+                                rhs: Box::new(ExprStmt::Primary(PrimaryExpr::Num(
+                                    "10".to_string(),
+                                ))),
+                            }),
+                        },
+                    })],
+                }],
+            },
+        );
+    }
+
+    #[test]
+    fn func_with_chained_equality() {
+        let source = "
+            df main() { return 42 == 42 == 42; }
+        ";
+
+        check_ast(
+            source,
+            Program {
+                structs: vec![],
+                funcs: vec![FuncDecl {
+                    name: "main".to_string(),
+                    params: vec![],
+                    body: vec![Stmt::Return(ReturnStmt {
+                        value: ExprStmt::BinOp {
+                            lhs: Box::new(ExprStmt::BinOp {
+                                lhs: Box::new(ExprStmt::Primary(PrimaryExpr::Num(
+                                    "42".to_string(),
+                                ))),
+                                op: Token::EqEq,
+                                rhs: Box::new(ExprStmt::Primary(PrimaryExpr::Num(
+                                    "42".to_string(),
+                                ))),
+                            }),
+                            op: Token::EqEq,
+                            rhs: Box::new(ExprStmt::Primary(PrimaryExpr::Num("42".to_string()))),
                         },
                     })],
                 }],
