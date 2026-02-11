@@ -6,6 +6,8 @@ use thiserror::Error;
 pub enum CodegenError {
     #[error("Missing main function")]
     MissingMainFunction,
+    #[error("Invalid operation: {0}")]
+    InvalidOperation(String),
     #[error(transparent)]
     MeliorError(#[from] melior::Error),
     #[error("llvm erorr: {0}")]

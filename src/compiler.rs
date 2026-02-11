@@ -1,4 +1,4 @@
-use std::io::Write;
+use std::{io::Write, path::PathBuf};
 
 use melior::{
     Context,
@@ -45,39 +45,34 @@ pub enum OptLvl {
     O3,
 }
 
-pub struct MathicCompiler<'a> {
+pub struct MathicCompiler {
     ctx: Context,
-    pass_manager: PassManager<'a>,
 }
 
-impl<'a> MathicCompiler<'a> {
+impl MathicCompiler {
     pub fn new() -> Result<Self, CodegenError> {
         let ctx = Self::create_context()?;
 
-        let pass_manager = PassManager::new(&ctx);
-
-        pass_manager.enable_verifier(true);
-        pass_manager.add_pass(create_canonicalizer());
-        pass_manager.add_pass(create_scf_to_control_flow()); // needed because to_llvm doesn't include it.
-        pass_manager.add_pass(create_to_llvm());
-
-        Ok(Self { ctx, pass_manager })
+        Ok(Self { ctx })
     }
 
-    pub fn compile(&'a self, file_path: &'a Path, _opt_lvl: OptLvl) -> MathicResult<Module<'a>> {
+    pub fn compile_path(&self, file_path: &Path, opt_lvl: OptLvl) -> MathicResult<Module<'_>> {
         // Read source file
         let source = fs::read_to_string(file_path)?;
+        self.compile_source(&source, opt_lvl)
+    }
 
+    pub fn compile_source(&self, source: &str, _opt_lvl: OptLvl) -> MathicResult<Module<'_>> {
         // Parse the source code
         let parser = MathicParser::new(&source);
         let ast = parser.parse()?;
 
         // Generate MLIR code
         let mut module = Self::create_module(&self.ctx)?;
-        let mut codegen = MathicCodeGen::new(&self.ctx, &module);
+        let mut codegen = MathicCodeGen::new(&module);
 
         // Generate the main module.
-        codegen.generate_module(ast)?;
+        codegen.generate_module(&self.ctx, ast)?;
 
         tracing::debug!("Module Done");
         debug_assert!(module.as_operation().verify());
@@ -89,7 +84,8 @@ impl<'a> MathicCompiler<'a> {
 
         if let Ok(v) = std::env::var("MATHIC_DBG_DUMP") {
             if v == "1" {
-                let mut f = fs::File::create(file_path.with_extension("mlir")).unwrap();
+                let file_path = PathBuf::from("dump.mlir");
+                let mut f = fs::File::create(file_path).unwrap();
                 write!(f, "{}", module.as_operation()).unwrap();
             } else {
                 tracing::warn!(
@@ -102,7 +98,7 @@ impl<'a> MathicCompiler<'a> {
         Ok(module)
     }
 
-    fn create_module(ctx: &'a Context) -> Result<Module<'a>, CodegenError> {
+    fn create_module(ctx: &Context) -> Result<Module<'_>, CodegenError> {
         static INITIALIZED: OnceLock<()> = OnceLock::new();
 
         INITIALIZED.get_or_init(|| unsafe {
@@ -192,7 +188,14 @@ impl<'a> MathicCompiler<'a> {
     }
 
     fn run_passes(&self, module: &mut Module) -> Result<(), CodegenError> {
-        self.pass_manager.run(module)?;
+        let pass_manager = PassManager::new(&self.ctx);
+
+        pass_manager.enable_verifier(true);
+        pass_manager.add_pass(create_canonicalizer());
+        pass_manager.add_pass(create_scf_to_control_flow()); // needed because to_llvm doesn't include it.
+        pass_manager.add_pass(create_to_llvm());
+
+        pass_manager.run(module)?;
 
         Ok(())
     }
