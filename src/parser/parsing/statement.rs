@@ -1,11 +1,11 @@
 use crate::parser::{
-    MathicParser, ParserResult,
     error::ParseError,
     grammar::{
         declaration::DeclStmt,
         statement::{BlockStmt, ReturnStmt, Stmt},
     },
     token::Token,
+    MathicParser, ParserResult,
 };
 
 impl<'a> MathicParser<'a> {

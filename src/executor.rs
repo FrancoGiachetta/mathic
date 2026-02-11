@@ -1,6 +1,6 @@
-use melior::{ExecutionEngine, ir::Module};
+use melior::{ir::Module, ExecutionEngine};
 
-use crate::{MathicResult, codegen::error::CodegenError, compiler::OptLvl};
+use crate::{codegen::error::CodegenError, compiler::OptLvl, MathicResult};
 
 /// A wrapper over melior's ExecutionEngine.
 pub struct MathicExecutor {
@@ -39,6 +39,10 @@ impl MathicExecutor {
     pub fn lookup_symbol(&self, symbol_name: &str) -> Option<*mut ()> {
         let ptr = self.engine.lookup(&format!("mathic_{}", symbol_name));
 
-        if ptr.is_null() { None } else { Some(ptr) }
+        if ptr.is_null() {
+            None
+        } else {
+            Some(ptr)
+        }
     }
 }
