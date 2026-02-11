@@ -1,24 +1,24 @@
 use std::{io::Write, path::PathBuf};
 
 use melior::{
+    Context,
     dialect::DialectRegistry,
     ir::{
+        Attribute, AttributeLike, Block, Identifier, Location, Module, Region, RegionLike,
         attribute::StringAttribute,
         operation::{OperationBuilder, OperationLike},
-        Attribute, AttributeLike, Block, Identifier, Location, Module, Region, RegionLike,
     },
     pass::{
+        PassManager,
         conversion::{create_scf_to_control_flow, create_to_llvm},
         transform::create_canonicalizer,
-        PassManager,
     },
     utility::{register_all_dialects, register_all_llvm_translations, register_all_passes},
-    Context,
 };
 use mlir_sys::{
-    mlirDisctinctAttrCreate, mlirLLVMDICompileUnitAttrGet, mlirLLVMDIFileAttrGet,
-    mlirLLVMDIModuleAttrGet, MlirLLVMDIEmissionKind_MlirLLVMDIEmissionKindFull,
-    MlirLLVMDINameTableKind_MlirLLVMDINameTableKindDefault,
+    MlirLLVMDIEmissionKind_MlirLLVMDIEmissionKindFull,
+    MlirLLVMDINameTableKind_MlirLLVMDINameTableKindDefault, mlirDisctinctAttrCreate,
+    mlirLLVMDICompileUnitAttrGet, mlirLLVMDIFileAttrGet, mlirLLVMDIModuleAttrGet,
 };
 use std::sync::OnceLock;
 
@@ -29,10 +29,10 @@ use llvm_sys::target::{
 use std::{fs, path::Path};
 
 use crate::{
-    codegen::{error::CodegenError, MathicCodeGen},
+    MathicResult,
+    codegen::{MathicCodeGen, error::CodegenError},
     ffi,
     parser::MathicParser,
-    MathicResult,
 };
 
 #[derive(Default)]
@@ -64,7 +64,7 @@ impl MathicCompiler {
 
     pub fn compile_source(&self, source: &str, _opt_lvl: OptLvl) -> MathicResult<Module<'_>> {
         // Parse the source code
-        let parser = MathicParser::new(&source);
+        let parser = MathicParser::new(source);
         let ast = parser.parse()?;
 
         // Generate MLIR code

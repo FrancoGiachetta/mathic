@@ -1,7 +1,7 @@
-use melior::{ir::Module, Context};
+use melior::{Context, ir::Module};
 
 use crate::{
-    codegen::error::CodegenError, error::MathicError, parser::grammar::Program, MathicResult,
+    MathicResult, codegen::error::CodegenError, error::MathicError, parser::grammar::Program,
 };
 
 pub mod error;

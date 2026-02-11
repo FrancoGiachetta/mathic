@@ -73,17 +73,17 @@ impl<'a> MathicParser<'a> {
     }
 
     fn match_token(&self, expected: Token) -> ParserResult<LexerOutput<'a>> {
-        Ok(if self.check_next(expected)? {
-            self.next()?
-        } else {
-            None
-        })
+        if self.check_next(expected)? {
+            return self.next();
+        }
+
+        Ok(None)
     }
 
     fn match_any_token(&self, expected: &[Token]) -> ParserResult<LexerOutput<'a>> {
         for t in expected.iter() {
             if self.check_next(t.to_owned())? {
-                return Ok(self.next()?);
+                return self.next();
             }
         }
 
