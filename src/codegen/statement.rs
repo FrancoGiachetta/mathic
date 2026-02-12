@@ -22,9 +22,9 @@ where
         match stmt {
             Stmt::Decl(_decl_stmt) => unimplemented!("Declaration not implemented"),
             Stmt::Block(_block_stmt) => unimplemented!("Block statement not implemented"),
-            Stmt::If(_if_stmt) => unimplemented!("If statement not implemented"),
-            Stmt::While(_while_stmt) => unimplemented!("While statement not implemented"),
-            Stmt::For(_for_stmt) => unimplemented!("For statement not implemented"),
+            Stmt::If(if_stmt) => self.compile_if(ctx, block, if_stmt),
+            Stmt::While(while_stmt) => self.compile_while(ctx, block, while_stmt),
+            Stmt::For(for_stmt) => self.compile_for(ctx, block, for_stmt),
             Stmt::Return(return_stmt) => self.compile_return(ctx, block, return_stmt),
             Stmt::Expr(_expr_stmt) => unimplemented!("Expression statement not implemented"),
         }

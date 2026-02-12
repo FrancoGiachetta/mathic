@@ -27,7 +27,7 @@ where
     ) -> Result<Value<'ctx, 'this>, CodegenError> {
         match expr {
             ExprStmt::Primary(primary_expr) => self.compile_primary(ctx, block, primary_expr),
-            ExprStmt::Group(expr) => self.compile_expression(ctx, block, dbg!(*expr)),
+            ExprStmt::Group(expr) => self.compile_expression(ctx, block, *expr),
             ExprStmt::Assign { name: _, value: _ } => {
                 unimplemented!("Assignment not implemented");
             }

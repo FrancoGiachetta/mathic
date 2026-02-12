@@ -32,7 +32,7 @@ impl<'a> MathicParser<'a> {
         let mut funcs = Vec::new();
         let mut _structs = Vec::new();
 
-        while let Some(SpannedToken { token, lexeme }) = self.next()? {
+        while let Some(SpannedToken { token, lexeme }) = self.peek()? {
             match token {
                 Token::Df => funcs.push(self.parse_func()?),
                 Token::Struct => todo!("parse struct"),

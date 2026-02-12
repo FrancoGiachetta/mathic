@@ -33,7 +33,7 @@ impl<'a> MathicParser<'a> {
     }
 
     pub fn parse_block(&self) -> ParserResult<BlockStmt> {
-        self.next()?; // Consume LBrace.
+        self.consume_token(Token::LBrace)?;
 
         let mut stmts = Vec::new();
 
@@ -47,7 +47,7 @@ impl<'a> MathicParser<'a> {
     }
 
     pub fn parse_return(&self) -> ParserResult<ReturnStmt> {
-        self.next()?; // Consume Return.
+        self.next()?; // Consume Return;
 
         let value = self.parse_expr()?;
 

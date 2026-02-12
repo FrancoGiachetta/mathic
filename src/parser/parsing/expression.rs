@@ -31,7 +31,7 @@ impl<'a> MathicParser<'a> {
         let mut left = self.parse_equality()?;
 
         while let Some(span_and) = self.match_token(Token::And)? {
-            let right = self.parse_logic_and()?;
+            let right = self.parse_equality()?;
 
             left = ExprStmt::Logical {
                 lhs: Box::new(left),
@@ -135,10 +135,10 @@ impl<'a> MathicParser<'a> {
                     args.push(self.parse_expr()?);
                 }
 
-                self.consume_token(Token::RParen)?;
-
                 args
             };
+
+            self.consume_token(Token::RParen)?;
 
             if let ExprStmt::Primary(PrimaryExpr::Ident(calle)) = expr {
                 expr = ExprStmt::Call { calle, args };

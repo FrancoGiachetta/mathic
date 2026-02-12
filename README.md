@@ -49,33 +49,36 @@ There are many was of installing LLVM. The most commong one it by building it fr
 
 #### Statements
 - ✅ **Function declarations**
-- 🚧 **Struct declarations** 
+- ✅ **Return statements**
+- ✅ **Block statements**
 - 🚧 **Variable declarations** 
+- 🚧 **Struct declarations** 
 - 🚧 **Symbolic declarations** 
 
 #### Control Flow
-- 🚧 **For loops** 
-- 🚧 **While loops** 
-- 🚧 **If statements** 
-- 🚧 **Return statements** 
+- ✅ **If statements** (parsing)
+- ✅ **While loops** (parsing)
+- ✅ **For loops** (parsing)
 
 #### Expressions
-- 🚧 **Primary expressions** (identifiers, numbers, strings, booleans)
-- 🚧 **Assignment expressions**
-- 🚧 **Arithmetic operations** (+, -, *, /)
-- 🚧 **Comparison operations** (==, !=, >, >=, <, <=)
-- 🚧 **Logical operations** (and, or)
-- 🚧 **Unary operations** (!, -)
-- 🚧 **Function calls**
+- ✅ **Primary expressions** (identifiers, numbers, booleans)
+- ✅ **Arithmetic operations** (+, -, *, /)
+- ✅ **Comparison operations** (==, !=, >, >=, <, <=)
+- ✅ **Logical operations** (and, or)
+- ✅ **Unary operations** (!, -)
+- ✅ **Function calls**
+- ✅ **Parenthesized expressions**
+- ✅ **Operator precedence** (full precedence climbing)
 
 ### ⚙️ Code Generation Infrastructure
 
 #### Backend Components
 - ✅ **MLIR context and module setup**
 - ✅ **Dialect registry configuration**
-- 🚧 **AST-to-MLIR conversion** (in progress)
-- 🚧 **Function compilation** (planned)
-- 🚧 **Expression compilation** (planned)
+- ✅ **Expression compilation** (arithmetic, logical, comparisons)
+- ✅ **Return statement compilation**
+- 🚧 **Control flow codegen** (if, while, for)
+- 🚧 **Statement compilation** (blocks, declarations)
 
 ---
 
