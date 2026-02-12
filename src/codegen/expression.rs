@@ -1,14 +1,14 @@
 use melior::{
+    Context,
     dialect::{arith::CmpiPredicate, func},
     helpers::{ArithBlockExt, BuiltinBlockExt},
     ir::{
-        attribute::FlatSymbolRefAttribute, r#type::IntegerType, Block, Location, Value, ValueLike,
+        Block, Location, Value, ValueLike, attribute::FlatSymbolRefAttribute, r#type::IntegerType,
     },
-    Context,
 };
 
 use crate::{
-    codegen::{error::CodegenError, MathicCodeGen},
+    codegen::{MathicCodeGen, error::CodegenError},
     parser::{
         ast::expression::{ExprStmt, PrimaryExpr},
         token::Token,

@@ -1,6 +1,6 @@
-use melior::{ir::Module, Context};
+use melior::{Context, ir::Module};
 
-use crate::{codegen::error::CodegenError, error::MathicError, parser::ast::Program, MathicResult};
+use crate::{MathicResult, codegen::error::CodegenError, error::MathicError, parser::ast::Program};
 
 pub mod control_flow;
 pub mod declaration;
