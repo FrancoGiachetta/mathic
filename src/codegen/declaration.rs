@@ -23,7 +23,7 @@ where
         let region = Region::new();
         let block = region.append_block(Block::new(&[]));
 
-        for stmt in func.body {
+        for stmt in func.body.iter() {
             self.compile_statement(ctx, &block, stmt)?;
         }
 

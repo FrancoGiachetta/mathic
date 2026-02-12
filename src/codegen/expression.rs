@@ -23,17 +23,17 @@ where
         &self,
         ctx: &'ctx Context,
         block: &'this Block<'ctx>,
-        expr: ExprStmt,
+        expr: &ExprStmt,
     ) -> Result<Value<'ctx, 'this>, CodegenError> {
         match expr {
             ExprStmt::Primary(primary_expr) => self.compile_primary(ctx, block, primary_expr),
-            ExprStmt::Group(expr) => self.compile_expression(ctx, block, *expr),
+            ExprStmt::Group(expr) => self.compile_expression(ctx, block, expr),
             ExprStmt::Assign { name: _, value: _ } => {
                 unimplemented!("Assignment not implemented");
             }
-            ExprStmt::BinOp { lhs, op, rhs } => self.compile_binop(ctx, block, *lhs, op, *rhs),
-            ExprStmt::Logical { lhs, op, rhs } => self.compile_logical(ctx, block, *lhs, op, *rhs),
-            ExprStmt::Unary { op, rhs } => self.compile_unary(ctx, block, op, *rhs),
+            ExprStmt::BinOp { lhs, op, rhs } => self.compile_binop(ctx, block, lhs, op, rhs),
+            ExprStmt::Logical { lhs, op, rhs } => self.compile_logical(ctx, block, lhs, op, rhs),
+            ExprStmt::Unary { op, rhs } => self.compile_unary(ctx, block, op, rhs),
             ExprStmt::Call { calle, args } => self.compile_call(ctx, block, &calle, args),
             ExprStmt::Index { name: _, pos: _ } => unimplemented!("Indexing not implemented"),
         }
@@ -43,9 +43,9 @@ where
         &self,
         ctx: &'ctx Context,
         block: &'this Block<'ctx>,
-        lhs: ExprStmt,
-        op: Token,
-        rhs: ExprStmt,
+        lhs: &ExprStmt,
+        op: &Token,
+        rhs: &ExprStmt,
     ) -> Result<Value<'ctx, 'this>, CodegenError> {
         let location = Location::unknown(ctx);
 
@@ -68,9 +68,9 @@ where
         &self,
         ctx: &'ctx Context,
         block: &'this Block<'ctx>,
-        lhs: ExprStmt,
-        op: Token,
-        rhs: ExprStmt,
+        lhs: &ExprStmt,
+        op: &Token,
+        rhs: &ExprStmt,
     ) -> Result<Value<'ctx, 'this>, CodegenError> {
         let location = Location::unknown(ctx);
 
@@ -166,8 +166,8 @@ where
         &self,
         ctx: &'ctx Context,
         block: &'this Block<'ctx>,
-        op: Token,
-        rhs: ExprStmt,
+        op: &Token,
+        rhs: &ExprStmt,
     ) -> Result<Value<'ctx, 'this>, CodegenError> {
         let location = Location::unknown(ctx);
         let rhs_val = self.compile_expression(ctx, block, rhs)?;
@@ -195,7 +195,7 @@ where
         ctx: &'ctx Context,
         block: &'this Block<'ctx>,
         calle: &str,
-        args: Vec<ExprStmt>,
+        args: &[ExprStmt],
     ) -> Result<Value<'ctx, 'this>, CodegenError> {
         let location = Location::unknown(ctx);
         let args = args
@@ -216,7 +216,7 @@ where
         &self,
         ctx: &'ctx Context,
         block: &'this Block<'ctx>,
-        expr: PrimaryExpr,
+        expr: &PrimaryExpr,
     ) -> Result<Value<'ctx, 'this>, CodegenError> {
         let location = Location::unknown(ctx);
 
@@ -227,7 +227,7 @@ where
                 Ok(block.const_int(ctx, location, parsed_val, 64)?)
             }
             PrimaryExpr::Str(_) => unimplemented!("String literals not implemented"),
-            PrimaryExpr::Bool(val) => Ok(block.const_int(ctx, location, val as u8, 64)?),
+            PrimaryExpr::Bool(val) => Ok(block.const_int(ctx, location, *val as u8, 64)?),
         }
     }
 }

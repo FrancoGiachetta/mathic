@@ -61,4 +61,4 @@
 <digit>  := [0-9]
 <params> := <ident> ("," <ident>)*
 <args>   := <expr> ("," <expr>)*
-<type>   := <ident>
+

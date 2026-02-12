@@ -17,7 +17,7 @@ where
         &self,
         ctx: &'ctx Context,
         block: &'this Block<'ctx>,
-        stmt: Stmt,
+        stmt: &Stmt,
     ) -> Result<(), CodegenError> {
         match stmt {
             Stmt::Decl(_decl_stmt) => unimplemented!("Declaration not implemented"),
@@ -30,13 +30,26 @@ where
         }
     }
 
+    pub fn compile_block(
+        &self,
+        ctx: &'ctx Context,
+        block: &'this Block<'ctx>,
+        stmts: &[Stmt],
+    ) -> Result<(), CodegenError> {
+        for stmt in stmts {
+            self.compile_statement(ctx, &block, stmt)?;
+        }
+
+        Ok(())
+    }
+
     fn compile_return(
         &self,
         ctx: &'ctx Context,
         block: &'this Block<'ctx>,
-        return_stmt: ReturnStmt,
+        return_stmt: &ReturnStmt,
     ) -> Result<(), CodegenError> {
-        let value = self.compile_expression(ctx, block, return_stmt.value)?;
+        let value = self.compile_expression(ctx, block, &return_stmt.value)?;
         let location = Location::unknown(ctx);
 
         block.append_operation(func::r#return(&[value], location));
