@@ -37,7 +37,7 @@ where
         stmts: &[Stmt],
     ) -> Result<(), CodegenError> {
         for stmt in stmts {
-            self.compile_statement(ctx, &block, stmt)?;
+            self.compile_statement(ctx, block, stmt)?;
         }
 
         Ok(())

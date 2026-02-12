@@ -71,32 +71,29 @@ where
         let location = Location::unknown(ctx);
         let WhileStmt { condition, body } = stmt;
 
-        block.append_operation(
-            scf::r#while(
-                &[],
-                &[],
-                {
-                    let region = Region::new();
-                    let before_block = region.append_block(Block::new(&[]));
-                    let condition_val = self.compile_expression(ctx, &before_block, condition)?;
+        block.append_operation(scf::r#while(
+            &[],
+            &[],
+            {
+                let region = Region::new();
+                let before_block = region.append_block(Block::new(&[]));
+                let condition_val = self.compile_expression(ctx, &before_block, condition)?;
 
-                    before_block.append_operation(scf::condition(condition_val, &[], location));
+                before_block.append_operation(scf::condition(condition_val, &[], location));
 
-                    region
-                },
-                {
-                    let region = Region::new();
-                    let after_block = region.append_block(Block::new(&[]));
+                region
+            },
+            {
+                let region = Region::new();
+                let after_block = region.append_block(Block::new(&[]));
 
-                    self.compile_block(ctx, &after_block, &body.stmts)?;
-                    after_block.append_operation(scf::r#yield(&[], location));
+                self.compile_block(ctx, &after_block, &body.stmts)?;
+                after_block.append_operation(scf::r#yield(&[], location));
 
-                    region
-                },
-                location,
-            )
-            .into(),
-        );
+                region
+            },
+            location,
+        ));
 
         Ok(())
     }
@@ -113,23 +110,20 @@ where
         let start_val = self.compile_expression(ctx, block, start)?;
         let end_val = self.compile_expression(ctx, block, end)?;
 
-        block.append_operation(
-            scf::r#for(
-                start_val,
-                end_val,
-                block.const_int_from_type(ctx, location, 1, start_val.r#type())?,
-                {
-                    let region = Region::new();
-                    let for_block = region.append_block(Block::new(&[]));
+        block.append_operation(scf::r#for(
+            start_val,
+            end_val,
+            block.const_int_from_type(ctx, location, 1, start_val.r#type())?,
+            {
+                let region = Region::new();
+                let for_block = region.append_block(Block::new(&[]));
 
-                    self.compile_block(ctx, &for_block, &body.stmts)?;
+                self.compile_block(ctx, &for_block, &body.stmts)?;
 
-                    region
-                },
-                location,
-            )
-            .into(),
-        );
+                region
+            },
+            location,
+        ));
 
         Ok(())
     }

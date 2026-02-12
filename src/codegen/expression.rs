@@ -34,7 +34,7 @@ where
             ExprStmt::BinOp { lhs, op, rhs } => self.compile_binop(ctx, block, lhs, op, rhs),
             ExprStmt::Logical { lhs, op, rhs } => self.compile_logical(ctx, block, lhs, op, rhs),
             ExprStmt::Unary { op, rhs } => self.compile_unary(ctx, block, op, rhs),
-            ExprStmt::Call { calle, args } => self.compile_call(ctx, block, &calle, args),
+            ExprStmt::Call { calle, args } => self.compile_call(ctx, block, calle, args),
             ExprStmt::Index { name: _, pos: _ } => unimplemented!("Indexing not implemented"),
         }
     }
@@ -199,7 +199,7 @@ where
     ) -> Result<Value<'ctx, 'this>, CodegenError> {
         let location = Location::unknown(ctx);
         let args = args
-            .into_iter()
+            .iter()
             .map(|arg| self.compile_expression(ctx, block, arg))
             .collect::<Result<Vec<Value>, _>>()?;
 
