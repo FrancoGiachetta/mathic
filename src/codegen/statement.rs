@@ -1,64 +1,44 @@
 use melior::{
     Context,
     dialect::func,
-    ir::{
-        Attribute, Block, BlockLike, Identifier, Location, Region, RegionLike,
-        attribute::{StringAttribute, TypeAttribute},
-        r#type::{FunctionType, IntegerType},
-    },
+    ir::{Block, BlockLike, Location},
 };
 
 use crate::{
     codegen::{MathicCodeGen, error::CodegenError},
-    parser::grammar::{
-        declaration::FuncDecl,
-        statement::{ReturnStmt, Stmt},
-    },
+    parser::grammar::statement::{ReturnStmt, Stmt},
 };
 
 impl<'this, 'ctx> MathicCodeGen<'this, 'ctx>
 where
     'this: 'ctx,
 {
-    fn compile_statement(
+    pub fn compile_statement(
         &self,
         ctx: &'ctx Context,
         block: &'this Block<'ctx>,
-        stmt: Stmt,
+        stmt: &Stmt,
     ) -> Result<(), CodegenError> {
         match stmt {
             Stmt::Decl(_decl_stmt) => unimplemented!("Declaration not implemented"),
             Stmt::Block(_block_stmt) => unimplemented!("Block statement not implemented"),
+            Stmt::If(if_stmt) => self.compile_if(ctx, block, if_stmt),
+            Stmt::While(while_stmt) => self.compile_while(ctx, block, while_stmt),
+            Stmt::For(for_stmt) => self.compile_for(ctx, block, for_stmt),
             Stmt::Return(return_stmt) => self.compile_return(ctx, block, return_stmt),
             Stmt::Expr(_expr_stmt) => unimplemented!("Expression statement not implemented"),
         }
     }
 
-    pub fn compile_function(&self, ctx: &'ctx Context, func: FuncDecl) -> Result<(), CodegenError> {
-        // let params = vec![];
-
-        let region = Region::new();
-        let block = region.append_block(Block::new(&[]));
-
-        for stmt in func.body {
-            self.compile_statement(ctx, &block, stmt)?;
+    pub fn compile_block(
+        &self,
+        ctx: &'ctx Context,
+        block: &'this Block<'ctx>,
+        stmts: &[Stmt],
+    ) -> Result<(), CodegenError> {
+        for stmt in stmts {
+            self.compile_statement(ctx, block, stmt)?;
         }
-
-        let location = Location::unknown(ctx);
-        let i64_type = IntegerType::new(ctx, 64).into();
-
-        self.module.body().append_operation(func::func(
-            ctx,
-            StringAttribute::new(ctx, &format!("mathic__{}", func.name)),
-            TypeAttribute::new(FunctionType::new(ctx, &[], &[i64_type]).into()),
-            region,
-            // This is necessary for the ExecutorEngine to execute a function.
-            &[(
-                Identifier::new(ctx, "llvm.emit_c_interface"),
-                Attribute::unit(ctx),
-            )],
-            location,
-        ));
 
         Ok(())
     }
@@ -67,9 +47,9 @@ where
         &self,
         ctx: &'ctx Context,
         block: &'this Block<'ctx>,
-        return_stmt: ReturnStmt,
+        return_stmt: &ReturnStmt,
     ) -> Result<(), CodegenError> {
-        let value = self.compile_expression(ctx, block, return_stmt.value)?;
+        let value = self.compile_expression(ctx, block, &return_stmt.value)?;
         let location = Location::unknown(ctx);
 
         block.append_operation(func::r#return(&[value], location));

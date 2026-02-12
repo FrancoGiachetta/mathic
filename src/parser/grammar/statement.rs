@@ -1,10 +1,17 @@
-use crate::parser::grammar::{declaration::DeclStmt, expression::ExprStmt};
+use crate::parser::grammar::{
+    control_flow::{ForStmt, IfStmt, WhileStmt},
+    declaration::DeclStmt,
+    expression::ExprStmt,
+};
 
 #[derive(Debug, PartialEq, Eq)]
 #[allow(dead_code)]
 pub enum Stmt {
     Decl(DeclStmt),
     Block(BlockStmt),
+    If(IfStmt),
+    While(WhileStmt),
+    For(ForStmt),
     Return(ReturnStmt),
     Expr(ExprStmt),
 }

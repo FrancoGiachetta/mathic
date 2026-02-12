@@ -66,7 +66,7 @@ impl MathicCompiler {
         // Parse the source code
         let parser = MathicParser::new(source);
         let ast = parser.parse()?;
-
+        dbg!(&ast);
         // Generate MLIR code
         let mut module = Self::create_module(&self.ctx)?;
         let mut codegen = MathicCodeGen::new(&module);

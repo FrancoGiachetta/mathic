@@ -10,7 +10,7 @@ pub enum CodegenError {
     InvalidOperation(String),
     #[error(transparent)]
     MeliorError(#[from] melior::Error),
-    #[error("llvm erorr: {0}")]
+    #[error("LLVM error: {0}")]
     LLVMError(String),
     #[error(transparent)]
     ParseIntError(#[from] ParseIntError),
