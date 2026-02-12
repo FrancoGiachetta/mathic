@@ -1,7 +1,7 @@
 use crate::parser::{
-    MathicParser, ParserResult,
-    grammar::control_flow::{ForStmt, IfStmt, WhileStmt},
+    ast::control_flow::{ForStmt, IfStmt, WhileStmt},
     token::Token,
+    MathicParser, ParserResult,
 };
 
 impl<'a> MathicParser<'a> {

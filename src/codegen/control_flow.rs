@@ -1,13 +1,13 @@
 use melior::{
-    Context,
     dialect::scf,
     helpers::ArithBlockExt,
     ir::{Block, BlockLike, Location, Region, RegionLike, ValueLike},
+    Context,
 };
 
 use crate::{
-    codegen::{MathicCodeGen, error::CodegenError},
-    parser::grammar::control_flow::{ForStmt, IfStmt, WhileStmt},
+    codegen::{error::CodegenError, MathicCodeGen},
+    parser::ast::control_flow::{ForStmt, IfStmt, WhileStmt},
 };
 
 impl<'this, 'ctx> MathicCodeGen<'this, 'ctx>
