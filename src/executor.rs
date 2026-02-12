@@ -26,7 +26,7 @@ impl MathicExecutor {
 
         unsafe {
             self.engine
-                .invoke_packed(&format!("mathic_{}", symbol_name), args)?;
+                .invoke_packed(&format!("mathic__{}", symbol_name), args)?;
         }
 
         Ok(result)

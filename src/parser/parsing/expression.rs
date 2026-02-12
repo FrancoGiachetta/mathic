@@ -124,14 +124,14 @@ impl<'a> MathicParser<'a> {
     fn parse_call(&self) -> ParserResult<ExprStmt> {
         let mut expr = self.parse_primary_expr()?;
 
-        while let Some(_) = self.match_token(Token::LParen)? {
+        while self.match_token(Token::LParen)?.is_some() {
             let args = if self.check_next(Token::RParen)? {
                 Vec::new()
             } else {
                 let mut args = Vec::new();
                 args.push(self.parse_expr()?);
 
-                while let Some(_) = self.match_token(Token::Comma)? {
+                while self.match_token(Token::Comma)?.is_some() {
                     args.push(self.parse_expr()?);
                 }
 
@@ -153,32 +153,19 @@ impl<'a> MathicParser<'a> {
     }
 
     fn parse_primary_expr(&self) -> ParserResult<ExprStmt> {
-        let Some(lookahead) = self.peek()? else {
+        let Some(lookahead) = self.next()? else {
             return Err(ParseError::UnexpectedEnd);
         };
 
         let expr = match lookahead.token {
-            Token::Num => {
-                let num_token = self.consume_token(Token::Num)?;
-                ExprStmt::Primary(PrimaryExpr::Num(num_token.lexeme.to_string()))
-            }
-            Token::True => {
-                self.consume_token(Token::True)?;
-                ExprStmt::Primary(PrimaryExpr::Bool(true))
-            }
-            Token::False => {
-                self.consume_token(Token::False)?;
-                ExprStmt::Primary(PrimaryExpr::Bool(false))
-            }
-            Token::Ident => {
-                let ident = self.consume_token(Token::Ident)?;
-                ExprStmt::Primary(PrimaryExpr::Ident(ident.token))
-            }
+            Token::Num => ExprStmt::Primary(PrimaryExpr::Num(lookahead.lexeme.to_string())),
+            Token::True => ExprStmt::Primary(PrimaryExpr::Bool(true)),
+            Token::False => ExprStmt::Primary(PrimaryExpr::Bool(false)),
+            Token::Ident => ExprStmt::Primary(PrimaryExpr::Ident(lookahead.lexeme.to_string())),
             Token::LParen => {
                 let expr = self.parse_expr()?;
 
                 self.consume_token(Token::RParen)?;
-
                 ExprStmt::Group(Box::new(expr))
             }
             _ => {

@@ -14,7 +14,7 @@ pub enum ExprStmt {
         rhs: Box<Self>,
     },
     Call {
-        calle: Token,
+        calle: String,
         args: Vec<Self>,
     },
     Group(Box<Self>),
@@ -36,7 +36,7 @@ pub enum ExprStmt {
 #[derive(Debug, PartialEq, Eq)]
 #[allow(dead_code)]
 pub enum PrimaryExpr {
-    Ident(Token),
+    Ident(String),
     Num(String),
     Str(String),
     Bool(bool),
