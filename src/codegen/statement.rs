@@ -49,7 +49,7 @@ where
 
         self.module.body().append_operation(func::func(
             ctx,
-            StringAttribute::new(ctx, &format!("mathic_{}", func.name)),
+            StringAttribute::new(ctx, &format!("mathic__{}", func.name)),
             TypeAttribute::new(FunctionType::new(ctx, &[], &[i64_type]).into()),
             region,
             // This is necessary for the ExecutorEngine to execute a function.

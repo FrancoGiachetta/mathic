@@ -74,6 +74,19 @@ impl MathicCompiler {
         // Generate the main module.
         codegen.generate_module(&self.ctx, ast)?;
 
+        if let Ok(v) = std::env::var("MATHIC_DBG_DUMP") {
+            if v == "1" {
+                let file_path = PathBuf::from("dump-prepass.mlir");
+                let mut f = fs::File::create(file_path).unwrap();
+                write!(f, "{}", module.as_operation()).unwrap();
+            } else {
+                tracing::warn!(
+                    "Incorrect value for MATHIC_DBG_DUMP: \"{}\", igonring it",
+                    v
+                )
+            }
+        }
+
         tracing::debug!("Module Done");
         debug_assert!(module.as_operation().verify());
 
