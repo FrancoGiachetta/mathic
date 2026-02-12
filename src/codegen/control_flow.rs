@@ -47,8 +47,6 @@ where
                 let false_block = region.append_block(Block::new(&[]));
 
                 if let Some(else_block) = else_block {
-                    let false_block = region.append_block(Block::new(&[]));
-
                     self.compile_block(ctx, &false_block, &else_block.stmts)?;
                 }
 
@@ -119,6 +117,8 @@ where
                 let for_block = region.append_block(Block::new(&[]));
 
                 self.compile_block(ctx, &for_block, &body.stmts)?;
+
+                for_block.append_operation(scf::r#yield(&[], location));
 
                 region
             },
