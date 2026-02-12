@@ -1,16 +1,16 @@
 use melior::{
-    Context,
     dialect::func,
     ir::{
-        Attribute, Block, BlockLike, Identifier, Location, Region, RegionLike,
         attribute::{StringAttribute, TypeAttribute},
         r#type::{FunctionType, IntegerType},
+        Attribute, Block, BlockLike, Identifier, Location, Region, RegionLike,
     },
+    Context,
 };
 
 use crate::{
-    codegen::{MathicCodeGen, error::CodegenError},
-    parser::grammar::declaration::FuncDecl,
+    codegen::{error::CodegenError, MathicCodeGen},
+    parser::ast::declaration::FuncDecl,
 };
 
 impl<'this, 'ctx> MathicCodeGen<'this, 'ctx>

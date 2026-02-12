@@ -1,4 +1,4 @@
-use crate::parser::grammar::{
+use crate::parser::ast::{
     control_flow::{ForStmt, IfStmt, WhileStmt},
     declaration::DeclStmt,
     expression::ExprStmt,

@@ -1,4 +1,4 @@
-use crate::parser::grammar::statement::Stmt;
+use crate::parser::ast::statement::Stmt;
 
 #[derive(Debug, PartialEq, Eq)]
 #[allow(dead_code)]

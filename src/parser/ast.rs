@@ -1,4 +1,4 @@
-use super::grammar::declaration::{FuncDecl, StructDecl};
+use super::ast::declaration::{FuncDecl, StructDecl};
 
 pub mod control_flow;
 pub mod declaration;

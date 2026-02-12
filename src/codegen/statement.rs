@@ -1,12 +1,12 @@
 use melior::{
-    Context,
     dialect::func,
     ir::{Block, BlockLike, Location},
+    Context,
 };
 
 use crate::{
-    codegen::{MathicCodeGen, error::CodegenError},
-    parser::grammar::statement::{ReturnStmt, Stmt},
+    codegen::{error::CodegenError, MathicCodeGen},
+    parser::ast::statement::{ReturnStmt, Stmt},
 };
 
 impl<'this, 'ctx> MathicCodeGen<'this, 'ctx>

@@ -1,4 +1,4 @@
-use crate::parser::grammar::{expression::ExprStmt, statement::BlockStmt};
+use crate::parser::ast::{expression::ExprStmt, statement::BlockStmt};
 
 #[derive(Debug, PartialEq, Eq)]
 pub struct IfStmt {

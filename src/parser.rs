@@ -1,14 +1,14 @@
 use std::cell::RefCell;
 
+use ast::Program;
 use error::ParseError;
-use grammar::Program;
 use lexer::{MathicLexer, SpannedToken};
 use token::Token;
 
 use crate::parser::lexer::LexerOutput;
 
+pub mod ast;
 pub mod error;
-pub mod grammar;
 pub mod lexer;
 pub mod parsing;
 pub mod token;
