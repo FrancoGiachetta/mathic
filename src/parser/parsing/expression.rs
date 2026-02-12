@@ -1,8 +1,8 @@
 use crate::parser::{
+    MathicParser, ParserResult,
     ast::expression::{ExprStmt, PrimaryExpr},
     error::ParseError,
     token::Token,
-    MathicParser, ParserResult,
 };
 
 impl<'a> MathicParser<'a> {

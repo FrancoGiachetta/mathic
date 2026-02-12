@@ -1,12 +1,12 @@
 use melior::{
+    Context,
     dialect::scf,
     helpers::ArithBlockExt,
     ir::{Block, BlockLike, Location, Region, RegionLike, ValueLike},
-    Context,
 };
 
 use crate::{
-    codegen::{error::CodegenError, MathicCodeGen},
+    codegen::{MathicCodeGen, error::CodegenError},
     parser::ast::control_flow::{ForStmt, IfStmt, WhileStmt},
 };
 

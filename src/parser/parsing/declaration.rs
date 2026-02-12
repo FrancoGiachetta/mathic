@@ -1,10 +1,10 @@
 use crate::parser::{
+    MathicParser, ParserResult,
     ast::{
         declaration::{FuncDecl, Param},
         statement::BlockStmt,
     },
     token::Token,
-    MathicParser, ParserResult,
 };
 
 impl<'a> MathicParser<'a> {

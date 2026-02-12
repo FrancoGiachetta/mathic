@@ -1,11 +1,11 @@
 use melior::{
+    Context,
     dialect::func,
     ir::{Block, BlockLike, Location},
-    Context,
 };
 
 use crate::{
-    codegen::{error::CodegenError, MathicCodeGen},
+    codegen::{MathicCodeGen, error::CodegenError},
     parser::ast::statement::{ReturnStmt, Stmt},
 };
 

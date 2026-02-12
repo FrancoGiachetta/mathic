@@ -1,15 +1,15 @@
 use melior::{
+    Context,
     dialect::func,
     ir::{
+        Attribute, Block, BlockLike, Identifier, Location, Region, RegionLike,
         attribute::{StringAttribute, TypeAttribute},
         r#type::{FunctionType, IntegerType},
-        Attribute, Block, BlockLike, Identifier, Location, Region, RegionLike,
     },
-    Context,
 };
 
 use crate::{
-    codegen::{error::CodegenError, MathicCodeGen},
+    codegen::{MathicCodeGen, error::CodegenError},
     parser::ast::declaration::FuncDecl,
 };
 
