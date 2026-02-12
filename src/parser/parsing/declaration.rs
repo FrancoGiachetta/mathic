@@ -9,6 +9,8 @@ use crate::parser::{
 
 impl<'a> MathicParser<'a> {
     pub fn parse_func(&self) -> ParserResult<FuncDecl> {
+        self.next()?; // consume Df.
+
         let name = {
             let ident = self.consume_token(Token::Ident)?;
             ident.lexeme.to_string()

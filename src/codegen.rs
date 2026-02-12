@@ -4,6 +4,8 @@ use crate::{
     MathicResult, codegen::error::CodegenError, error::MathicError, parser::grammar::Program,
 };
 
+pub mod control_flow;
+pub mod declaration;
 pub mod error;
 pub mod expression;
 pub mod statement;

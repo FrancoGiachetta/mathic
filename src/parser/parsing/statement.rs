@@ -16,7 +16,10 @@ impl<'a> MathicParser<'a> {
 
         Ok(match lookahead.token {
             Token::Df => Stmt::Decl(DeclStmt::FuncDeclStmt(self.parse_func()?)),
-            Token::Struct | Token::Let | Token::Sym | Token::If | Token::For | Token::While => {
+            Token::If => Stmt::If(self.parse_if_stmt()?),
+            Token::While => Stmt::While(self.parse_while_stmt()?),
+            Token::For => Stmt::For(self.parse_for_stmt()?),
+            Token::Struct | Token::Let | Token::Sym => {
                 todo!()
             }
             Token::Return => Stmt::Return(self.parse_return()?),
@@ -30,7 +33,7 @@ impl<'a> MathicParser<'a> {
     }
 
     pub fn parse_block(&self) -> ParserResult<BlockStmt> {
-        self.consume_token(Token::LBrace)?;
+        self.next()?; // Consume LBrace.
 
         let mut stmts = Vec::new();
 
@@ -44,7 +47,7 @@ impl<'a> MathicParser<'a> {
     }
 
     pub fn parse_return(&self) -> ParserResult<ReturnStmt> {
-        self.consume_token(Token::Return)?;
+        self.next()?; // Consume Return.
 
         let value = self.parse_expr()?;
 

@@ -1,26 +1,19 @@
 use melior::{
     Context,
     dialect::func,
-    ir::{
-        Attribute, Block, BlockLike, Identifier, Location, Region, RegionLike,
-        attribute::{StringAttribute, TypeAttribute},
-        r#type::{FunctionType, IntegerType},
-    },
+    ir::{Block, BlockLike, Location},
 };
 
 use crate::{
     codegen::{MathicCodeGen, error::CodegenError},
-    parser::grammar::{
-        declaration::FuncDecl,
-        statement::{ReturnStmt, Stmt},
-    },
+    parser::grammar::statement::{ReturnStmt, Stmt},
 };
 
 impl<'this, 'ctx> MathicCodeGen<'this, 'ctx>
 where
     'this: 'ctx,
 {
-    fn compile_statement(
+    pub fn compile_statement(
         &self,
         ctx: &'ctx Context,
         block: &'this Block<'ctx>,
@@ -29,38 +22,12 @@ where
         match stmt {
             Stmt::Decl(_decl_stmt) => unimplemented!("Declaration not implemented"),
             Stmt::Block(_block_stmt) => unimplemented!("Block statement not implemented"),
+            Stmt::If(_if_stmt) => unimplemented!("If statement not implemented"),
+            Stmt::While(_while_stmt) => unimplemented!("While statement not implemented"),
+            Stmt::For(_for_stmt) => unimplemented!("For statement not implemented"),
             Stmt::Return(return_stmt) => self.compile_return(ctx, block, return_stmt),
             Stmt::Expr(_expr_stmt) => unimplemented!("Expression statement not implemented"),
         }
-    }
-
-    pub fn compile_function(&self, ctx: &'ctx Context, func: FuncDecl) -> Result<(), CodegenError> {
-        // let params = vec![];
-
-        let region = Region::new();
-        let block = region.append_block(Block::new(&[]));
-
-        for stmt in func.body {
-            self.compile_statement(ctx, &block, stmt)?;
-        }
-
-        let location = Location::unknown(ctx);
-        let i64_type = IntegerType::new(ctx, 64).into();
-
-        self.module.body().append_operation(func::func(
-            ctx,
-            StringAttribute::new(ctx, &format!("mathic__{}", func.name)),
-            TypeAttribute::new(FunctionType::new(ctx, &[], &[i64_type]).into()),
-            region,
-            // This is necessary for the ExecutorEngine to execute a function.
-            &[(
-                Identifier::new(ctx, "llvm.emit_c_interface"),
-                Attribute::unit(ctx),
-            )],
-            location,
-        ));
-
-        Ok(())
     }
 
     fn compile_return(
