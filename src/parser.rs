@@ -1,7 +1,7 @@
 use std::{cell::RefCell, path::Path};
 
 use ast::Program;
-use error::{ParseError, SyntaxError};
+use error::{FoundToken, ParseError, SyntaxError};
 use lexer::{MathicLexer, Span, SpannedToken};
 use reporter::format_error;
 use token::Token;
@@ -49,14 +49,13 @@ impl<'a> MathicParser<'a> {
                 Token::Df => funcs.push(self.parse_func()?),
                 Token::Struct => todo!("parse struct"),
                 _ => {
-                    return Err(ParseError::Syntax(
-                        SpannedToken {
-                            token,
-                            lexeme,
+                    return Err(ParseError::Syntax(SyntaxError::UnexpectedToken {
+                        found: FoundToken {
+                            lexeme: lexeme.to_string(),
                             span,
-                        }
-                        .into(),
-                    ));
+                        },
+                        expected: "function or struct definition".to_string(),
+                    }));
                 }
             }
         }
@@ -98,13 +97,14 @@ impl<'a> MathicParser<'a> {
             if res.token == expected {
                 Ok(res)
             } else {
-                Err(ParseError::Syntax(SyntaxError::UnexpectedToken {
-                    found: res.lexeme.to_string(),
+                Err(ParseError::Syntax(SyntaxError::MissingToken {
+                    expected,
                     span: res.span,
                 }))
             }
         } else {
             Err(ParseError::Syntax(SyntaxError::UnexpectedEnd {
+                expected: format!("{}", expected),
                 span: self.current_span(),
             }))
         }

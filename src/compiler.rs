@@ -1,4 +1,4 @@
-use std::{io::Write, path::PathBuf};
+use std::{io::Write, path::PathBuf, process::exit};
 
 use melior::{
     Context,
@@ -76,10 +76,9 @@ impl MathicCompiler {
                 if let Some(path) = file_path {
                     parser.format_error(path, &e);
                 }
-                return Err(e.into());
+                exit(1);
             }
         };
-        dbg!(&ast);
         // Generate MLIR code
         let mut module = Self::create_module(&self.ctx)?;
         let mut codegen = MathicCodeGen::new(&module);

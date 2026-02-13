@@ -122,6 +122,7 @@ impl<'a> MathicParser<'a> {
     }
 
     fn parse_call(&self) -> ParserResult<ExprStmt> {
+        let lookahead = self.peek()?;
         let mut expr = self.parse_primary_expr()?;
 
         while self.match_token(Token::LParen)?.is_some() {
@@ -143,9 +144,11 @@ impl<'a> MathicParser<'a> {
             if let ExprStmt::Primary(PrimaryExpr::Ident(calle)) = expr {
                 expr = ExprStmt::Call { calle, args };
             } else {
-                return Err(ParseError::Syntax(SyntaxError::InvalidExpression {
-                    context: "expected identifier for function call".to_string(),
-                    span: self.current_span(),
+                // Safe to unwrap because its the first lookhead token. if it
+                // weren't there, there would be an error before.
+                return Err(ParseError::Syntax(SyntaxError::UnexpectedToken {
+                    found: lookahead.unwrap().into(),
+                    expected: "identifier".to_string(),
                 }));
             }
         }
@@ -156,6 +159,7 @@ impl<'a> MathicParser<'a> {
     fn parse_primary_expr(&self) -> ParserResult<ExprStmt> {
         let Ok(Some(lookahead)) = self.next() else {
             return Err(ParseError::Syntax(SyntaxError::UnexpectedEnd {
+                expected: "expression".to_string(),
                 span: self.current_span(),
             }));
         };
@@ -171,7 +175,12 @@ impl<'a> MathicParser<'a> {
                 self.consume_token(Token::RParen)?;
                 ExprStmt::Group(Box::new(expr))
             }
-            _ => return Err(ParseError::Syntax(lookahead.into())),
+            _ => {
+                return Err(ParseError::Syntax(SyntaxError::UnexpectedToken {
+                    found: lookahead.into(),
+                    expected: "expression".to_string(),
+                }));
+            }
         };
 
         Ok(expr)
