@@ -96,33 +96,18 @@ Parameter types are not parsed:
 
 Grammar supports: `df foo(x: i32, y: i32) { ... }`
 
-## Error Reporting
+---
 
-### Better Error Messages
+## Future Possibilities
 
-**Current Issues:**
-- Parse errors lack line/column information
-- Errors don't show source context or spans
-- No syntax highlighting in error output
-- Limited error recovery
+### Salsa (Incremental Computation Framework)
 
-**Solution:** Add `ariadne` crate for beautiful compiler error messages
+Salsa provides incremental recomputation for multi-phase compilers. Each phase (parse, type-check, codegen) becomes a cached query that only re-executes when its inputs change.
 
-**Examples of desired output:**
-```
-error[E001]: Type mismatch
-  ┌─ test.mth:5:10
-  │
-5 │     return x + 1;
-  │          -   ^ expected `i32`, found `f64`
-  │          │
-  │          this expression has type `f64`
-```
+**Use case here:** Enable incremental compilation and LSP support (go-to-def, autocomplete) by caching AST, types, and IR between compiles.
 
-**Implementation needed:**
-1. Add span tracking to lexer (already has spans)
-2. Replace `ParseError` with ariadne-compatible types
-3. Create `Report` instances with proper labels
-4. Update all error sites to include span information
-
+**Potential implementations:**
+- Incremental recompilation (only re-parse changed files)
+- Persistent compilation cache across runs
+- Parallel compilation phases
 
