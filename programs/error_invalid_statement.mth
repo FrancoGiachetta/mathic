@@ -1,0 +1,5 @@
+// Error: unexpected token in statement position
+// Tests E001 - UnexpectedToken for statements
+df main() {
+    123
+}

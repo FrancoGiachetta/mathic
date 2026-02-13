@@ -15,24 +15,27 @@ pub enum LexError {
     InvalidNumber(String),
 }
 
+/// Owned version of SpannedToken for error reporting
 #[derive(Debug, Clone)]
-pub enum SyntaxError {
-    UnexpectedToken { found: String, span: Span },
-    UnexpectedEnd { span: Span },
-    MissingToken { expected: String, span: Span },
-    InvalidExpression { context: String, span: Span },
-    InvalidFunctionDefinition { span: Span },
-    InvalidParameter { reason: String, span: Span },
-    InvalidTypeAnnotation { found: String, span: Span },
+pub struct FoundToken {
+    pub lexeme: String,
+    pub span: Span,
+}
+
+impl<'a> From<SpannedToken<'a>> for FoundToken {
+    fn from(token: SpannedToken<'a>) -> Self {
+        Self {
+            lexeme: token.lexeme.to_string(),
+            span: token.span,
+        }
+    }
 }
 
 #[derive(Debug, Clone)]
-pub enum SemanticError {
-    DuplicateParameterName { name: String, span: Span },
-    DuplicateFunction { name: String, span: Span },
-    InvalidAssignment { target: String, span: Span },
-    InvalidReturn { span: Span },
-    UnknownType { name: String, span: Span },
+pub enum SyntaxError {
+    UnexpectedToken { found: FoundToken, expected: String },
+    UnexpectedEnd { expected: String, span: Span },
+    MissingToken { expected: Token, span: Span },
 }
 
 // ============ Unified ParseError ============
@@ -42,8 +45,6 @@ pub enum ParseError {
     Lexical(LexError, Span),
     #[error("Syntax error")]
     Syntax(SyntaxError),
-    #[error("Semantic error")]
-    Semantic(SemanticError),
 }
 
 impl LexError {
@@ -64,15 +65,6 @@ impl LexError {
             LexError::InvalidCharacter(first)
         } else {
             LexError::TokenError
-        }
-    }
-}
-
-impl From<SpannedToken<'_>> for SyntaxError {
-    fn from(token: SpannedToken<'_>) -> Self {
-        SyntaxError::UnexpectedToken {
-            found: token.lexeme.to_string(),
-            span: token.span,
         }
     }
 }

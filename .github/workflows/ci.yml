@@ -28,8 +28,6 @@ jobs:
     
     - name: Install Rust
       uses: dtolnay/rust-toolchain@1.93.0
-      with:
-        components: rustfmt, clippy
     
     - name: Rust Cache
       uses: Swatinem/rust-cache@v2
@@ -38,7 +36,7 @@ jobs:
       run: cargo test --verbose
 
   clippy:
-    name: Clippy Linting
+    name: Linting check
     runs-on: ubuntu-24.04
     steps:
     - uses: actions/checkout@v4
@@ -49,13 +47,13 @@ jobs:
     - name: Install Rust
       uses: dtolnay/rust-toolchain@1.93.0
       with:
-        components: clippy
+        components: rustfmt, clippy
     
     - name: Rust Cache
       uses: Swatinem/rust-cache@v2
     
-    - name: Run clippy
-      run: make clippy
+    - name: Run make check
+      run: make check
 
   format:
     name: Check Formatting

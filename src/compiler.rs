@@ -68,7 +68,6 @@ impl MathicCompiler {
         _opt_lvl: OptLvl,
         file_path: Option<&Path>,
     ) -> MathicResult<Module<'_>> {
-        // Parse the source code
         let parser = MathicParser::new(source);
         let ast = match parser.parse() {
             Ok(ast) => ast,
@@ -76,15 +75,15 @@ impl MathicCompiler {
                 if let Some(path) = file_path {
                     parser.format_error(path, &e);
                 }
-                return Err(e.into());
+
+                std::process::exit(1);
             }
         };
-        dbg!(&ast);
+
         // Generate MLIR code
         let mut module = Self::create_module(&self.ctx)?;
         let mut codegen = MathicCodeGen::new(&module);
 
-        // Generate the main module.
         codegen.generate_module(&self.ctx, ast)?;
 
         if let Ok(v) = std::env::var("MATHIC_DBG_DUMP") {
@@ -100,13 +99,13 @@ impl MathicCompiler {
             }
         }
 
-        tracing::debug!("Module Done");
         debug_assert!(module.as_operation().verify());
+        tracing::debug!("Module crated successfully");
 
         // Run Passes to the generated module.
         self.run_passes(&mut module)?;
 
-        tracing::debug!("Passes Done");
+        tracing::debug!("Passes ran successfully");
 
         if let Ok(v) = std::env::var("MATHIC_DBG_DUMP") {
             if v == "1" {

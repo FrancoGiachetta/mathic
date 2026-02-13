@@ -1,0 +1,4 @@
+// Error: unexpected end of file
+// Tests E002 - UnexpectedEnd (missing closing brace)
+df main() {
+    return 1

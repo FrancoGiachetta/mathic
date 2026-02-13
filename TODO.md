@@ -1,8 +1,8 @@
 # Known Issues and TODOs
 
-## Parser Issues
+## Known Issues
 
-### Chained Function Calls Not Supported
+### Parser: Chained Function Calls Not Supported
 
 The current implementation only supports simple function calls like `foo()` or `foo(a, b)`. 
 Chained calls like `a()(b)(c)` or higher-order function calls like `getFn()()` will fail.
@@ -37,7 +37,7 @@ df main() {
 ```
 
 **Fix Required:**
-1. Change AST `Call` to accept any expression as callee:
+1. Change AST `Call` to accept any expression as callee.
    ```rust
    Call {
        callee: Box<ExprStmt>,
@@ -45,7 +45,7 @@ df main() {
    }
    ```
 
-2. Update parser:
+2. Update parser.
    ```rust
    expr = ExprStmt::Call {
        callee: Box::new(expr),
@@ -53,19 +53,38 @@ df main() {
    };
    ```
 
-3. Update codegen to handle non-identifier callees (would need to compile the callee expression first)
-
-
+3. Update codegen to handle non-identifier callees (would need to compile the callee expression first).
 
 ---
 
-## Codegen Issues
+## TODOs
 
----
+### Symbolic System (Core Feature)
 
-## Parser TODOs
+Mathic is a symbolic mathematics language. Symbols represent mathematical expressions, not values.
 
-### Variable Declarations
+**Symbol Declaration:**
+```mathic
+sym x = a + b;  // x represents the expression "a + b", not its value
+```
+
+**TODOs:**
+- Parse `sym` keyword and symbol declarations.
+- Symbol table for tracking symbolic bindings.
+- Expression trees for symbolic representations.
+- Symbol substitution and pattern matching.
+- Symbolic evaluation engine (new mlir dialect).
+
+**Features to implement:**
+- Symbolic algebraic operations (expand, factor, simplify).
+- Equation solving (symbolic manipulation).
+- Calculus operations (derivatives, integrals).
+- Pattern matching for rewrite rules.
+- Pretty printing of symbolic expressions.
+
+### Parser
+
+#### Variable Declarations
 
 ```rust
 Token::Struct | Token::Let | Token::Sym => {
@@ -74,11 +93,10 @@ Token::Struct | Token::Let | Token::Sym => {
 ```
 
 Need to implement:
-- `let x = expr;` - variable declarations
-- `sym x = y;` - symbolic declarations
-- `struct Foo { ... }` - struct declarations
+- `let x = expr;`: variable declarations (runtime values).
+- `struct Foo { ... }`: struct declarations.
 
-### Return Type Parsing
+#### Functions' Return Type Parsing
 
 Function return types are not parsed:
 ```rust
@@ -87,7 +105,7 @@ Function return types are not parsed:
 
 Grammar supports: `df ident() -> type { ... }`
 
-### Parameter Type Parsing
+#### Parameter Type Parsing
 
 Parameter types are not parsed:
 ```rust
@@ -96,33 +114,35 @@ Parameter types are not parsed:
 
 Grammar supports: `df foo(x: i32, y: i32) { ... }`
 
-## Error Reporting
+### Codegen
 
-### Better Error Messages
+#### Variable Allocation
+- Stack allocation for local variables.
+- Handle variable scoping and shadowing.
 
-**Current Issues:**
-- Parse errors lack line/column information
-- Errors don't show source context or spans
-- No syntax highlighting in error output
-- Limited error recovery
+#### Control Flow
+- Break and continue statements.
 
-**Solution:** Add `ariadne` crate for beautiful compiler error messages
+#### Function Calls
+- Support function arguments in calls.
+- Handle return values properly.
+- Function pointer support (for chained calls).
 
-**Examples of desired output:**
-```
-error[E001]: Type mismatch
-  ┌─ test.mth:5:10
-  │
-5 │     return x + 1;
-  │          -   ^ expected `i32`, found `f64`
-  │          │
-  │          this expression has type `f64`
-```
+#### Error Handling
+- Runtime error reporting (division by zero, etc.).
+- Stack traces for debugging.
 
-**Implementation needed:**
-1. Add span tracking to lexer (already has spans)
-2. Replace `ParseError` with ariadne-compatible types
-3. Create `Report` instances with proper labels
-4. Update all error sites to include span information
+---
 
+## Future Possibilities
 
+### Salsa (Incremental Computation Framework)
+
+Salsa provides incremental recomputation for multi-phase compilers. Each phase (parse, type-check, codegen) becomes a cached query that only re-executes when its inputs change.
+
+**Use case here:** Enable incremental compilation and LSP support (go-to-def, autocomplete) by caching AST, types, and IR between compiles.
+
+**Potential implementations:**
+- Incremental recompilation (only re-parse changed files).
+- Persistent compilation cache across runs.
+- Parallel compilation phases.

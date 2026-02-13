@@ -2,7 +2,7 @@ use std::{fs, ops::Range, path::Path};
 
 use ariadne::{Color, FnCache, Label, Report, ReportKind};
 
-use super::error::{LexError, ParseError, SemanticError, SyntaxError};
+use super::error::{LexError, ParseError, SyntaxError};
 
 #[derive(Clone)]
 pub struct ReportSpan {
@@ -37,6 +37,7 @@ pub fn format_error(file_path: &Path, error: &ParseError) {
             };
             match lex_error {
                 LexError::TokenError => Report::build(ReportKind::Error, report_span.clone())
+                    .with_code("L001")
                     .with_message("lexical error")
                     .with_label(
                         Label::new(report_span.clone())
@@ -46,6 +47,7 @@ pub fn format_error(file_path: &Path, error: &ParseError) {
                     .finish(),
                 LexError::InvalidCharacter(c) => {
                     Report::build(ReportKind::Error, report_span.clone())
+                        .with_code("L002")
                         .with_message("lexical error")
                         .with_label(
                             Label::new(report_span)
@@ -56,6 +58,7 @@ pub fn format_error(file_path: &Path, error: &ParseError) {
                 }
                 LexError::UnterminatedString => {
                     Report::build(ReportKind::Error, report_span.clone())
+                        .with_code("L003")
                         .with_message("lexical error")
                         .with_label(
                             Label::new(report_span)
@@ -66,6 +69,7 @@ pub fn format_error(file_path: &Path, error: &ParseError) {
                 }
                 LexError::UnterminatedComment => {
                     Report::build(ReportKind::Error, report_span.clone())
+                        .with_code("L004")
                         .with_message("lexical error")
                         .with_label(
                             Label::new(report_span)
@@ -75,6 +79,7 @@ pub fn format_error(file_path: &Path, error: &ParseError) {
                         .finish()
                 }
                 LexError::InvalidNumber(n) => Report::build(ReportKind::Error, report_span.clone())
+                    .with_code("L005")
                     .with_message("lexical error")
                     .with_label(
                         Label::new(report_span)
@@ -85,28 +90,53 @@ pub fn format_error(file_path: &Path, error: &ParseError) {
             }
         }
         ParseError::Syntax(syntax_error) => {
-            let (msg, span) = match syntax_error {
-                SyntaxError::UnexpectedToken { found, span } => {
-                    (format!("unexpected token: '{}'", found), span)
+            let (code, msg, span, help) = match syntax_error {
+                SyntaxError::UnexpectedToken { found, expected } => {
+                    let help_msg = match expected.as_str() {
+                        "statement" => {
+                            "valid statements include: function declarations, if/while/for, return, or blocks {}"
+                        }
+                        "identifier" => {
+                            "only variable or function names can be called, e.g., 'foo()' or 'bar()'"
+                        }
+                        "expression" => {
+                            "expressions can be: numbers, booleans, identifiers, or parenthesized expressions"
+                        }
+                        other => other,
+                    };
+                    (
+                        "E001",
+                        format!("expected {}, found '{}'", expected, found.lexeme),
+                        &found.span,
+                        help_msg.to_string(),
+                    )
                 }
-                SyntaxError::UnexpectedEnd { span } => {
-                    ("unexpected end of input".to_string(), span)
+                SyntaxError::UnexpectedEnd { expected, span } => {
+                    let help_msg = match expected.as_str() {
+                        "statement" => {
+                            "file ended unexpectedly - check for missing closing braces '}'"
+                        }
+                        "identifier" => "expected an identifier (variable or function name)",
+
+                        "expression" => {
+                            "expression is incomplete - check for missing operands or operators"
+                        }
+
+                        other => other,
+                    };
+                    (
+                        "E002",
+                        format!("expected \"{}\", found end of file", expected),
+                        span,
+                        help_msg.to_string(),
+                    )
                 }
-                SyntaxError::MissingToken { expected, span } => {
-                    (format!("expected: {}", expected), span)
-                }
-                SyntaxError::InvalidExpression { context, span } => {
-                    (format!("invalid expression: {}", context), span)
-                }
-                SyntaxError::InvalidFunctionDefinition { span } => {
-                    ("invalid function definition".to_string(), span)
-                }
-                SyntaxError::InvalidParameter { reason, span } => {
-                    (format!("invalid parameter: {}", reason), span)
-                }
-                SyntaxError::InvalidTypeAnnotation { found, span } => {
-                    (format!("invalid type annotation: {}", found), span)
-                }
+                SyntaxError::MissingToken { expected, span } => (
+                    "E003",
+                    format!("expected '{}'", expected),
+                    span,
+                    format!("add '{}' here to complete the syntax", expected),
+                ),
             };
 
             let report_span = ReportSpan {
@@ -115,45 +145,14 @@ pub fn format_error(file_path: &Path, error: &ParseError) {
             };
 
             Report::build(ReportKind::Error, report_span.clone())
+                .with_code(code)
                 .with_message("syntax error")
                 .with_label(
                     Label::new(report_span)
                         .with_color(Color::Red)
                         .with_message(msg),
                 )
-                .finish()
-        }
-        ParseError::Semantic(semantic_error) => {
-            let (msg, span) = match semantic_error {
-                SemanticError::DuplicateParameterName { name, span } => {
-                    (format!("duplicate parameter name: '{}'", name), span)
-                }
-                SemanticError::DuplicateFunction { name, span } => {
-                    (format!("duplicate function name: '{}'", name), span)
-                }
-                SemanticError::InvalidAssignment { target, span } => {
-                    (format!("invalid assignment target: '{}'", target), span)
-                }
-                SemanticError::InvalidReturn { span } => {
-                    ("invalid return statement".to_string(), span)
-                }
-                SemanticError::UnknownType { name, span } => {
-                    (format!("unknown type: '{}'", name), span)
-                }
-            };
-
-            let report_span = ReportSpan {
-                path: path.clone(),
-                span: span.start..span.end,
-            };
-
-            Report::build(ReportKind::Error, report_span.clone())
-                .with_message("semantic error")
-                .with_label(
-                    Label::new(report_span)
-                        .with_color(Color::Yellow)
-                        .with_message(msg),
-                )
+                .with_help(help)
                 .finish()
         }
     };

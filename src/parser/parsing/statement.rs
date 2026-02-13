@@ -12,6 +12,7 @@ impl<'a> MathicParser<'a> {
     pub fn parse_stmt(&self) -> ParserResult<Stmt> {
         let Ok(Some(lookahead)) = self.peek() else {
             return Err(ParseError::Syntax(SyntaxError::UnexpectedEnd {
+                expected: "statement".to_string(),
                 span: self.current_span(),
             }));
         };
@@ -26,7 +27,12 @@ impl<'a> MathicParser<'a> {
             }
             Token::Return => Stmt::Return(self.parse_return()?),
             Token::LBrace => Stmt::Block(self.parse_block()?),
-            _ => return Err(ParseError::Syntax(lookahead.into())),
+            _ => {
+                return Err(ParseError::Syntax(SyntaxError::UnexpectedToken {
+                    found: lookahead.into(),
+                    expected: "statement".to_string(),
+                }));
+            }
         })
     }
 
