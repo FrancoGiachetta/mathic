@@ -1,0 +1,5 @@
+// Error: unexpected token where expression expected
+// Tests E001 - UnexpectedToken
+df main() {
+    return )
+}

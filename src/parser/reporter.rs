@@ -94,7 +94,7 @@ pub fn format_error(file_path: &Path, error: &ParseError) {
                 SyntaxError::UnexpectedToken { found, expected } => {
                     let help_msg = match expected.as_str() {
                         "statement" => {
-                            "valid statements include: function declarations (df), if/while/for, return, or blocks {}"
+                            "valid statements include: function declarations, if/while/for, return, or blocks {}"
                         }
                         "identifier" => {
                             "only variable or function names can be called, e.g., 'foo()' or 'bar()'"
@@ -126,7 +126,7 @@ pub fn format_error(file_path: &Path, error: &ParseError) {
                     };
                     (
                         "E002",
-                        format!("expected {}, found end of file", expected),
+                        format!("expected \"{}\", found end of file", expected),
                         span,
                         help_msg.to_string(),
                     )

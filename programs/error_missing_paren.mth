@@ -1,0 +1,5 @@
+// Error: missing closing parenthesis
+// Tests E003 - MissingToken
+df main() {
+    return (1 + 2
+}
