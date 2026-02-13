@@ -1,10 +1,17 @@
-use crate::parser::ast::statement::Stmt;
+use crate::parser::ast::{expression::ExprStmt, statement::Stmt};
 
 #[derive(Debug, PartialEq, Eq)]
 #[allow(dead_code)]
 pub enum DeclStmt {
+    VarDecl(VarDecl),
     StructDeclStmt(StructDecl),
     FuncDeclStmt(FuncDecl),
+}
+
+#[derive(Debug, PartialEq, Eq)]
+pub struct VarDecl {
+    pub name: String,
+    pub value: ExprStmt,
 }
 
 #[derive(Debug, PartialEq, Eq)]

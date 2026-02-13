@@ -1,11 +1,11 @@
 use crate::parser::{
-    MathicParser, ParserResult,
     ast::{
-        declaration::DeclStmt,
+        declaration::{DeclStmt, VarDecl},
         statement::{BlockStmt, ReturnStmt, Stmt},
     },
     error::{ParseError, SyntaxError},
     token::Token,
+    MathicParser, ParserResult,
 };
 
 impl<'a> MathicParser<'a> {
@@ -22,7 +22,8 @@ impl<'a> MathicParser<'a> {
             Token::If => Stmt::If(self.parse_if_stmt()?),
             Token::While => Stmt::While(self.parse_while_stmt()?),
             Token::For => Stmt::For(self.parse_for_stmt()?),
-            Token::Struct | Token::Let | Token::Sym => {
+            Token::Let => Stmt::Decl(DeclStmt::VarDecl(self.parse_var_decl()?)),
+            Token::Struct | Token::Sym => {
                 todo!()
             }
             Token::Return => Stmt::Return(self.parse_return()?),
@@ -58,5 +59,20 @@ impl<'a> MathicParser<'a> {
         self.consume_token(Token::Semicolon)?;
 
         Ok(ReturnStmt { value })
+    }
+
+    pub fn parse_var_decl(&self) -> ParserResult<VarDecl> {
+        self.next()?; // Consume Let;
+
+        let ident = self.consume_token(Token::Ident)?;
+        let name = ident.lexeme.to_string();
+
+        self.consume_token(Token::Eq)?;
+
+        let value = self.parse_expr()?;
+
+        self.consume_token(Token::Semicolon)?;
+
+        Ok(VarDecl { name, value })
     }
 }
