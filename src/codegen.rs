@@ -7,20 +7,23 @@ pub mod declaration;
 pub mod error;
 pub mod expression;
 pub mod statement;
+pub mod symbol_table;
 
-pub struct MathicCodeGen<'this, 'ctx>
-where
-    'this: 'ctx,
-{
+pub use symbol_table::SymbolTable;
+
+pub struct MathicCodeGen<'this, 'ctx> {
     module: &'this Module<'ctx>,
+    // Tracks variables for the current function being compiled.
+    // Reset when compiling a new global function.
+    symbols: std::cell::RefCell<SymbolTable<'ctx, 'this>>,
 }
 
-impl<'this, 'ctx> MathicCodeGen<'this, 'ctx>
-where
-    'this: 'ctx,
-{
+impl<'this, 'ctx> MathicCodeGen<'this, 'ctx> {
     pub fn new(module: &'this Module<'ctx>) -> Self {
-        Self { module }
+        Self {
+            module,
+            symbols: Default::default(),
+        }
     }
 
     pub fn generate_module(&mut self, ctx: &'ctx Context, program: Program) -> MathicResult<()> {
@@ -33,6 +36,8 @@ where
 
         for func in program.funcs {
             self.compile_function(ctx, func)?;
+
+            self.symbols.replace(SymbolTable::new());
         }
 
         Ok(())

@@ -6,17 +6,14 @@ use melior::{
 
 use crate::{
     codegen::{MathicCodeGen, error::CodegenError},
-    parser::ast::statement::{ReturnStmt, Stmt},
+    parser::ast::{expression::ExprStmt, statement::Stmt},
 };
 
-impl<'this, 'ctx> MathicCodeGen<'this, 'ctx>
-where
-    'this: 'ctx,
-{
-    pub fn compile_statement(
+impl<'ctx> MathicCodeGen<'_, 'ctx> {
+    pub fn compile_statement<'func>(
         &self,
         ctx: &'ctx Context,
-        block: &'this Block<'ctx>,
+        block: &'func Block<'ctx>,
         stmt: &Stmt,
     ) -> Result<(), CodegenError> {
         match stmt {
@@ -25,15 +22,15 @@ where
             Stmt::If(if_stmt) => self.compile_if(ctx, block, if_stmt),
             Stmt::While(while_stmt) => self.compile_while(ctx, block, while_stmt),
             Stmt::For(for_stmt) => self.compile_for(ctx, block, for_stmt),
-            Stmt::Return(return_stmt) => self.compile_return(ctx, block, return_stmt),
+            Stmt::Return(expr) => self.compile_return(ctx, block, expr),
             Stmt::Expr(_expr_stmt) => unimplemented!("Expression statement not implemented"),
         }
     }
 
-    pub fn compile_block(
+    pub fn compile_block<'func>(
         &self,
         ctx: &'ctx Context,
-        block: &'this Block<'ctx>,
+        block: &'func Block<'ctx>,
         stmts: &[Stmt],
     ) -> Result<(), CodegenError> {
         for stmt in stmts {
@@ -43,13 +40,13 @@ where
         Ok(())
     }
 
-    fn compile_return(
+    fn compile_return<'func>(
         &self,
         ctx: &'ctx Context,
-        block: &'this Block<'ctx>,
-        return_stmt: &ReturnStmt,
+        block: &'func Block<'ctx>,
+        expr: &ExprStmt,
     ) -> Result<(), CodegenError> {
-        let value = self.compile_expression(ctx, block, &return_stmt.value)?;
+        let value = self.compile_expression(ctx, block, expr)?;
         let location = Location::unknown(ctx);
 
         block.append_operation(func::r#return(&[value], location));

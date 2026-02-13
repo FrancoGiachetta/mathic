@@ -10,14 +10,11 @@ use crate::{
     parser::ast::control_flow::{ForStmt, IfStmt, WhileStmt},
 };
 
-impl<'this, 'ctx> MathicCodeGen<'this, 'ctx>
-where
-    'this: 'ctx,
-{
-    pub fn compile_if(
+impl<'ctx> MathicCodeGen<'_, 'ctx> {
+    pub fn compile_if<'func>(
         &self,
         ctx: &'ctx Context,
-        block: &'this Block<'ctx>,
+        block: &'func Block<'ctx>,
         stmt: &IfStmt,
     ) -> Result<(), CodegenError> {
         let location = Location::unknown(ctx);
@@ -60,10 +57,10 @@ where
         Ok(())
     }
 
-    pub fn compile_while(
+    pub fn compile_while<'func>(
         &self,
         ctx: &'ctx Context,
-        block: &'this Block<'ctx>,
+        block: &'func Block<'ctx>,
         stmt: &WhileStmt,
     ) -> Result<(), CodegenError> {
         let location = Location::unknown(ctx);
@@ -96,10 +93,10 @@ where
         Ok(())
     }
 
-    pub fn compile_for(
+    pub fn compile_for<'func>(
         &self,
         ctx: &'ctx Context,
-        block: &'this Block<'ctx>,
+        block: &'func Block<'ctx>,
         stmt: &ForStmt,
     ) -> Result<(), CodegenError> {
         let location = Location::unknown(ctx);

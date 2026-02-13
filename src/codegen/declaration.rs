@@ -13,10 +13,7 @@ use crate::{
     parser::ast::declaration::FuncDecl,
 };
 
-impl<'this, 'ctx> MathicCodeGen<'this, 'ctx>
-where
-    'this: 'ctx,
-{
+impl<'ctx> MathicCodeGen<'_, 'ctx> {
     pub fn compile_function(&self, ctx: &'ctx Context, func: FuncDecl) -> Result<(), CodegenError> {
         // let params = vec![];
 

@@ -1,11 +1,12 @@
 use crate::parser::{
+    MathicParser, ParserResult,
     ast::{
         declaration::{DeclStmt, VarDecl},
-        statement::{BlockStmt, ReturnStmt, Stmt},
+        expression::ExprStmt,
+        statement::{BlockStmt, Stmt},
     },
     error::{ParseError, SyntaxError},
     token::Token,
-    MathicParser, ParserResult,
 };
 
 impl<'a> MathicParser<'a> {
@@ -51,14 +52,14 @@ impl<'a> MathicParser<'a> {
         Ok(BlockStmt { stmts })
     }
 
-    pub fn parse_return(&self) -> ParserResult<ReturnStmt> {
+    pub fn parse_return(&self) -> ParserResult<ExprStmt> {
         self.next()?; // Consume Return;
 
         let value = self.parse_expr()?;
 
         self.consume_token(Token::Semicolon)?;
 
-        Ok(ReturnStmt { value })
+        Ok(value)
     }
 
     pub fn parse_var_decl(&self) -> ParserResult<VarDecl> {
