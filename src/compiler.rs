@@ -59,13 +59,26 @@ impl MathicCompiler {
     pub fn compile_path(&self, file_path: &Path, opt_lvl: OptLvl) -> MathicResult<Module<'_>> {
         // Read source file
         let source = fs::read_to_string(file_path)?;
-        self.compile_source(&source, opt_lvl)
+        self.compile_source(&source, opt_lvl, Some(file_path))
     }
 
-    pub fn compile_source(&self, source: &str, _opt_lvl: OptLvl) -> MathicResult<Module<'_>> {
+    pub fn compile_source(
+        &self,
+        source: &str,
+        _opt_lvl: OptLvl,
+        file_path: Option<&Path>,
+    ) -> MathicResult<Module<'_>> {
         // Parse the source code
         let parser = MathicParser::new(source);
-        let ast = parser.parse()?;
+        let ast = match parser.parse() {
+            Ok(ast) => ast,
+            Err(e) => {
+                if let Some(path) = file_path {
+                    parser.format_error(path, &e);
+                }
+                return Err(e.into());
+            }
+        };
         dbg!(&ast);
         // Generate MLIR code
         let mut module = Self::create_module(&self.ctx)?;

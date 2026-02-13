@@ -4,14 +4,16 @@ use crate::parser::{
         declaration::DeclStmt,
         statement::{BlockStmt, ReturnStmt, Stmt},
     },
-    error::ParseError,
+    error::{ParseError, SyntaxError},
     token::Token,
 };
 
 impl<'a> MathicParser<'a> {
     pub fn parse_stmt(&self) -> ParserResult<Stmt> {
-        let Some(lookahead) = self.peek()? else {
-            return Err(ParseError::UnexpectedEnd);
+        let Ok(Some(lookahead)) = self.peek() else {
+            return Err(ParseError::Syntax(SyntaxError::UnexpectedEnd {
+                span: self.current_span(),
+            }));
         };
 
         Ok(match lookahead.token {
@@ -24,11 +26,7 @@ impl<'a> MathicParser<'a> {
             }
             Token::Return => Stmt::Return(self.parse_return()?),
             Token::LBrace => Stmt::Block(self.parse_block()?),
-            _ => {
-                return Err(ParseError::UnexpectedToken(
-                    format!("Unexpected token: {}", lookahead.lexeme).into_boxed_str(),
-                ));
-            }
+            _ => return Err(ParseError::Syntax(lookahead.into())),
         })
     }
 

@@ -1,7 +1,7 @@
 use crate::parser::{
     MathicParser, ParserResult,
     ast::expression::{ExprStmt, PrimaryExpr},
-    error::ParseError,
+    error::{ParseError, SyntaxError},
     token::Token,
 };
 
@@ -143,9 +143,10 @@ impl<'a> MathicParser<'a> {
             if let ExprStmt::Primary(PrimaryExpr::Ident(calle)) = expr {
                 expr = ExprStmt::Call { calle, args };
             } else {
-                return Err(ParseError::UnexpectedToken(
-                    "Expected identifier for function call".into(),
-                ));
+                return Err(ParseError::Syntax(SyntaxError::InvalidExpression {
+                    context: "expected identifier for function call".to_string(),
+                    span: self.current_span(),
+                }));
             }
         }
 
@@ -153,8 +154,10 @@ impl<'a> MathicParser<'a> {
     }
 
     fn parse_primary_expr(&self) -> ParserResult<ExprStmt> {
-        let Some(lookahead) = self.next()? else {
-            return Err(ParseError::UnexpectedEnd);
+        let Ok(Some(lookahead)) = self.next() else {
+            return Err(ParseError::Syntax(SyntaxError::UnexpectedEnd {
+                span: self.current_span(),
+            }));
         };
 
         let expr = match lookahead.token {
@@ -168,11 +171,7 @@ impl<'a> MathicParser<'a> {
                 self.consume_token(Token::RParen)?;
                 ExprStmt::Group(Box::new(expr))
             }
-            _ => {
-                return Err(ParseError::UnexpectedToken(
-                    format!("Expected expression, found: {}", lookahead.lexeme).into_boxed_str(),
-                ));
-            }
+            _ => return Err(ParseError::Syntax(lookahead.into())),
         };
 
         Ok(expr)

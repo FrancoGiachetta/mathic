@@ -1,9 +1,10 @@
 use logos::Logos;
 
-use crate::parser::lexer::LexError;
+use crate::parser::error::LexError;
 
 #[derive(logos_display::Display, logos_display::Debug, Logos, PartialEq, Eq, Clone)]
-#[logos( error = LexError, skip r"[ \t\r\n\f]+", skip r"//[^/\n]*", skip r"\/\*(.|\n)*\*\/")]
+#[logos(error(LexError, LexError::from_lexer))]
+#[logos(skip r"[ \t\r\n\f]+", skip r"//[^/\n]*", skip r"\/\*(.|\n)*\*\/")]
 pub enum Token {
     // Single char
     #[token("(")]
