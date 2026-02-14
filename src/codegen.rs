@@ -1,6 +1,19 @@
-use melior::{Context, ir::Module};
+use melior::{
+    Context,
+    dialect::func,
+    ir::{
+        Block, BlockLike, Identifier, Location, Module, Region, RegionLike,
+        attribute::{Attribute, StringAttribute, TypeAttribute},
+        r#type::{FunctionType, IntegerType},
+    },
+};
 
-use crate::{MathicResult, codegen::error::CodegenError, error::MathicError, parser::ast::Program};
+use crate::{
+    MathicResult,
+    codegen::error::CodegenError,
+    error::MathicError,
+    parser::ast::{Program, declaration::FuncDecl},
+};
 
 pub mod control_flow;
 pub mod declaration;
@@ -35,10 +48,43 @@ impl<'this, 'ctx> MathicCodeGen<'this, 'ctx> {
         // TODO: Compile structs in the future
 
         for func in program.funcs {
-            self.compile_function(ctx, func)?;
+            self.compile_entry_point(ctx, func)?;
 
             self.symbols.replace(SymbolTable::new());
         }
+
+        Ok(())
+    }
+
+    pub fn compile_entry_point(
+        &self,
+        ctx: &'ctx Context,
+        func: FuncDecl,
+    ) -> Result<(), CodegenError> {
+        // let params = vec![];
+
+        let region = Region::new();
+        let block = region.append_block(Block::new(&[]));
+
+        for stmt in func.body.iter() {
+            self.compile_statement(ctx, &block, stmt)?;
+        }
+
+        let location = Location::unknown(ctx);
+        let i64_type = IntegerType::new(ctx, 64).into();
+
+        self.module.body().append_operation(func::func(
+            ctx,
+            StringAttribute::new(ctx, &format!("mathic__{}", func.name)),
+            TypeAttribute::new(FunctionType::new(ctx, &[], &[i64_type]).into()),
+            region,
+            // This is necessary for the ExecutorEngine to execute a function.
+            &[(
+                Identifier::new(ctx, "llvm.emit_c_interface"),
+                Attribute::unit(ctx),
+            )],
+            location,
+        ));
 
         Ok(())
     }

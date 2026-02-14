@@ -17,7 +17,7 @@ impl<'ctx> MathicCodeGen<'_, 'ctx> {
         stmt: &Stmt,
     ) -> Result<(), CodegenError> {
         match stmt {
-            Stmt::Decl(_decl_stmt) => unimplemented!("Declaration not implemented"),
+            Stmt::Decl(decl_stmt) => self.compile_declaration(ctx, block, decl_stmt),
             Stmt::Block(_block_stmt) => unimplemented!("Block statement not implemented"),
             Stmt::If(if_stmt) => self.compile_if(ctx, block, if_stmt),
             Stmt::While(while_stmt) => self.compile_while(ctx, block, while_stmt),

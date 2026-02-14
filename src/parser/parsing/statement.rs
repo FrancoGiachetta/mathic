@@ -19,11 +19,11 @@ impl<'a> MathicParser<'a> {
         };
 
         Ok(match lookahead.token {
-            Token::Df => Stmt::Decl(DeclStmt::FuncDeclStmt(self.parse_func()?)),
+            Token::Df => Stmt::Decl(DeclStmt::Func(self.parse_func()?)),
             Token::If => Stmt::If(self.parse_if_stmt()?),
             Token::While => Stmt::While(self.parse_while_stmt()?),
             Token::For => Stmt::For(self.parse_for_stmt()?),
-            Token::Let => Stmt::Decl(DeclStmt::VarDecl(self.parse_var_decl()?)),
+            Token::Let => Stmt::Decl(DeclStmt::Var(self.parse_var_decl()?)),
             Token::Struct | Token::Sym => {
                 todo!()
             }

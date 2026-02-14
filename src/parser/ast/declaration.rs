@@ -3,9 +3,9 @@ use crate::parser::ast::{expression::ExprStmt, statement::Stmt};
 #[derive(Debug, PartialEq, Eq)]
 #[allow(dead_code)]
 pub enum DeclStmt {
-    VarDecl(VarDecl),
-    StructDeclStmt(StructDecl),
-    FuncDeclStmt(FuncDecl),
+    Var(VarDecl),
+    Struct(StructDecl),
+    Func(FuncDecl),
 }
 
 #[derive(Debug, PartialEq, Eq)]
