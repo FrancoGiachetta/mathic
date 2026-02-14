@@ -48,7 +48,7 @@ There are many was of installing LLVM. The most commong one it by building it fr
 ### 🏗️ Language Features
 
 #### Statements
-- ✅ **Function declarations**
+- 🚧 **Function declarations**
 - ✅ **Return statements**
 - ✅ **Block statements**
 - 🚧 **Variable declarations** 
@@ -66,9 +66,8 @@ There are many was of installing LLVM. The most commong one it by building it fr
 - ✅ **Comparison operations** (==, !=, >, >=, <, <=)
 - ✅ **Logical operations** (and, or)
 - ✅ **Unary operations** (!, -)
-- ✅ **Function calls**
+- 🚧 **Function calls**
 - ✅ **Parenthesized expressions**
-- ✅ **Operator precedence** (full precedence climbing)
 
 ### ⚙️ Code Generation Infrastructure
 

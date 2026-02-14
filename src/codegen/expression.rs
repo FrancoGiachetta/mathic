@@ -15,16 +15,13 @@ use crate::{
     },
 };
 
-impl<'this, 'ctx> MathicCodeGen<'this, 'ctx>
-where
-    'this: 'ctx,
-{
-    pub fn compile_expression(
+impl<'ctx> MathicCodeGen<'_, 'ctx> {
+    pub fn compile_expression<'func>(
         &self,
         ctx: &'ctx Context,
-        block: &'this Block<'ctx>,
+        block: &'func Block<'ctx>,
         expr: &ExprStmt,
-    ) -> Result<Value<'ctx, 'this>, CodegenError> {
+    ) -> Result<Value<'ctx, 'func>, CodegenError> {
         match expr {
             ExprStmt::Primary(primary_expr) => self.compile_primary(ctx, block, primary_expr),
             ExprStmt::Group(expr) => self.compile_expression(ctx, block, expr),
@@ -39,14 +36,14 @@ where
         }
     }
 
-    fn compile_logical(
+    fn compile_logical<'func>(
         &self,
         ctx: &'ctx Context,
-        block: &'this Block<'ctx>,
+        block: &'func Block<'ctx>,
         lhs: &ExprStmt,
         op: &Token,
         rhs: &ExprStmt,
-    ) -> Result<Value<'ctx, 'this>, CodegenError> {
+    ) -> Result<Value<'ctx, 'func>, CodegenError> {
         let location = Location::unknown(ctx);
 
         let lhs_val = self.compile_expression(ctx, block, lhs)?;
@@ -64,14 +61,14 @@ where
         })
     }
 
-    fn compile_binop(
+    fn compile_binop<'func>(
         &self,
         ctx: &'ctx Context,
-        block: &'this Block<'ctx>,
+        block: &'func Block<'ctx>,
         lhs: &ExprStmt,
         op: &Token,
         rhs: &ExprStmt,
-    ) -> Result<Value<'ctx, 'this>, CodegenError> {
+    ) -> Result<Value<'ctx, 'func>, CodegenError> {
         let location = Location::unknown(ctx);
 
         let lhs_val = self.compile_expression(ctx, block, lhs)?;
@@ -162,13 +159,13 @@ where
         })
     }
 
-    fn compile_unary(
+    fn compile_unary<'func>(
         &self,
         ctx: &'ctx Context,
-        block: &'this Block<'ctx>,
+        block: &'func Block<'ctx>,
         op: &Token,
         rhs: &ExprStmt,
-    ) -> Result<Value<'ctx, 'this>, CodegenError> {
+    ) -> Result<Value<'ctx, 'func>, CodegenError> {
         let location = Location::unknown(ctx);
         let rhs_val = self.compile_expression(ctx, block, rhs)?;
 
@@ -190,13 +187,13 @@ where
         })
     }
 
-    fn compile_call(
+    fn compile_call<'func>(
         &self,
         ctx: &'ctx Context,
-        block: &'this Block<'ctx>,
+        block: &'func Block<'ctx>,
         calle: &str,
         args: &[ExprStmt],
-    ) -> Result<Value<'ctx, 'this>, CodegenError> {
+    ) -> Result<Value<'ctx, 'func>, CodegenError> {
         let location = Location::unknown(ctx);
         let args = args
             .iter()
@@ -212,12 +209,12 @@ where
         ))?)
     }
 
-    fn compile_primary(
+    fn compile_primary<'func>(
         &self,
         ctx: &'ctx Context,
-        block: &'this Block<'ctx>,
+        block: &'func Block<'ctx>,
         expr: &PrimaryExpr,
-    ) -> Result<Value<'ctx, 'this>, CodegenError> {
+    ) -> Result<Value<'ctx, 'func>, CodegenError> {
         let location = Location::unknown(ctx);
 
         match expr {

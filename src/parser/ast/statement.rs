@@ -12,13 +12,8 @@ pub enum Stmt {
     If(IfStmt),
     While(WhileStmt),
     For(ForStmt),
-    Return(ReturnStmt),
+    Return(ExprStmt),
     Expr(ExprStmt),
-}
-
-#[derive(Debug, PartialEq, Eq)]
-pub struct ReturnStmt {
-    pub value: ExprStmt,
 }
 
 #[derive(Debug, PartialEq, Eq)]
