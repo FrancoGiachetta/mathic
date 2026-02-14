@@ -1,7 +1,7 @@
 use crate::parser::{
     MathicParser, ParserResult,
     ast::{
-        declaration::{DeclStmt, VarDecl},
+        declaration::DeclStmt,
         expression::ExprStmt,
         statement::{BlockStmt, Stmt},
     },
@@ -60,20 +60,5 @@ impl<'a> MathicParser<'a> {
         self.consume_token(Token::Semicolon)?;
 
         Ok(value)
-    }
-
-    pub fn parse_var_decl(&self) -> ParserResult<VarDecl> {
-        self.next()?; // Consume Let;
-
-        let ident = self.consume_token(Token::Ident)?;
-        let name = ident.lexeme.to_string();
-
-        self.consume_token(Token::Eq)?;
-
-        let value = self.parse_expr()?;
-
-        self.consume_token(Token::Semicolon)?;
-
-        Ok(VarDecl { name, value })
     }
 }

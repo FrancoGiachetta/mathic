@@ -7,8 +7,18 @@ use crate::parser::{
 
 impl<'a> MathicParser<'a> {
     pub fn parse_expr(&self) -> ParserResult<ExprStmt> {
-        // For now, we skip assignment and go directly to logical_or
-        self.parse_logic_or()
+        let expr = self.parse_logic_or()?;
+
+        if let ExprStmt::Primary(PrimaryExpr::Ident(name)) = expr {
+            self.consume_token(Token::Eq)?;
+
+            return Ok(ExprStmt::Assign {
+                name,
+                value: Box::new(self.parse_logic_or()?),
+            });
+        }
+
+        Ok(expr)
     }
 
     fn parse_logic_or(&self) -> ParserResult<ExprStmt> {

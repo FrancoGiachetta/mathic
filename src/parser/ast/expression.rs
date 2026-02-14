@@ -5,7 +5,7 @@ use crate::parser::token::Token;
 pub enum ExprStmt {
     Primary(PrimaryExpr),
     Assign {
-        name: Token,
+        name: String,
         value: Box<Self>,
     },
     BinOp {
