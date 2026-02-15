@@ -51,18 +51,6 @@ impl<'ctx> MathicCodeGen<'ctx> {
             .ok_or(CodegenError::IdentifierNotFound(name.to_string()))
     }
 
-    fn assign_to_sym(
-        &self,
-        name: &str,
-        value: Value<'ctx, '_>,
-    ) -> Result<Value<'ctx, '_>, CodegenError> {
-        self.sym_table
-            .borrow_mut()
-            .update_value(name, value)
-            .map(|v| unsafe { Value::from_raw(v) })
-            .ok_or(CodegenError::IdentifierNotFound(name.to_string()))
-    }
-
     pub fn generate_module(&self, program: Program) -> MathicResult<()> {
         // Check if main function is present
         if !program.funcs.iter().any(|f| f.name == "main") {

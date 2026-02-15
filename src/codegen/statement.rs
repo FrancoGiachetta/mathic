@@ -1,10 +1,11 @@
 use melior::{
     dialect::func,
-    ir::{Block, BlockLike, Location},
+    helpers::{BuiltinBlockExt, LlvmBlockExt},
+    ir::{Block, BlockLike, Location, ValueLike},
 };
 
 use crate::{
-    codegen::{MathicCodeGen, error::CodegenError},
+    codegen::{error::CodegenError, MathicCodeGen},
     parser::ast::{expression::ExprStmt, statement::Stmt},
 };
 
@@ -17,7 +18,7 @@ impl MathicCodeGen<'_> {
             Stmt::While(while_stmt) => self.compile_while(block, while_stmt),
             Stmt::For(for_stmt) => self.compile_for(block, for_stmt),
             Stmt::Return(return_stmt) => self.compile_return(block, return_stmt),
-            Stmt::Expr(_expr_stmt) => unimplemented!("Expression statement not implemented"),
+            Stmt::Assign { name, value } => self.compile_assignment(block, name, value),
         }
     }
 
@@ -34,6 +35,22 @@ impl MathicCodeGen<'_> {
         let location = Location::unknown(self.ctx);
 
         block.append_operation(func::r#return(&[value], location));
+
+        Ok(())
+    }
+
+    fn compile_assignment(
+        &self,
+        block: &Block,
+        name: &str,
+        expr: &ExprStmt,
+    ) -> Result<(), CodegenError> {
+        let location = Location::unknown(self.ctx);
+        let value = self.compile_expression(block, expr)?;
+
+        let ptr = self.get_sym(name)?;
+
+        block.store(self.ctx, location, ptr, value)?;
 
         Ok(())
     }

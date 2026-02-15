@@ -1,13 +1,13 @@
 use melior::{
     dialect::{arith::CmpiPredicate, func},
-    helpers::{ArithBlockExt, BuiltinBlockExt},
+    helpers::{ArithBlockExt, BuiltinBlockExt, LlvmBlockExt},
     ir::{
-        Block, Location, Value, ValueLike, attribute::FlatSymbolRefAttribute, r#type::IntegerType,
+        attribute::FlatSymbolRefAttribute, r#type::IntegerType, Block, Location, Value, ValueLike,
     },
 };
 
 use crate::{
-    codegen::{MathicCodeGen, error::CodegenError},
+    codegen::{error::CodegenError, MathicCodeGen},
     parser::{
         ast::expression::{ExprStmt, PrimaryExpr},
         token::Token,
@@ -26,27 +26,12 @@ impl MathicCodeGen<'_> {
         match expr {
             ExprStmt::Primary(primary_expr) => self.compile_primary(block, primary_expr),
             ExprStmt::Group(expr) => self.compile_expression(block, expr),
-            ExprStmt::Assign { name, value } => self.compile_assigment(block, name, value),
             ExprStmt::BinOp { lhs, op, rhs } => self.compile_binop(block, lhs, op, rhs),
             ExprStmt::Logical { lhs, op, rhs } => self.compile_logical(block, lhs, op, rhs),
             ExprStmt::Unary { op, rhs } => self.compile_unary(block, op, rhs),
             ExprStmt::Call { calle, args } => self.compile_call(block, calle, args),
             ExprStmt::Index { name: _, pos: _ } => unimplemented!("Indexing not implemented"),
         }
-    }
-
-    fn compile_assigment<'ctx, 'func>(
-        &'func self,
-        block: &'func Block<'ctx>,
-        name: &str,
-        expr: &ExprStmt,
-    ) -> Result<Value<'ctx, 'func>, CodegenError>
-    where
-        'func: 'ctx,
-    {
-        let value = self.compile_expression(block, expr)?;
-
-        self.assign_to_sym(name, value)
     }
 
     fn compile_logical<'ctx, 'func>(
@@ -242,7 +227,16 @@ impl MathicCodeGen<'_> {
         let location = Location::unknown(self.ctx);
 
         match expr {
-            PrimaryExpr::Ident(name) => self.get_sym(name),
+            PrimaryExpr::Ident(name) => {
+                let ptr = self.get_sym(name)?;
+
+                Ok(block.load(
+                    self.ctx,
+                    location,
+                    ptr,
+                    IntegerType::new(self.ctx, 64).into(),
+                )?)
+            }
             PrimaryExpr::Num(val) => {
                 let parsed_val: u64 = val.parse()?;
                 Ok(block.const_int(self.ctx, location, parsed_val, 64)?)

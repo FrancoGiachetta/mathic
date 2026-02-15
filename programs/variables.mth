@@ -1,0 +1,9 @@
+df main() {
+    let x = 0;
+    let y = 10;
+
+    x = 5;
+    
+    let z = x + y;
+    return z;
+}

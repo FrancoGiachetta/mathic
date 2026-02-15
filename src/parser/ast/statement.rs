@@ -13,7 +13,7 @@ pub enum Stmt {
     While(WhileStmt),
     For(ForStmt),
     Return(ExprStmt),
-    Expr(ExprStmt),
+    Assign { name: String, value: ExprStmt },
 }
 
 #[derive(Debug, PartialEq, Eq)]

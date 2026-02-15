@@ -40,16 +40,4 @@ impl SymbolTable {
             sym => sym.cloned(),
         }
     }
-
-    pub fn update_value(&mut self, name: &str, value: Value) -> Option<MlirValue> {
-        if self.symbols.contains_key(name) {
-            let new_value = value.to_raw();
-            self.symbols.insert(name.to_string(), new_value);
-            Some(new_value)
-        } else if let Some(parent) = &*self.parent {
-            parent.borrow_mut().update_value(name, value)
-        } else {
-            None
-        }
-    }
 }

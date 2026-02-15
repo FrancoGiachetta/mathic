@@ -1,25 +1,13 @@
 use crate::parser::{
-    MathicParser, ParserResult,
     ast::expression::{ExprStmt, PrimaryExpr},
     error::{ParseError, SyntaxError},
     token::Token,
+    MathicParser, ParserResult,
 };
 
 impl<'a> MathicParser<'a> {
     pub fn parse_expr(&self) -> ParserResult<ExprStmt> {
-        let expr = self.parse_logic_or()?;
-
-        // Check if we need to parse an assigment instead.
-        if let ExprStmt::Primary(PrimaryExpr::Ident(name)) = expr {
-            self.consume_token(Token::Eq)?;
-
-            return Ok(ExprStmt::Assign {
-                name,
-                value: Box::new(self.parse_logic_or()?),
-            });
-        }
-
-        Ok(expr)
+        self.parse_logic_or()
     }
 
     fn parse_logic_or(&self) -> ParserResult<ExprStmt> {
@@ -168,12 +156,8 @@ impl<'a> MathicParser<'a> {
     }
 
     fn parse_primary_expr(&self) -> ParserResult<ExprStmt> {
-        let Ok(Some(lookahead)) = self.next() else {
-            return Err(ParseError::Syntax(SyntaxError::UnexpectedEnd {
-                expected: "expression".to_string(),
-                span: self.current_span(),
-            }));
-        };
+        // Safe to do since this check is done in parse_expr.
+        let lookahead = self.next()?.expect("Should be a token");
 
         let expr = match lookahead.token {
             Token::Num => ExprStmt::Primary(PrimaryExpr::Num(lookahead.lexeme.to_string())),

@@ -1,7 +1,8 @@
 use melior::{
     dialect::func,
+    helpers::LlvmBlockExt,
     ir::{
-        Block, BlockLike, Location, Region, RegionLike,
+        Block, BlockLike, Location, Region, RegionLike, ValueLike,
         attribute::{StringAttribute, TypeAttribute},
         r#type::{FunctionType, IntegerType},
     },
@@ -34,9 +35,14 @@ impl MathicCodeGen<'_> {
         block: &Block,
         VarDecl { name, expr }: &VarDecl,
     ) -> Result<(), CodegenError> {
+        let location = Location::unknown(self.ctx);
+
         let value = self.compile_expression(block, expr)?;
 
-        self.define_sym(name.to_string(), value);
+        let ptr = block.alloca1(self.ctx, location, value.r#type(), 8)?;
+        block.store(self.ctx, location, ptr, value)?;
+
+        self.define_sym(name.to_string(), ptr);
 
         Ok(())
     }
