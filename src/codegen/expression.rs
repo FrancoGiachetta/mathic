@@ -14,7 +14,7 @@ use crate::{
     },
 };
 
-impl MathicCodeGen {
+impl MathicCodeGen<'_> {
     pub fn compile_expression<'ctx, 'func>(
         &'func self,
         block: &'func Block<'ctx>,
@@ -47,7 +47,7 @@ impl MathicCodeGen {
     where
         'func: 'ctx,
     {
-        let location = Location::unknown(&self.ctx);
+        let location = Location::unknown(self.ctx);
 
         let lhs_val = self.compile_expression(block, lhs)?;
         let rhs_val = self.compile_expression(block, rhs)?;
@@ -74,23 +74,23 @@ impl MathicCodeGen {
     where
         'func: 'ctx,
     {
-        let location = Location::unknown(&self.ctx);
+        let location = Location::unknown(self.ctx);
 
         let lhs_val = self.compile_expression(block, lhs)?;
         let rhs_val = self.compile_expression(block, rhs)?;
 
         Ok(match op {
             Token::EqEq => {
-                let val = block.cmpi(&self.ctx, CmpiPredicate::Eq, lhs_val, rhs_val, location)?;
+                let val = block.cmpi(self.ctx, CmpiPredicate::Eq, lhs_val, rhs_val, location)?;
                 block.extui(val, lhs_val.r#type(), location)?
             }
             Token::BangEq => {
-                let val = block.cmpi(&self.ctx, CmpiPredicate::Ne, lhs_val, rhs_val, location)?;
+                let val = block.cmpi(self.ctx, CmpiPredicate::Ne, lhs_val, rhs_val, location)?;
                 block.extui(val, lhs_val.r#type(), location)?
             }
             Token::Less => {
                 let val = block.cmpi(
-                    &self.ctx,
+                    self.ctx,
                     // For now only positive numbers.
                     if false {
                         CmpiPredicate::Slt
@@ -105,7 +105,7 @@ impl MathicCodeGen {
             }
             Token::EqLess => {
                 let val = block.cmpi(
-                    &self.ctx,
+                    self.ctx,
                     if false {
                         CmpiPredicate::Sle
                     } else {
@@ -119,7 +119,7 @@ impl MathicCodeGen {
             }
             Token::Greater => {
                 let val = block.cmpi(
-                    &self.ctx,
+                    self.ctx,
                     if false {
                         CmpiPredicate::Sgt
                     } else {
@@ -133,7 +133,7 @@ impl MathicCodeGen {
             }
             Token::EqGrater => {
                 let val = block.cmpi(
-                    &self.ctx,
+                    self.ctx,
                     if false {
                         CmpiPredicate::Sge
                     } else {
@@ -173,17 +173,17 @@ impl MathicCodeGen {
     where
         'func: 'ctx,
     {
-        let location = Location::unknown(&self.ctx);
+        let location = Location::unknown(self.ctx);
         let rhs_val = self.compile_expression(block, rhs)?;
 
         Ok(match op {
             Token::Bang => {
-                let k0 = block.const_int_from_type(&self.ctx, location, 0, rhs_val.r#type())?;
+                let k0 = block.const_int_from_type(self.ctx, location, 0, rhs_val.r#type())?;
                 block.andi(k0, rhs_val, location)?
             }
             Token::Minus => {
                 let k_neg_1 =
-                    block.const_int_from_type(&self.ctx, location, -1, rhs_val.r#type())?;
+                    block.const_int_from_type(self.ctx, location, -1, rhs_val.r#type())?;
                 block.muli(k_neg_1, rhs_val, location)?
             }
             _ => {
@@ -204,17 +204,17 @@ impl MathicCodeGen {
     where
         'func: 'ctx,
     {
-        let location = Location::unknown(&self.ctx);
+        let location = Location::unknown(self.ctx);
         let args = args
             .iter()
             .map(|arg| self.compile_expression(block, arg))
             .collect::<Result<Vec<Value>, _>>()?;
 
         Ok(block.append_op_result(func::call(
-            &self.ctx,
-            FlatSymbolRefAttribute::new(&self.ctx, &format!("mathic__{}", calle)),
+            self.ctx,
+            FlatSymbolRefAttribute::new(self.ctx, &format!("mathic__{}", calle)),
             &args,
-            &[IntegerType::new(&self.ctx, 64).into()],
+            &[IntegerType::new(self.ctx, 64).into()],
             location,
         ))?)
     }
@@ -227,16 +227,16 @@ impl MathicCodeGen {
     where
         'func: 'ctx,
     {
-        let location = Location::unknown(&self.ctx);
+        let location = Location::unknown(self.ctx);
 
         match expr {
             PrimaryExpr::Ident(_token) => unimplemented!("Identifier lookup not implemented"),
             PrimaryExpr::Num(val) => {
                 let parsed_val: u64 = val.parse()?;
-                Ok(block.const_int(&self.ctx, location, parsed_val, 64)?)
+                Ok(block.const_int(self.ctx, location, parsed_val, 64)?)
             }
             PrimaryExpr::Str(_) => unimplemented!("String literals not implemented"),
-            PrimaryExpr::Bool(val) => Ok(block.const_int(&self.ctx, location, *val as u8, 64)?),
+            PrimaryExpr::Bool(val) => Ok(block.const_int(self.ctx, location, *val as u8, 64)?),
         }
     }
 }

@@ -9,9 +9,9 @@ use crate::{
     parser::ast::control_flow::{ForStmt, IfStmt, WhileStmt},
 };
 
-impl MathicCodeGen {
+impl MathicCodeGen<'_> {
     pub fn compile_if(&self, block: &Block, stmt: &IfStmt) -> Result<(), CodegenError> {
-        let location = Location::unknown(&self.ctx);
+        let location = Location::unknown(self.ctx);
         let IfStmt {
             condition,
             then_block,
@@ -52,7 +52,7 @@ impl MathicCodeGen {
     }
 
     pub fn compile_while(&self, block: &Block, stmt: &WhileStmt) -> Result<(), CodegenError> {
-        let location = Location::unknown(&self.ctx);
+        let location = Location::unknown(self.ctx);
         let WhileStmt { condition, body } = stmt;
 
         block.append_operation(scf::r#while(
@@ -83,7 +83,7 @@ impl MathicCodeGen {
     }
 
     pub fn compile_for(&self, block: &Block, stmt: &ForStmt) -> Result<(), CodegenError> {
-        let location = Location::unknown(&self.ctx);
+        let location = Location::unknown(self.ctx);
         let ForStmt { start, end, body } = stmt;
 
         let start_val = self.compile_expression(block, start)?;
@@ -92,7 +92,7 @@ impl MathicCodeGen {
         block.append_operation(scf::r#for(
             start_val,
             end_val,
-            block.const_int_from_type(&self.ctx, location, 1, start_val.r#type())?,
+            block.const_int_from_type(self.ctx, location, 1, start_val.r#type())?,
             {
                 let region = Region::new();
                 let for_block = region.append_block(Block::new(&[]));

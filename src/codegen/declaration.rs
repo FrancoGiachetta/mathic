@@ -12,7 +12,7 @@ use crate::{
     parser::ast::declaration::FuncDecl,
 };
 
-impl MathicCodeGen {
+impl MathicCodeGen<'_> {
     pub fn compile_function(&self, func: FuncDecl) -> Result<(), CodegenError> {
         // let params = vec![];
 
@@ -25,18 +25,18 @@ impl MathicCodeGen {
             dbg!("STMT");
         }
 
-        let location = Location::unknown(&self.ctx);
-        let i64_type = IntegerType::new(&self.ctx, 64).into();
+        let location = Location::unknown(self.ctx);
+        let i64_type = IntegerType::new(self.ctx, 64).into();
 
-        self.module().body().append_operation(func::func(
-            &self.ctx,
-            StringAttribute::new(&self.ctx, &format!("mathic__{}", func.name)),
-            TypeAttribute::new(FunctionType::new(&self.ctx, &[], &[i64_type]).into()),
+        self.module.body().append_operation(func::func(
+            self.ctx,
+            StringAttribute::new(self.ctx, &format!("mathic__{}", func.name)),
+            TypeAttribute::new(FunctionType::new(self.ctx, &[], &[i64_type]).into()),
             region,
             // This is necessary for the ExecutorEngine to execute a function.
             &[(
-                Identifier::new(&self.ctx, "llvm.emit_c_interface"),
-                Attribute::unit(&self.ctx),
+                Identifier::new(self.ctx, "llvm.emit_c_interface"),
+                Attribute::unit(self.ctx),
             )],
             location,
         ));

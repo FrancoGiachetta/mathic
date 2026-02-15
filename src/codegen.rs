@@ -1,9 +1,6 @@
 use melior::{Context, ir::Module};
-use mlir_sys::MlirModule;
 
-use crate::{
-    MathicResult, codegen::error::CodegenError, error::MathicError, ffi, parser::ast::Program,
-};
+use crate::{MathicResult, codegen::error::CodegenError, error::MathicError, parser::ast::Program};
 
 pub mod control_flow;
 pub mod declaration;
@@ -11,28 +8,13 @@ pub mod error;
 pub mod expression;
 pub mod statement;
 
-pub struct MathicCodeGen {
-    ctx: Context,
-    module: MlirModule,
+pub struct MathicCodeGen<'ctx> {
+    pub ctx: &'ctx Context,
+    pub module: &'ctx Module<'ctx>,
 }
 
-impl MathicCodeGen {
-    pub fn new() -> Result<Self, CodegenError> {
-        let ctx = ffi::create_context()?;
-        let module = ffi::create_module(&ctx)?;
-
-        Ok(Self { ctx, module })
-    }
-
-    pub fn module(&self) -> Module<'_> {
-        unsafe { Module::from_raw(self.module) }
-    }
-
-    pub fn ctx(&self) -> &Context {
-        &self.ctx
-    }
-
-    pub fn generate_module(&self, program: Program) -> MathicResult<MlirModule> {
+impl<'ctx> MathicCodeGen<'ctx> {
+    pub fn generate_module(&self, program: Program) -> MathicResult<()> {
         // Check if main function is present
         if !program.funcs.iter().any(|f| f.name == "main") {
             return Err(MathicError::Codegen(CodegenError::MissingMainFunction));
@@ -45,6 +27,6 @@ impl MathicCodeGen {
             dbg!("DONE");
         }
 
-        Ok(self.module)
+        Ok(())
     }
 }

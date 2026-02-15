@@ -15,6 +15,7 @@ use std::{fs, path::Path};
 use crate::{
     MathicResult,
     codegen::{MathicCodeGen, error::CodegenError},
+    ffi,
     parser::MathicParser,
 };
 
@@ -28,21 +29,34 @@ pub enum OptLvl {
     O3,
 }
 
-pub struct MathicCompiler;
+pub struct MathicCompiler {
+    ctx: Context,
+}
 
 impl MathicCompiler {
-    pub fn compile_path<'a>(file_path: &Path, opt_lvl: OptLvl) -> MathicResult<Module<'a>> {
+    pub fn new() -> Result<Self, CodegenError> {
+        Ok(Self {
+            ctx: ffi::create_context()?,
+        })
+    }
+
+    pub fn compile_path<'func>(
+        &'func self,
+        file_path: &Path,
+        opt_lvl: OptLvl,
+    ) -> MathicResult<Module<'func>> {
         // Read source file
         let source = fs::read_to_string(file_path)?;
 
-        Self::compile_source(&source, opt_lvl, Some(file_path))
+        self.compile_source(&source, opt_lvl, Some(file_path))
     }
 
-    pub fn compile_source<'a>(
+    pub fn compile_source<'func>(
+        &'func self,
         source: &str,
-        _opt_lvl: OptLvl,
+        opt_lvl: OptLvl,
         file_path: Option<&Path>,
-    ) -> MathicResult<Module<'a>> {
+    ) -> MathicResult<Module<'func>> {
         let parser = MathicParser::new(source);
         let ast = match parser.parse() {
             Ok(ast) => ast,
@@ -55,14 +69,17 @@ impl MathicCompiler {
             }
         };
 
-        let codegen = MathicCodeGen::new()?;
+        // Generate Module.
+        let mut module = ffi::create_module(&self.ctx, opt_lvl)?;
 
-        // Generate MLIR code
-        let mut module = {
-            let module = codegen.generate_module(ast)?;
+        {
+            let codegen = MathicCodeGen {
+                ctx: &self.ctx,
+                module: &module,
+            };
 
-            unsafe { Module::from_raw(module) }
-        };
+            codegen.generate_module(ast)?;
+        }
 
         if let Ok(v) = std::env::var("MATHIC_DBG_DUMP") {
             if v == "1" {
@@ -81,7 +98,7 @@ impl MathicCompiler {
         tracing::debug!("Module crated successfully");
 
         // Run Passes to the generated module.
-        Self::run_passes(codegen.ctx(), &mut module)?;
+        Self::run_passes(&self.ctx, &mut module)?;
 
         tracing::debug!("Passes ran successfully");
 

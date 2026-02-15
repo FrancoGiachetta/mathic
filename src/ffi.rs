@@ -28,13 +28,16 @@ use melior::{
 };
 use mlir_sys::{
     MlirLLVMDIEmissionKind_MlirLLVMDIEmissionKindFull,
-    MlirLLVMDINameTableKind_MlirLLVMDINameTableKindDefault, MlirModule, mlirDisctinctAttrCreate,
+    MlirLLVMDINameTableKind_MlirLLVMDINameTableKindDefault, mlirDisctinctAttrCreate,
     mlirLLVMDICompileUnitAttrGet, mlirLLVMDIFileAttrGet, mlirLLVMDIModuleAttrGet,
 };
 
-use crate::codegen::error::CodegenError;
+use crate::{codegen::error::CodegenError, compiler::OptLvl};
 
-pub fn create_module(ctx: &Context) -> Result<MlirModule, CodegenError> {
+pub fn create_module<'ctx>(
+    ctx: &'ctx Context,
+    opt_lvl: OptLvl,
+) -> Result<Module<'ctx>, CodegenError> {
     static INITIALIZED: OnceLock<()> = OnceLock::new();
 
     INITIALIZED.get_or_init(|| unsafe {
@@ -49,7 +52,7 @@ pub fn create_module(ctx: &Context) -> Result<MlirModule, CodegenError> {
     let module_region = Region::new();
     module_region.append_block(Block::new(&[]));
 
-    let data_layout_ret = &get_data_layout_rep()?;
+    let data_layout_ret = &get_data_layout_rep(opt_lvl)?;
 
     let di_unit_id = unsafe {
         let id = StringAttribute::new(ctx, "compile_unit_id").to_raw();
@@ -107,9 +110,7 @@ pub fn create_module(ctx: &Context) -> Result<MlirModule, CodegenError> {
     .add_regions([module_region])
     .build()?;
 
-    Ok(Module::from_operation(op)
-        .ok_or(CodegenError::Custom("Could not create module".to_string()))?
-        .to_raw())
+    Module::from_operation(op).ok_or(CodegenError::Custom("Could not create module".to_string()))
 }
 
 pub fn create_context() -> Result<Context, CodegenError> {
@@ -143,7 +144,7 @@ pub fn get_target_triple() -> String {
 /// Gets the data layout reprrsentation as a string, to be given to the MLIR module.
 /// LLVM uses this to know the proper alignments for the given sizes, etc.
 /// This function gets the data layout of the host target triple.
-pub fn get_data_layout_rep() -> Result<String, CodegenError> {
+pub fn get_data_layout_rep(opt_lvl: OptLvl) -> Result<String, CodegenError> {
     unsafe {
         let mut null = null_mut();
         let error_buffer = addr_of_mut!(null);
@@ -173,7 +174,12 @@ pub fn get_data_layout_rep() -> Result<String, CodegenError> {
             target_triple.cast(),
             target_cpu.cast(),
             target_cpu_features.cast(),
-            LLVMCodeGenOptLevel::LLVMCodeGenLevelNone,
+            match opt_lvl {
+                OptLvl::None => LLVMCodeGenOptLevel::LLVMCodeGenLevelNone,
+                OptLvl::O1 => LLVMCodeGenOptLevel::LLVMCodeGenLevelLess,
+                OptLvl::O2 => LLVMCodeGenOptLevel::LLVMCodeGenLevelDefault,
+                OptLvl::O3 => LLVMCodeGenOptLevel::LLVMCodeGenLevelAggressive,
+            },
             LLVMRelocMode::LLVMRelocDynamicNoPic,
             LLVMCodeModel::LLVMCodeModelDefault,
         );

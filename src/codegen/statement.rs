@@ -8,7 +8,7 @@ use crate::{
     parser::ast::statement::{ReturnStmt, Stmt},
 };
 
-impl MathicCodeGen {
+impl MathicCodeGen<'_> {
     pub fn compile_statement(&self, block: &Block, stmt: &Stmt) -> Result<(), CodegenError> {
         match stmt {
             Stmt::Decl(_decl_stmt) => unimplemented!("Declaration not implemented"),
@@ -31,7 +31,7 @@ impl MathicCodeGen {
 
     fn compile_return(&self, block: &Block, return_stmt: &ReturnStmt) -> Result<(), CodegenError> {
         let value = self.compile_expression(block, &return_stmt.value)?;
-        let location = Location::unknown(&self.ctx);
+        let location = Location::unknown(self.ctx);
 
         block.append_operation(func::r#return(&[value], location));
 
