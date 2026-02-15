@@ -11,7 +11,7 @@ use crate::{
 impl MathicCodeGen<'_> {
     pub fn compile_statement(&self, block: &Block, stmt: &Stmt) -> Result<(), CodegenError> {
         match stmt {
-            Stmt::Decl(decl_stmt) => self.compile_declaration(ctx, block, decl_stmt),
+            Stmt::Decl(decl_stmt) => self.compile_declaration(block, decl_stmt),
             Stmt::Block(_block_stmt) => unimplemented!("Block statement not implemented"),
             Stmt::If(if_stmt) => self.compile_if(block, if_stmt),
             Stmt::While(while_stmt) => self.compile_while(block, while_stmt),
@@ -29,8 +29,8 @@ impl MathicCodeGen<'_> {
         Ok(())
     }
 
-    fn compile_return(&self, block: &Block, return_stmt: &ReturnStmt) -> Result<(), CodegenError> {
-        let value = self.compile_expression(block, &return_stmt.value)?;
+    fn compile_return(&self, block: &Block, expr: &ExprStmt) -> Result<(), CodegenError> {
+        let value = self.compile_expression(block, expr)?;
         let location = Location::unknown(self.ctx);
 
         block.append_operation(func::r#return(&[value], location));

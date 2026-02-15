@@ -45,11 +45,11 @@ impl<'a> MathicParser<'a> {
 
         self.consume_token(Token::Eq)?;
 
-        let value = self.parse_expr()?;
+        let expr = self.parse_expr()?;
 
         self.consume_token(Token::Semicolon)?;
 
-        Ok(VarDecl { name, value })
+        Ok(VarDecl { name, expr })
     }
 
     fn parse_params(&self) -> ParserResult<Vec<Param>> {

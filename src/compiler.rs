@@ -73,10 +73,7 @@ impl MathicCompiler {
         let mut module = ffi::create_module(&self.ctx, opt_lvl)?;
 
         {
-            let codegen = MathicCodeGen {
-                ctx: &self.ctx,
-                module: &module,
-            };
+            let codegen = MathicCodeGen::new(&self.ctx, &module);
 
             codegen.generate_module(ast)?;
         }

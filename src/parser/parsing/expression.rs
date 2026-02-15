@@ -9,6 +9,7 @@ impl<'a> MathicParser<'a> {
     pub fn parse_expr(&self) -> ParserResult<ExprStmt> {
         let expr = self.parse_logic_or()?;
 
+        // Check if we need to parse an assigment instead.
         if let ExprStmt::Primary(PrimaryExpr::Ident(name)) = expr {
             self.consume_token(Token::Eq)?;
 

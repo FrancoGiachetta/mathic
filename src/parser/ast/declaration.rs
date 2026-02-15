@@ -11,7 +11,7 @@ pub enum DeclStmt {
 #[derive(Debug, PartialEq, Eq)]
 pub struct VarDecl {
     pub name: String,
-    pub value: ExprStmt,
+    pub expr: ExprStmt,
 }
 
 #[derive(Debug, PartialEq, Eq)]

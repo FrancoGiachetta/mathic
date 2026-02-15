@@ -26,15 +26,27 @@ impl MathicCodeGen<'_> {
         match expr {
             ExprStmt::Primary(primary_expr) => self.compile_primary(block, primary_expr),
             ExprStmt::Group(expr) => self.compile_expression(block, expr),
-            ExprStmt::Assign { name: _, value: _ } => {
-                unimplemented!("Assignment not implemented");
-            }
+            ExprStmt::Assign { name, value } => self.compile_assigment(block, name, value),
             ExprStmt::BinOp { lhs, op, rhs } => self.compile_binop(block, lhs, op, rhs),
             ExprStmt::Logical { lhs, op, rhs } => self.compile_logical(block, lhs, op, rhs),
             ExprStmt::Unary { op, rhs } => self.compile_unary(block, op, rhs),
             ExprStmt::Call { calle, args } => self.compile_call(block, calle, args),
             ExprStmt::Index { name: _, pos: _ } => unimplemented!("Indexing not implemented"),
         }
+    }
+
+    fn compile_assigment<'ctx, 'func>(
+        &'func self,
+        block: &'func Block<'ctx>,
+        name: &str,
+        expr: &ExprStmt,
+    ) -> Result<Value<'ctx, 'func>, CodegenError>
+    where
+        'func: 'ctx,
+    {
+        let value = self.compile_expression(block, expr)?;
+
+        self.assign_to_sym(name, value)
     }
 
     fn compile_logical<'ctx, 'func>(
@@ -230,7 +242,7 @@ impl MathicCodeGen<'_> {
         let location = Location::unknown(self.ctx);
 
         match expr {
-            PrimaryExpr::Ident(_token) => unimplemented!("Identifier lookup not implemented"),
+            PrimaryExpr::Ident(name) => self.get_sym(name),
             PrimaryExpr::Num(val) => {
                 let parsed_val: u64 = val.parse()?;
                 Ok(block.const_int(self.ctx, location, parsed_val, 64)?)
