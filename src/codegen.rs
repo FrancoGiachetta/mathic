@@ -22,24 +22,13 @@ pub mod expression;
 pub mod statement;
 pub mod symbol_table;
 
-pub use symbol_table::SymbolTable;
-
-pub struct MathicCodeGen<'this, 'ctx> {
-    module: &'this Module<'ctx>,
-    // Tracks variables for the current function being compiled.
-    // Reset when compiling a new global function.
-    symbols: std::cell::RefCell<SymbolTable<'ctx, 'this>>,
+pub struct MathicCodeGen<'ctx> {
+    pub ctx: &'ctx Context,
+    pub module: &'ctx Module<'ctx>,
 }
 
-impl<'this, 'ctx> MathicCodeGen<'this, 'ctx> {
-    pub fn new(module: &'this Module<'ctx>) -> Self {
-        Self {
-            module,
-            symbols: Default::default(),
-        }
-    }
-
-    pub fn generate_module(&mut self, ctx: &'ctx Context, program: Program) -> MathicResult<()> {
+impl<'ctx> MathicCodeGen<'ctx> {
+    pub fn generate_module(&self, program: Program) -> MathicResult<()> {
         // Check if main function is present
         if !program.funcs.iter().any(|f| f.name == "main") {
             return Err(MathicError::Codegen(CodegenError::MissingMainFunction));

@@ -4,9 +4,10 @@ use crate::{
 };
 
 pub fn compile_and_execute(source: &str) -> i64 {
-    let compiler = MathicCompiler::new().expect("Failed to create compiler");
+    let compiler = MathicCompiler::new().expect("Could not create compiler.");
+
     let module = compiler
-        .compile_source(source, OptLvl::default(), None)
+        .compile_source(source, OptLvl::None, None)
         .expect("Failed to compile");
     let executor =
         MathicExecutor::new(&module, OptLvl::default()).expect("Failed to create executor");

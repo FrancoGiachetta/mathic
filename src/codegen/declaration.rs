@@ -1,5 +1,4 @@
 use melior::{
-    Context,
     dialect::func,
     ir::{
         Block, BlockLike, Location, Region, RegionLike,
@@ -13,44 +12,32 @@ use crate::{
     parser::ast::declaration::{DeclStmt, FuncDecl},
 };
 
-impl<'ctx> MathicCodeGen<'_, 'ctx> {
-    pub fn compile_declaration<'func>(
-        &self,
-        ctx: &'ctx Context,
-        block: &'func Block<'ctx>,
-        stmt: &DeclStmt,
-    ) -> Result<(), CodegenError> {
-        match stmt {
-            DeclStmt::Var(var_decl) => todo!(),
-            DeclStmt::Struct(_struct_decl) => todo!("Implement struct"),
-            DeclStmt::Func(func_decl) => self.compile_function(ctx, block, func_decl),
-        }
-    }
-
-    pub fn compile_function<'func>(
-        &self,
-        ctx: &'ctx Context,
-        block: &'func Block<'ctx>,
-        func: &FuncDecl,
-    ) -> Result<(), CodegenError> {
+impl MathicCodeGen<'_> {
+    pub fn compile_function(&self, func: FuncDecl) -> Result<(), CodegenError> {
         // let params = vec![];
 
         let region = Region::new();
         let inner_block = region.append_block(Block::new(&[]));
 
         for stmt in func.body.iter() {
-            self.compile_statement(ctx, &inner_block, stmt)?;
+            self.compile_statement(&block, stmt)?;
+
+            dbg!("STMT");
         }
 
-        let location = Location::unknown(ctx);
-        let i64_type = IntegerType::new(ctx, 64).into();
+        let location = Location::unknown(self.ctx);
+        let i64_type = IntegerType::new(self.ctx, 64).into();
 
-        block.append_operation(func::func(
-            ctx,
-            StringAttribute::new(ctx, &format!("mathic__{}", func.name)),
-            TypeAttribute::new(FunctionType::new(ctx, &[], &[i64_type]).into()),
+        self.module.body().append_operation(func::func(
+            self.ctx,
+            StringAttribute::new(self.ctx, &format!("mathic__{}", func.name)),
+            TypeAttribute::new(FunctionType::new(self.ctx, &[], &[i64_type]).into()),
             region,
-            &[],
+            // This is necessary for the ExecutorEngine to execute a function.
+            &[(
+                Identifier::new(self.ctx, "llvm.emit_c_interface"),
+                Attribute::unit(self.ctx),
+            )],
             location,
         ));
 
