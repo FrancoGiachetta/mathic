@@ -1,5 +1,4 @@
 use melior::{
-    Context,
     dialect::{arith::CmpiPredicate, func},
     helpers::{ArithBlockExt, BuiltinBlockExt},
     ir::{
@@ -15,42 +14,43 @@ use crate::{
     },
 };
 
-impl<'this, 'ctx> MathicCodeGen<'this, 'ctx>
-where
-    'this: 'ctx,
-{
-    pub fn compile_expression(
-        &self,
-        ctx: &'ctx Context,
-        block: &'this Block<'ctx>,
+impl MathicCodeGen<'_> {
+    pub fn compile_expression<'ctx, 'func>(
+        &'func self,
+        block: &'func Block<'ctx>,
         expr: &ExprStmt,
-    ) -> Result<Value<'ctx, 'this>, CodegenError> {
+    ) -> Result<Value<'ctx, 'func>, CodegenError>
+    where
+        'func: 'ctx,
+    {
         match expr {
-            ExprStmt::Primary(primary_expr) => self.compile_primary(ctx, block, primary_expr),
-            ExprStmt::Group(expr) => self.compile_expression(ctx, block, expr),
+            ExprStmt::Primary(primary_expr) => self.compile_primary(block, primary_expr),
+            ExprStmt::Group(expr) => self.compile_expression(block, expr),
             ExprStmt::Assign { name: _, value: _ } => {
                 unimplemented!("Assignment not implemented");
             }
-            ExprStmt::BinOp { lhs, op, rhs } => self.compile_binop(ctx, block, lhs, op, rhs),
-            ExprStmt::Logical { lhs, op, rhs } => self.compile_logical(ctx, block, lhs, op, rhs),
-            ExprStmt::Unary { op, rhs } => self.compile_unary(ctx, block, op, rhs),
-            ExprStmt::Call { calle, args } => self.compile_call(ctx, block, calle, args),
+            ExprStmt::BinOp { lhs, op, rhs } => self.compile_binop(block, lhs, op, rhs),
+            ExprStmt::Logical { lhs, op, rhs } => self.compile_logical(block, lhs, op, rhs),
+            ExprStmt::Unary { op, rhs } => self.compile_unary(block, op, rhs),
+            ExprStmt::Call { calle, args } => self.compile_call(block, calle, args),
             ExprStmt::Index { name: _, pos: _ } => unimplemented!("Indexing not implemented"),
         }
     }
 
-    fn compile_logical(
-        &self,
-        ctx: &'ctx Context,
-        block: &'this Block<'ctx>,
+    fn compile_logical<'ctx, 'func>(
+        &'func self,
+        block: &'func Block<'ctx>,
         lhs: &ExprStmt,
         op: &Token,
         rhs: &ExprStmt,
-    ) -> Result<Value<'ctx, 'this>, CodegenError> {
-        let location = Location::unknown(ctx);
+    ) -> Result<Value<'ctx, 'func>, CodegenError>
+    where
+        'func: 'ctx,
+    {
+        let location = Location::unknown(self.ctx);
 
-        let lhs_val = self.compile_expression(ctx, block, lhs)?;
-        let rhs_val = self.compile_expression(ctx, block, rhs)?;
+        let lhs_val = self.compile_expression(block, lhs)?;
+        let rhs_val = self.compile_expression(block, rhs)?;
 
         Ok(match op {
             Token::And => block.andi(lhs_val, rhs_val, location)?,
@@ -64,31 +64,33 @@ where
         })
     }
 
-    fn compile_binop(
-        &self,
-        ctx: &'ctx Context,
-        block: &'this Block<'ctx>,
+    fn compile_binop<'ctx, 'func>(
+        &'func self,
+        block: &'func Block<'ctx>,
         lhs: &ExprStmt,
         op: &Token,
         rhs: &ExprStmt,
-    ) -> Result<Value<'ctx, 'this>, CodegenError> {
-        let location = Location::unknown(ctx);
+    ) -> Result<Value<'ctx, 'func>, CodegenError>
+    where
+        'func: 'ctx,
+    {
+        let location = Location::unknown(self.ctx);
 
-        let lhs_val = self.compile_expression(ctx, block, lhs)?;
-        let rhs_val = self.compile_expression(ctx, block, rhs)?;
+        let lhs_val = self.compile_expression(block, lhs)?;
+        let rhs_val = self.compile_expression(block, rhs)?;
 
         Ok(match op {
             Token::EqEq => {
-                let val = block.cmpi(ctx, CmpiPredicate::Eq, lhs_val, rhs_val, location)?;
+                let val = block.cmpi(self.ctx, CmpiPredicate::Eq, lhs_val, rhs_val, location)?;
                 block.extui(val, lhs_val.r#type(), location)?
             }
             Token::BangEq => {
-                let val = block.cmpi(ctx, CmpiPredicate::Ne, lhs_val, rhs_val, location)?;
+                let val = block.cmpi(self.ctx, CmpiPredicate::Ne, lhs_val, rhs_val, location)?;
                 block.extui(val, lhs_val.r#type(), location)?
             }
             Token::Less => {
                 let val = block.cmpi(
-                    ctx,
+                    self.ctx,
                     // For now only positive numbers.
                     if false {
                         CmpiPredicate::Slt
@@ -103,7 +105,7 @@ where
             }
             Token::EqLess => {
                 let val = block.cmpi(
-                    ctx,
+                    self.ctx,
                     if false {
                         CmpiPredicate::Sle
                     } else {
@@ -117,7 +119,7 @@ where
             }
             Token::Greater => {
                 let val = block.cmpi(
-                    ctx,
+                    self.ctx,
                     if false {
                         CmpiPredicate::Sgt
                     } else {
@@ -131,7 +133,7 @@ where
             }
             Token::EqGrater => {
                 let val = block.cmpi(
-                    ctx,
+                    self.ctx,
                     if false {
                         CmpiPredicate::Sge
                     } else {
@@ -162,23 +164,26 @@ where
         })
     }
 
-    fn compile_unary(
-        &self,
-        ctx: &'ctx Context,
-        block: &'this Block<'ctx>,
+    fn compile_unary<'func, 'ctx>(
+        &'func self,
+        block: &'func Block<'ctx>,
         op: &Token,
         rhs: &ExprStmt,
-    ) -> Result<Value<'ctx, 'this>, CodegenError> {
-        let location = Location::unknown(ctx);
-        let rhs_val = self.compile_expression(ctx, block, rhs)?;
+    ) -> Result<Value<'ctx, 'func>, CodegenError>
+    where
+        'func: 'ctx,
+    {
+        let location = Location::unknown(self.ctx);
+        let rhs_val = self.compile_expression(block, rhs)?;
 
         Ok(match op {
             Token::Bang => {
-                let k0 = block.const_int_from_type(ctx, location, 0, rhs_val.r#type())?;
+                let k0 = block.const_int_from_type(self.ctx, location, 0, rhs_val.r#type())?;
                 block.andi(k0, rhs_val, location)?
             }
             Token::Minus => {
-                let k_neg_1 = block.const_int_from_type(ctx, location, -1, rhs_val.r#type())?;
+                let k_neg_1 =
+                    block.const_int_from_type(self.ctx, location, -1, rhs_val.r#type())?;
                 block.muli(k_neg_1, rhs_val, location)?
             }
             _ => {
@@ -190,44 +195,48 @@ where
         })
     }
 
-    fn compile_call(
-        &self,
-        ctx: &'ctx Context,
-        block: &'this Block<'ctx>,
+    fn compile_call<'ctx, 'func>(
+        &'func self,
+        block: &'func Block<'ctx>,
         calle: &str,
         args: &[ExprStmt],
-    ) -> Result<Value<'ctx, 'this>, CodegenError> {
-        let location = Location::unknown(ctx);
+    ) -> Result<Value<'ctx, 'func>, CodegenError>
+    where
+        'func: 'ctx,
+    {
+        let location = Location::unknown(self.ctx);
         let args = args
             .iter()
-            .map(|arg| self.compile_expression(ctx, block, arg))
+            .map(|arg| self.compile_expression(block, arg))
             .collect::<Result<Vec<Value>, _>>()?;
 
         Ok(block.append_op_result(func::call(
-            ctx,
-            FlatSymbolRefAttribute::new(ctx, &format!("mathic__{}", calle)),
+            self.ctx,
+            FlatSymbolRefAttribute::new(self.ctx, &format!("mathic__{}", calle)),
             &args,
-            &[IntegerType::new(ctx, 64).into()],
+            &[IntegerType::new(self.ctx, 64).into()],
             location,
         ))?)
     }
 
-    fn compile_primary(
-        &self,
-        ctx: &'ctx Context,
-        block: &'this Block<'ctx>,
+    fn compile_primary<'ctx, 'func>(
+        &'func self,
+        block: &'func Block<'ctx>,
         expr: &PrimaryExpr,
-    ) -> Result<Value<'ctx, 'this>, CodegenError> {
-        let location = Location::unknown(ctx);
+    ) -> Result<Value<'ctx, 'func>, CodegenError>
+    where
+        'func: 'ctx,
+    {
+        let location = Location::unknown(self.ctx);
 
         match expr {
             PrimaryExpr::Ident(_token) => unimplemented!("Identifier lookup not implemented"),
             PrimaryExpr::Num(val) => {
                 let parsed_val: u64 = val.parse()?;
-                Ok(block.const_int(ctx, location, parsed_val, 64)?)
+                Ok(block.const_int(self.ctx, location, parsed_val, 64)?)
             }
             PrimaryExpr::Str(_) => unimplemented!("String literals not implemented"),
-            PrimaryExpr::Bool(val) => Ok(block.const_int(ctx, location, *val as u8, 64)?),
+            PrimaryExpr::Bool(val) => Ok(block.const_int(self.ctx, location, *val as u8, 64)?),
         }
     }
 }

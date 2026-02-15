@@ -2,18 +2,136 @@ use std::{
     ffi::CStr,
     mem::MaybeUninit,
     ptr::{addr_of_mut, null_mut},
+    sync::OnceLock,
 };
 
 use llvm_sys::{
     core::LLVMDisposeMessage,
+    target::{
+        LLVM_InitializeAllAsmPrinters, LLVM_InitializeAllTargetInfos, LLVM_InitializeAllTargetMCs,
+        LLVM_InitializeAllTargets,
+    },
     target_machine::{
         LLVMCodeGenOptLevel, LLVMCodeModel, LLVMCreateTargetMachine, LLVMGetDefaultTargetTriple,
         LLVMGetHostCPUFeatures, LLVMGetHostCPUName, LLVMGetTargetFromTriple, LLVMRelocMode,
         LLVMTargetRef,
     },
 };
+use melior::{
+    Context,
+    dialect::DialectRegistry,
+    ir::{
+        Attribute, AttributeLike, Block, Identifier, Location, Module, Region, RegionLike,
+        attribute::StringAttribute, operation::OperationBuilder,
+    },
+    utility::{register_all_dialects, register_all_llvm_translations, register_all_passes},
+};
+use mlir_sys::{
+    MlirLLVMDIEmissionKind_MlirLLVMDIEmissionKindFull,
+    MlirLLVMDINameTableKind_MlirLLVMDINameTableKindDefault, mlirDisctinctAttrCreate,
+    mlirLLVMDICompileUnitAttrGet, mlirLLVMDIFileAttrGet, mlirLLVMDIModuleAttrGet,
+};
 
-use crate::codegen::error::CodegenError;
+use crate::{codegen::error::CodegenError, compiler::OptLvl};
+
+pub fn create_module<'ctx>(
+    ctx: &'ctx Context,
+    opt_lvl: OptLvl,
+) -> Result<Module<'ctx>, CodegenError> {
+    static INITIALIZED: OnceLock<()> = OnceLock::new();
+
+    INITIALIZED.get_or_init(|| unsafe {
+        LLVM_InitializeAllTargets();
+        LLVM_InitializeAllTargetInfos();
+        LLVM_InitializeAllTargetMCs();
+        LLVM_InitializeAllAsmPrinters();
+    });
+
+    let target_triple = get_target_triple();
+
+    let module_region = Region::new();
+    module_region.append_block(Block::new(&[]));
+
+    let data_layout_ret = &get_data_layout_rep(opt_lvl)?;
+
+    let di_unit_id = unsafe {
+        let id = StringAttribute::new(ctx, "compile_unit_id").to_raw();
+        mlirDisctinctAttrCreate(id)
+    };
+
+    let op = OperationBuilder::new(
+        "builtin.module",
+        Location::fused(ctx, &[Location::new(ctx, "program.mth", 0, 0)], {
+            let file_attr = unsafe {
+                Attribute::from_raw(mlirLLVMDIFileAttrGet(
+                    ctx.to_raw(),
+                    StringAttribute::new(ctx, "program.mth").to_raw(),
+                    StringAttribute::new(ctx, "").to_raw(),
+                ))
+            };
+            unsafe {
+                let di_unit = mlirLLVMDICompileUnitAttrGet(
+                    ctx.to_raw(),
+                    di_unit_id,
+                    0x1c, // rust
+                    file_attr.to_raw(),
+                    StringAttribute::new(ctx, "mathic").to_raw(),
+                    false,
+                    MlirLLVMDIEmissionKind_MlirLLVMDIEmissionKindFull,
+                    MlirLLVMDINameTableKind_MlirLLVMDINameTableKindDefault,
+                );
+
+                let di_module = mlirLLVMDIModuleAttrGet(
+                    ctx.to_raw(),
+                    file_attr.to_raw(),
+                    di_unit,
+                    StringAttribute::new(ctx, "LLVMDialectModule").to_raw(),
+                    StringAttribute::new(ctx, "").to_raw(),
+                    StringAttribute::new(ctx, "").to_raw(),
+                    StringAttribute::new(ctx, "").to_raw(),
+                    0,
+                    false,
+                );
+
+                Attribute::from_raw(di_module)
+            }
+        }),
+    )
+    .add_attributes(&[
+        (
+            Identifier::new(ctx, "llvm.target_triple"),
+            StringAttribute::new(ctx, &target_triple).into(),
+        ),
+        (
+            Identifier::new(ctx, "llvm.data_layout"),
+            StringAttribute::new(ctx, data_layout_ret).into(),
+        ),
+    ])
+    .add_regions([module_region])
+    .build()?;
+
+    Module::from_operation(op).ok_or(CodegenError::Custom("Could not create module".to_string()))
+}
+
+pub fn create_context() -> Result<Context, CodegenError> {
+    let ctx = Context::new();
+
+    ctx.append_dialect_registry(&create_dialect_registry());
+    ctx.load_all_available_dialects();
+
+    register_all_passes();
+    register_all_llvm_translations(&ctx);
+
+    Ok(ctx)
+}
+
+fn create_dialect_registry() -> DialectRegistry {
+    let registry = DialectRegistry::new();
+
+    register_all_dialects(&registry);
+
+    registry
+}
 
 /// Gets the target triple, which identifies the platform and ABI.
 pub fn get_target_triple() -> String {
@@ -26,7 +144,7 @@ pub fn get_target_triple() -> String {
 /// Gets the data layout reprrsentation as a string, to be given to the MLIR module.
 /// LLVM uses this to know the proper alignments for the given sizes, etc.
 /// This function gets the data layout of the host target triple.
-pub fn get_data_layout_rep() -> Result<String, CodegenError> {
+pub fn get_data_layout_rep(opt_lvl: OptLvl) -> Result<String, CodegenError> {
     unsafe {
         let mut null = null_mut();
         let error_buffer = addr_of_mut!(null);
@@ -56,7 +174,12 @@ pub fn get_data_layout_rep() -> Result<String, CodegenError> {
             target_triple.cast(),
             target_cpu.cast(),
             target_cpu_features.cast(),
-            LLVMCodeGenOptLevel::LLVMCodeGenLevelNone,
+            match opt_lvl {
+                OptLvl::None => LLVMCodeGenOptLevel::LLVMCodeGenLevelNone,
+                OptLvl::O1 => LLVMCodeGenOptLevel::LLVMCodeGenLevelLess,
+                OptLvl::O2 => LLVMCodeGenOptLevel::LLVMCodeGenLevelDefault,
+                OptLvl::O3 => LLVMCodeGenOptLevel::LLVMCodeGenLevelAggressive,
+            },
             LLVMRelocMode::LLVMRelocDynamicNoPic,
             LLVMCodeModel::LLVMCodeModelDefault,
         );
