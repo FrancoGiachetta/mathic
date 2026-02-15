@@ -1,4 +1,5 @@
 use crate::parser::{
+    MathicParser, ParserResult,
     ast::{
         declaration::DeclStmt,
         expression::ExprStmt,
@@ -6,7 +7,6 @@ use crate::parser::{
     },
     error::{ParseError, SyntaxError},
     token::Token,
-    MathicParser, ParserResult,
 };
 
 impl<'a> MathicParser<'a> {

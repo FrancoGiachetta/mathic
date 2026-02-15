@@ -2,12 +2,12 @@ use melior::{
     dialect::{arith::CmpiPredicate, func},
     helpers::{ArithBlockExt, BuiltinBlockExt, LlvmBlockExt},
     ir::{
-        attribute::FlatSymbolRefAttribute, r#type::IntegerType, Block, Location, Value, ValueLike,
+        Block, Location, Value, ValueLike, attribute::FlatSymbolRefAttribute, r#type::IntegerType,
     },
 };
 
 use crate::{
-    codegen::{error::CodegenError, MathicCodeGen},
+    codegen::{MathicCodeGen, error::CodegenError},
     parser::{
         ast::expression::{ExprStmt, PrimaryExpr},
         token::Token,
