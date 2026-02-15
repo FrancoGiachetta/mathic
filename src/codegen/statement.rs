@@ -1,5 +1,4 @@
 use melior::{
-    Context,
     dialect::func,
     ir::{Block, BlockLike, Location},
 };
@@ -9,50 +8,33 @@ use crate::{
     parser::ast::statement::{ReturnStmt, Stmt},
 };
 
-impl<'this, 'ctx> MathicCodeGen<'this, 'ctx>
-where
-    'this: 'ctx,
-{
-    pub fn compile_statement(
-        &self,
-        ctx: &'ctx Context,
-        block: &'this Block<'ctx>,
-        stmt: &Stmt,
-    ) -> Result<(), CodegenError> {
+impl MathicCodeGen {
+    pub fn compile_statement(&self, block: &Block, stmt: &Stmt) -> Result<(), CodegenError> {
         match stmt {
             Stmt::Decl(_decl_stmt) => unimplemented!("Declaration not implemented"),
             Stmt::Block(_block_stmt) => unimplemented!("Block statement not implemented"),
-            Stmt::If(if_stmt) => self.compile_if(ctx, block, if_stmt),
-            Stmt::While(while_stmt) => self.compile_while(ctx, block, while_stmt),
-            Stmt::For(for_stmt) => self.compile_for(ctx, block, for_stmt),
-            Stmt::Return(return_stmt) => self.compile_return(ctx, block, return_stmt),
+            Stmt::If(if_stmt) => self.compile_if(block, if_stmt),
+            Stmt::While(while_stmt) => self.compile_while(block, while_stmt),
+            Stmt::For(for_stmt) => self.compile_for(block, for_stmt),
+            Stmt::Return(return_stmt) => self.compile_return(block, return_stmt),
             Stmt::Expr(_expr_stmt) => unimplemented!("Expression statement not implemented"),
         }
     }
 
-    pub fn compile_block(
-        &self,
-        ctx: &'ctx Context,
-        block: &'this Block<'ctx>,
-        stmts: &[Stmt],
-    ) -> Result<(), CodegenError> {
+    pub fn compile_block(&self, block: &Block, stmts: &[Stmt]) -> Result<(), CodegenError> {
         for stmt in stmts {
-            self.compile_statement(ctx, block, stmt)?;
+            self.compile_statement(block, stmt)?;
         }
 
         Ok(())
     }
 
-    fn compile_return(
-        &self,
-        ctx: &'ctx Context,
-        block: &'this Block<'ctx>,
-        return_stmt: &ReturnStmt,
-    ) -> Result<(), CodegenError> {
-        let value = self.compile_expression(ctx, block, &return_stmt.value)?;
-        let location = Location::unknown(ctx);
+    fn compile_return(&self, block: &Block, return_stmt: &ReturnStmt) -> Result<(), CodegenError> {
+        let value = self.compile_expression(block, &return_stmt.value)?;
+        let location = Location::unknown(&self.ctx);
 
         block.append_operation(func::r#return(&[value], location));
+
         Ok(())
     }
 }
