@@ -1,6 +1,6 @@
 use melior::{
     dialect::{arith::CmpiPredicate, func},
-    helpers::{ArithBlockExt, BuiltinBlockExt},
+    helpers::{ArithBlockExt, BuiltinBlockExt, LlvmBlockExt},
     ir::{
         Block, Location, Value, ValueLike, attribute::FlatSymbolRefAttribute, r#type::IntegerType,
     },
@@ -26,9 +26,6 @@ impl MathicCodeGen<'_> {
         match expr {
             ExprStmt::Primary(primary_expr) => self.compile_primary(block, primary_expr),
             ExprStmt::Group(expr) => self.compile_expression(block, expr),
-            ExprStmt::Assign { name: _, value: _ } => {
-                unimplemented!("Assignment not implemented");
-            }
             ExprStmt::BinOp { lhs, op, rhs } => self.compile_binop(block, lhs, op, rhs),
             ExprStmt::Logical { lhs, op, rhs } => self.compile_logical(block, lhs, op, rhs),
             ExprStmt::Unary { op, rhs } => self.compile_unary(block, op, rhs),
@@ -230,7 +227,16 @@ impl MathicCodeGen<'_> {
         let location = Location::unknown(self.ctx);
 
         match expr {
-            PrimaryExpr::Ident(_token) => unimplemented!("Identifier lookup not implemented"),
+            PrimaryExpr::Ident(name) => {
+                let ptr = self.get_sym(name)?;
+
+                Ok(block.load(
+                    self.ctx,
+                    location,
+                    ptr,
+                    IntegerType::new(self.ctx, 64).into(),
+                )?)
+            }
             PrimaryExpr::Num(val) => {
                 let parsed_val: u64 = val.parse()?;
                 Ok(block.const_int(self.ctx, location, parsed_val, 64)?)

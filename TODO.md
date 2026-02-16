@@ -57,6 +57,39 @@ df main() {
 
 ---
 
+### Codegen: Return Statements in Control Flow Blocks
+
+Return statements inside `if`, `for`, and `while` blocks are not supported. The issue stems from how MLIR regions and the `func` dialect work:
+
+**Problem:**
+- Control flow statements (`if`, `for`, `while`) use MLIR regions with new blocks
+- The `func.return` operation requires its parent operation to be `func.func`
+- When a return is inside a nested block (within a region), it's not a direct child of `func.func`
+- Current codegen doesn't handle this parent operation requirement
+
+**Example that fails:**
+```mathic
+df main() {
+    if (condition) {
+        return 42;  // ERROR: func.return not inside func.func
+    }
+    return 0;
+}
+```
+
+**Possible Solutions:**
+1. Use `scf.execute_region` to isolate control flow regions and handle returns via control flow
+2. Transform early returns into structured control flow by lifting returns to the function level
+3. Use branch operations to jump to a single return point at function end
+4. Create a custom return operation that can be lowered appropriately based on context
+
+**Related MLIR Concepts:**
+- `scf.if`, `scf.for`, `scf.while` operations with regions
+- `func.return` parent operation requirement
+- Block arguments and dominance
+
+---
+
 ## TODOs
 
 ### Symbolic System (Core Feature)

@@ -2,7 +2,8 @@ use crate::parser::{
     MathicParser, ParserResult,
     ast::{
         declaration::DeclStmt,
-        statement::{BlockStmt, ReturnStmt, Stmt},
+        expression::ExprStmt,
+        statement::{BlockStmt, Stmt},
     },
     error::{ParseError, SyntaxError},
     token::Token,
@@ -18,15 +19,17 @@ impl<'a> MathicParser<'a> {
         };
 
         Ok(match lookahead.token {
-            Token::Df => Stmt::Decl(DeclStmt::FuncDeclStmt(self.parse_func()?)),
+            Token::Df => Stmt::Decl(DeclStmt::Func(self.parse_func()?)),
             Token::If => Stmt::If(self.parse_if_stmt()?),
             Token::While => Stmt::While(self.parse_while_stmt()?),
             Token::For => Stmt::For(self.parse_for_stmt()?),
-            Token::Struct | Token::Let | Token::Sym => {
+            Token::Let => Stmt::Decl(DeclStmt::Var(self.parse_var_decl()?)),
+            Token::Struct | Token::Sym => {
                 todo!()
             }
             Token::Return => Stmt::Return(self.parse_return()?),
             Token::LBrace => Stmt::Block(self.parse_block()?),
+            Token::Ident => self.parse_assignment_stmt()?,
             _ => {
                 return Err(ParseError::Syntax(SyntaxError::UnexpectedToken {
                     found: lookahead.into(),
@@ -50,13 +53,26 @@ impl<'a> MathicParser<'a> {
         Ok(BlockStmt { stmts })
     }
 
-    pub fn parse_return(&self) -> ParserResult<ReturnStmt> {
+    pub fn parse_return(&self) -> ParserResult<ExprStmt> {
         self.next()?; // Consume Return;
 
         let value = self.parse_expr()?;
 
         self.consume_token(Token::Semicolon)?;
 
-        Ok(ReturnStmt { value })
+        Ok(value)
+    }
+
+    fn parse_assignment_stmt(&self) -> ParserResult<Stmt> {
+        let ident = self.consume_token(Token::Ident)?;
+        let name = ident.lexeme.to_string();
+
+        self.consume_token(Token::Eq)?;
+
+        let value = self.parse_expr()?;
+
+        self.consume_token(Token::Semicolon)?;
+
+        Ok(Stmt::Assign { name, value })
     }
 }

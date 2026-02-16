@@ -8,6 +8,8 @@ pub enum CodegenError {
     MissingMainFunction,
     #[error("Invalid operation: {0}")]
     InvalidOperation(String),
+    #[error("Identifier with name: {0}, was not found in the symbol table")]
+    IdentifierNotFound(String),
     #[error(transparent)]
     MeliorError(#[from] melior::Error),
     #[error("LLVM error: {0}")]

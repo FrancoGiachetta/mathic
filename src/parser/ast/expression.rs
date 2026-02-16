@@ -4,10 +4,6 @@ use crate::parser::token::Token;
 #[allow(dead_code)]
 pub enum ExprStmt {
     Primary(PrimaryExpr),
-    Assign {
-        name: Token,
-        value: Box<Self>,
-    },
     BinOp {
         lhs: Box<Self>,
         op: Token,

@@ -7,7 +7,6 @@ use crate::parser::{
 
 impl<'a> MathicParser<'a> {
     pub fn parse_expr(&self) -> ParserResult<ExprStmt> {
-        // For now, we skip assignment and go directly to logical_or
         self.parse_logic_or()
     }
 
@@ -157,12 +156,8 @@ impl<'a> MathicParser<'a> {
     }
 
     fn parse_primary_expr(&self) -> ParserResult<ExprStmt> {
-        let Ok(Some(lookahead)) = self.next() else {
-            return Err(ParseError::Syntax(SyntaxError::UnexpectedEnd {
-                expected: "expression".to_string(),
-                span: self.current_span(),
-            }));
-        };
+        // Safe to do since this check is done in parse_expr.
+        let lookahead = self.next()?.expect("Should be a token");
 
         let expr = match lookahead.token {
             Token::Num => ExprStmt::Primary(PrimaryExpr::Num(lookahead.lexeme.to_string())),
