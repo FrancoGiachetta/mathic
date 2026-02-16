@@ -30,7 +30,7 @@ impl MathicCodeGen<'_> {
         Ok(())
     }
 
-    fn compile_return(&self, block: &Block, expr: &ExprStmt) -> Result<(), CodegenError> {
+    pub fn compile_return(&self, block: &Block, expr: &ExprStmt) -> Result<(), CodegenError> {
         let value = self.compile_expression(block, expr)?;
         let location = Location::unknown(self.ctx);
 
