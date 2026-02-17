@@ -9,7 +9,7 @@
              | <while_stmt>
              | <if_stmt>
              | <return_stmt>
-             | <assignment_stmt>
+             | <expr_stmt>
              | <block>
 
 ==== DECLARATIONS ====
@@ -30,13 +30,14 @@
                | "for" <ident> "in" <expr> <block>
 <while_stmt>  := "while" <expr> <block>
 <if_stmt>     := "if" <expr> <block> ("else" <block>)?
-<return_stmt>     := "return" <expr> ";"
-<assignment_stmt> := <ident> "=" <expr> ";"
-<block>           := "{" <statement>* "}"
+<return_stmt> := "return" <expr> ";"
+<block>       := "{" <statement>* "}"
+<expr_stmt>  := <expr> ";"
 
 ==== EXPRESSIONS ====
 
-<expr> := <logic_or>
+<expr>       := <assignment>
+<assignment> := <ident> "=" <logic_or> | <logic_or>
 <logic_or>   := <logic_and> ("or" <logic_and>)*
 <logic_and>  := <equality> ("and" <equality>)*
 <equality>   := <inequality> (("==" | "!=") <inequality>)*

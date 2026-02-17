@@ -29,13 +29,7 @@ impl<'a> MathicParser<'a> {
             }
             Token::Return => Stmt::Return(self.parse_return()?),
             Token::LBrace => Stmt::Block(self.parse_block()?),
-            Token::Ident => self.parse_assignment_stmt()?,
-            _ => {
-                return Err(ParseError::Syntax(SyntaxError::UnexpectedToken {
-                    found: lookahead.into(),
-                    expected: "statement".to_string(),
-                }));
-            }
+            _ => self.parse_expr_stmt()?,
         })
     }
 
@@ -63,16 +57,9 @@ impl<'a> MathicParser<'a> {
         Ok(value)
     }
 
-    fn parse_assignment_stmt(&self) -> ParserResult<Stmt> {
-        let ident = self.consume_token(Token::Ident)?;
-        let name = ident.lexeme.to_string();
-
-        self.consume_token(Token::Eq)?;
-
-        let value = self.parse_expr()?;
-
+    fn parse_expr_stmt(&self) -> ParserResult<Stmt> {
+        let expr = self.parse_expr()?;
         self.consume_token(Token::Semicolon)?;
-
-        Ok(Stmt::Assign { name, value })
+        Ok(Stmt::Expr(expr))
     }
 }

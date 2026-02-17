@@ -7,7 +7,32 @@ use crate::parser::{
 
 impl<'a> MathicParser<'a> {
     pub fn parse_expr(&self) -> ParserResult<ExprStmt> {
-        self.parse_logic_or()
+        self.parse_assignment()
+    }
+
+    fn parse_assignment(&self) -> ParserResult<ExprStmt> {
+        let Some(lookeahead) = self.peek()? else {
+            return Err(ParseError::Syntax(SyntaxError::UnexpectedEnd {
+                expected: "expression".to_string(),
+                span: self.current_span(),
+            }));
+        };
+        let expr = self.parse_logic_or()?;
+
+        if self.match_token(Token::Eq)?.is_some() {
+            let ExprStmt::Primary(PrimaryExpr::Ident(name)) = expr else {
+                return Err(ParseError::Syntax(SyntaxError::UnexpectedToken {
+                    found: lookeahead.into(),
+                    expected: "identifier".to_string(),
+                }));
+            };
+
+            let expr = Box::new(self.parse_logic_or()?);
+
+            return Ok(ExprStmt::Assign { name, expr });
+        }
+
+        Ok(expr)
     }
 
     fn parse_logic_or(&self) -> ParserResult<ExprStmt> {
@@ -121,7 +146,12 @@ impl<'a> MathicParser<'a> {
     }
 
     fn parse_call(&self) -> ParserResult<ExprStmt> {
-        let lookahead = self.peek()?;
+        let Some(lookahead) = self.peek()? else {
+            return Err(ParseError::Syntax(SyntaxError::UnexpectedEnd {
+                expected: "expression".to_string(),
+                span: self.current_span(),
+            }));
+        };
         let mut expr = self.parse_primary_expr()?;
 
         while self.match_token(Token::LParen)?.is_some() {
@@ -146,7 +176,7 @@ impl<'a> MathicParser<'a> {
                 // Safe to unwrap because its the first lookhead token. if it
                 // weren't there, there would be an error before.
                 return Err(ParseError::Syntax(SyntaxError::UnexpectedToken {
-                    found: lookahead.unwrap().into(),
+                    found: lookahead.into(),
                     expected: "identifier".to_string(),
                 }));
             }

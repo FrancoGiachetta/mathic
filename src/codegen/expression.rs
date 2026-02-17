@@ -31,7 +31,26 @@ impl MathicCodeGen<'_> {
             ExprStmt::Unary { op, rhs } => self.compile_unary(block, op, rhs),
             ExprStmt::Call { calle, args } => self.compile_call(block, calle, args),
             ExprStmt::Index { name: _, pos: _ } => unimplemented!("Indexing not implemented"),
+            ExprStmt::Assign { name, expr } => self.compile_assign(block, name, expr),
         }
+    }
+
+    fn compile_assign<'ctx, 'func>(
+        &'func self,
+        block: &'func Block<'ctx>,
+        name: &str,
+        expr: &ExprStmt,
+    ) -> Result<Value<'ctx, 'func>, CodegenError>
+    where
+        'func: 'ctx,
+    {
+        let location = Location::unknown(self.ctx);
+        let value = self.compile_expression(block, expr)?;
+        let ptr = self.get_sym(name)?;
+
+        block.store(self.ctx, location, ptr, value)?;
+
+        Ok(value)
     }
 
     fn compile_logical<'ctx, 'func>(
