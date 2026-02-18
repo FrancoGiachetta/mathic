@@ -41,6 +41,22 @@ There are many ways of installing LLVM. The most common one is by building it fr
    ninja install
    ```
 
+## 🚀 Usage
+
+Before building or running the compiler, you need to export the required environment variables:
+
+```sh
+export LLVM_SYS_211_PREFIX=<path-to-llvm-build>
+export MLIR_SYS_210_PREFIX=<path-to-llvm-build>
+export TABLEGEN_210_PREFIX=<path-to-llvm-build>
+```
+
+After that, you can run the compiler:
+
+```bash
+cargo --bin euler -- <path-to-file>.mth 
+```
+
 ## 📖 Current Status
 
 > ⚠️ **Note**: This project is in early development. Features are being added incrementally.
@@ -100,7 +116,7 @@ src/
 ```mermaid
 flowchart TD
     subgraph Frontend["📝 Frontend"]
-        Source[Source Code<br/>.mathic]
+        Source[Source Code<br/>.mth]
         Source --> Parser[Parser]
         Parser --> AST[AST]
     end
