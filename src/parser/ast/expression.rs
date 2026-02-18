@@ -27,6 +27,10 @@ pub enum ExprStmt {
         op: Token,
         rhs: Box<Self>,
     },
+    Assign {
+        name: String,
+        expr: Box<Self>,
+    },
 }
 
 #[derive(Debug, PartialEq, Eq)]

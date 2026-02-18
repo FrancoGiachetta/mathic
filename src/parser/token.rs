@@ -6,7 +6,7 @@ use crate::parser::error::LexError;
 #[logos(error(LexError, LexError::from_lexer))]
 #[logos(skip r"[ \t\r\n\f]+", skip r"//[^/\n]*", skip r"\/\*(.|\n)*\*\/")]
 pub enum Token {
-    // Single char
+    // Single char.
     #[token("(")]
     LParen,
     #[token(")")]
@@ -44,7 +44,7 @@ pub enum Token {
     #[token("/")]
     Slash,
 
-    // Multi char
+    // Multi char.
     #[token("<=")]
     EqLess,
     #[token(">=")]
@@ -54,7 +54,7 @@ pub enum Token {
     #[token("!=")]
     BangEq,
 
-    // Keywords
+    // Keywords.
     #[token("if")]
     If,
     #[token("else")]
@@ -82,11 +82,11 @@ pub enum Token {
     #[token("false")]
     False,
 
-    // Literals
+    // Literals.
     #[regex(r#""[^"]*""#)]
     Str,
     #[regex(r"(?:0|[1-9]\d*)(?:\.\d+)?")]
     Num,
-    #[regex(r"[[:alpha:]][[:alnum:]]*")]
+    #[regex(r"[\p{XID_Start}_]\p{XID_Continue}*")] // Allow for Unicode characters.
     Ident,
 }
