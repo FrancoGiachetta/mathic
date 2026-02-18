@@ -5,7 +5,6 @@ use crate::parser::ast::{
 };
 
 #[derive(Debug, PartialEq, Eq)]
-#[allow(dead_code)]
 pub enum Stmt {
     Decl(DeclStmt),
     Block(BlockStmt),

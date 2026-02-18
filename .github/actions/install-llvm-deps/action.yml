@@ -6,7 +6,7 @@ runs:
     - name: Add LLVM Debian repository
       uses: myci-actions/add-deb-repo@11
       with:
-        repo: deb http://apt.llvm.org/jammy/ llvm-toolchain-jammy-21 main
+        repo: deb http://apt.llvm.org/noble/ llvm-toolchain-noble-21 main
         repo-name: llvm-repo
         keys-asc: https://apt.llvm.org/llvm-snapshot.gpg.key
     - name: Update and upgrade APT

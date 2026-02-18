@@ -7,6 +7,9 @@ on:
   merge_group:
     types: [checks_requested]
 
+permissions:
+  contents: read
+
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: ${{ github.ref != 'refs/heads/main' }}
@@ -66,9 +69,6 @@ jobs:
       with:
         components: rustfmt
     
-    - name: Rust Cache
-      uses: Swatinem/rust-cache@v2
-    
     - name: Check formatting
       run: cargo fmt --all -- --check
 
@@ -81,11 +81,11 @@ jobs:
     - name: Install Rust
       uses: dtolnay/rust-toolchain@1.93.0
     
-    - name: Rust Cache
-      uses: Swatinem/rust-cache@v2
+    - name: Install cargo-binstall
+      uses: cargo-bins/cargo-binstall@main
     
     - name: Install cargo-machete
-      run: cargo install cargo-machete
+      run: cargo binstall cargo-machete
     
     - name: Check for unused dependencies
       run: cargo machete
