@@ -1,13 +1,19 @@
-def main() {
-	fib(10);
+df main() {
+	return fib(10);
 }
 
-def fib(number) {
+df fib(number) {
+	let val = 0;
+
 	if (number <= 0) {
-		return 0;
-	} else if (number == 1) {
-		return 1;
+		val = 0;
+	} else {
+		if (number == 1) {
+			val = 1;
+		} else {
+			val = fib(number - 1) + fib(number - 2);
+		}
 	}
 
-	return fib(number - 1) + fib(number - 2);
+	return val;
 }

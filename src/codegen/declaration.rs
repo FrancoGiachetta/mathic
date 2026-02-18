@@ -1,6 +1,6 @@
 use melior::{
     dialect::func,
-    helpers::LlvmBlockExt,
+    helpers::{BuiltinBlockExt, LlvmBlockExt},
     ir::{
         Block, BlockLike, Location, Region, RegionLike, ValueLike,
         attribute::{StringAttribute, TypeAttribute},
@@ -48,24 +48,38 @@ impl MathicCodeGen<'_> {
     }
 
     pub fn compile_function(&self, block: &Block, func: &FuncDecl) -> Result<(), CodegenError> {
-        // let params = vec![];
+        let location = Location::unknown(self.ctx);
+        let i64_type = IntegerType::new(self.ctx, 64).into();
+
+        let mut params_types = Vec::with_capacity(func.params.len());
+        let mut block_params = Vec::with_capacity(func.params.len());
+
+        for _ in func.params.iter() {
+            params_types.push(IntegerType::new(self.ctx, 64).into());
+            block_params.push((IntegerType::new(self.ctx, 64).into(), location));
+        }
 
         let region = Region::new();
-        let inner_block = region.append_block(Block::new(&[]));
+        let inner_block = region.append_block(Block::new(&block_params));
+
+        // Allocate space for parameters and make them visible to the function
+        for (i, param) in func.params.iter().enumerate() {
+            let value = inner_block.arg(i)?;
+            let ptr = inner_block.alloca1(self.ctx, location, params_types[i], 8)?;
+
+            inner_block.store(self.ctx, location, ptr, value)?;
+
+            self.define_sym(param.name.to_string(), ptr);
+        }
 
         for stmt in func.body.iter() {
             self.compile_statement(&inner_block, stmt)?;
-
-            dbg!("STMT");
         }
-
-        let location = Location::unknown(self.ctx);
-        let i64_type = IntegerType::new(self.ctx, 64).into();
 
         block.append_operation(func::func(
             self.ctx,
             StringAttribute::new(self.ctx, &format!("mathic__{}", func.name)),
-            TypeAttribute::new(FunctionType::new(self.ctx, &[], &[i64_type]).into()),
+            TypeAttribute::new(FunctionType::new(self.ctx, &params_types, &[i64_type]).into()),
             region,
             &[],
             location,
