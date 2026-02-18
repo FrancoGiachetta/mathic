@@ -13,7 +13,7 @@
 
 ### LLVM/MLIR Installation
 
-There are many was of installing LLVM. The most commong one it by building it from source.
+There are many ways of installing LLVM. The most common one is by building it from source.
 
 1. **Clone LLVM Project**
    ```bash
@@ -70,19 +70,6 @@ There are many was of installing LLVM. The most commong one it by building it fr
 - ✅ **Function calls**
 - ✅ **Parenthesized expressions**
 
-### ⚙️ Code Generation Infrastructure
-
-#### Backend Components
-- ✅ **MLIR context and module setup**
-- ✅ **Dialect registry configuration**
-- ✅ **Expression compilation** (arithmetic, logical, comparisons)
-- ✅ **Return statement compilation**
-- ✅ **Control flow codegen** (if, while, for)
-- ✅ **Statement compilation** (blocks, declarations, assignments)
-- ✅ **Variable allocation** (stack allocation with `alloca`)
-- ✅ **Symbol table** (for variable scoping)
-- ✅ **Function calls** (intra-module)
-
 ---
 
 ## 🏗️ Project Structure
@@ -111,16 +98,26 @@ src/
 ### Pipeline
 
 ```mermaid
-flowchart LR
-    Source[Source Code<br/>.mathic] --> Parser
-    Parser --> AST
-    AST --> Codegen
-    Codegen --> MLIR
-    MLIR --> Passes
-    Passes --> LLVM[LLVM IR]
-    LLVM --> Output{Output}
-    Output --> JIT[JIT Execution]
-    Output -.-> OBJ[Object File]
+flowchart TD
+    subgraph Frontend["📝 Frontend"]
+        Source[Source Code<br/>.mathic]
+        Source --> Parser[Parser]
+        Parser --> AST[AST]
+    end
+    
+    subgraph MiddleEnd["⚙️ Middle-End"]
+        AST --> Codegen[MLIR Codegen]
+        Codegen --> MLIR[MLIR IR]
+        MLIR --> Passes[MLIR Passes]
+    end
+    
+    subgraph Backend["🔧 Backend"]
+        Passes --> LLVM[LLVM IR]
+        LLVM --> Output{Output}
+        Output --> JIT[JIT Execution]
+        Output -.-> OBJ[Object File]
+    end
+    
     style OBJ stroke-dasharray: 5 5
 ```
 
