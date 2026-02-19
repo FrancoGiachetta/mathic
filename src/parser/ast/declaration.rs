@@ -1,4 +1,4 @@
-use crate::parser::ast::{expression::ExprStmt, statement::Stmt};
+use crate::parser::ast::{Span, expression::ExprStmt, statement::Stmt};
 
 #[derive(Debug, PartialEq, Eq)]
 #[allow(dead_code)]
@@ -25,9 +25,11 @@ pub struct FuncDecl {
     pub name: String,
     pub params: Vec<Param>,
     pub body: Vec<Stmt>,
+    pub span: Span
 }
 
 #[derive(Debug, PartialEq, Eq)]
 pub struct Param {
     pub name: String,
+    pub span: Span,
 }

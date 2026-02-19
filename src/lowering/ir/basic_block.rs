@@ -14,16 +14,14 @@ pub struct BasicBlock {
     pub id: BlockId,
     pub instructions: Vec<Instruction>,
     pub terminator: Terminator,
-    pub span: Span,
 }
 
 impl BasicBlock {
-    pub fn new(id: BlockId, span: Span) -> Self {
+    pub fn new(id: BlockId, terminator: Terminator) -> Self {
         Self {
             id,
             instructions: Vec::new(),
-            terminator: Terminator::Unreachable(None),
-            span,
+            terminator,
         }
     }
 }

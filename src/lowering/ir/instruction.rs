@@ -1,7 +1,7 @@
 //! IR Instructions
 //! Variable-based (non-SSA) representation
 
-use super::value::{ContExpr, Value};
+use super::value::Value;
 use crate::parser::ast::Span;
 
 /// IR Instructions

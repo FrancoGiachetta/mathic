@@ -3,7 +3,10 @@
 use std::collections::HashSet;
 
 use super::basic_block::{BasicBlock, BlockId};
-use crate::parser::ast::Span;
+use crate::{
+    lowering::ir::basic_block::Terminator,
+    parser::ast::{Span, declaration::Param as AstParam},
+};
 
 /// A function in the IR
 #[derive(Debug)]
@@ -13,8 +16,8 @@ pub struct Function {
     pub params: Vec<Param>,
     /// Local variables declared in this function (from Let instructions)
     pub locals: HashSet<String>,
+    pub entry_block: BasicBlock,
     pub basic_blocks: Vec<BasicBlock>,
-    pub entry_block: BlockId,
     pub span: Span,
 }
 
@@ -35,15 +38,19 @@ impl Function {
             params: Vec::new(),
             locals: HashSet::new(),
             basic_blocks: Vec::new(),
-            entry_block: 0,
+            entry_block: BasicBlock::new(0, Terminator::Return(None, None)),
             span,
         }
     }
 
     /// Add a parameter
-    pub fn add_param(&mut self, name: String, span: Span) -> usize {
+    pub fn add_param(&mut self, param: AstParam) -> usize {
         let index = self.params.len();
-        self.params.push(Param { name, index, span });
+        self.params.push(Param {
+            name: param.name,
+            index,
+            span: param.span,
+        });
         index
     }
 
@@ -52,25 +59,10 @@ impl Function {
         self.locals.insert(name);
     }
 
-    /// Check if a name is a local variable
-    pub fn is_local(&self, name: &str) -> bool {
-        self.locals.contains(name)
-    }
-
-    /// Check if a name is a parameter
-    pub fn is_param(&self, name: &str) -> bool {
-        self.params.iter().any(|p| p.name == name)
-    }
-
     /// Add a basic block
     pub fn add_block(&mut self, block: BasicBlock) -> BlockId {
         let id = block.id;
         self.basic_blocks.push(block);
         id
-    }
-
-    /// Get a mutable reference to a block
-    pub fn block_mut(&mut self, id: BlockId) -> Option<&mut BasicBlock> {
-        self.basic_blocks.iter_mut().find(|b| b.id == id)
     }
 }

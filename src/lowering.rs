@@ -3,40 +3,42 @@
 //! This module handles the transformation pipeline:
 //! AST → IR → MLIR → LLVM
 
+pub mod control_flow;
+pub mod expression;
 pub mod ir;
+pub mod statement;
 
-use crate::parser::ast::Program;
-use ir::Ir;
+use crate::parser::ast::{Program, declaration::FuncDecl};
+use ir::{Ir, function::Function};
 
-/// The Lowerer is responsible for converting AST into IR
-#[derive(Debug)]
-#[allow(dead_code)]
-pub struct Lowerer {
-    /// The IR being constructed
-    ir: Ir,
-}
+pub struct Lowerer;
 
 impl Lowerer {
-    /// Create a new Lowerer
     pub fn new() -> Self {
-        Self { ir: Ir::new() }
+        Self
     }
 
-    /// Lower an AST Program into IR
     pub fn lower_program(&mut self, program: Program) -> Ir {
-        // TODO: Implement lowering logic
-        // For each function in program.funcs:
-        //   - Create Function struct
-        //   - Lower function body into basic blocks
-        //   - Add function to self.ir
+        let mut ir = Ir::new();
 
-        // Return the completed IR
+        for func in program.funcs {
+            self.lower_function(func, &mut ir);
+        }
 
-        Ir::new()
+        ir
     }
 
-    /// Get a reference to the IR being built
-    pub fn ir(&self) -> &Ir {
-        &self.ir
+    fn lower_function(&self, func: FuncDecl, ir: &mut Ir) {
+        let mut ir_func = Function::new(func.name, func.span);
+
+        for param in func.params {
+            ir_func.add_param(param);
+        }
+
+        for stmt in &func.body {
+            self.lower_stmt(stmt, &mut ir_func);
+        }
+
+        ir.add_function(ir_func);
     }
 }

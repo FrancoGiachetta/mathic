@@ -13,7 +13,6 @@ impl<'a> MathicParser<'a> {
     fn parse_assignment(&self) -> ParserResult<ExprStmt> {
         let Some(lookahead) = self.peek()? else {
             return Err(ParseError::Syntax(SyntaxError::UnexpectedEnd {
-                expected: "expression".to_string(),
                 span: self.current_span(),
             }));
         };
@@ -184,7 +183,6 @@ impl<'a> MathicParser<'a> {
     fn parse_call(&self) -> ParserResult<ExprStmt> {
         let Some(lookahead) = self.peek()? else {
             return Err(ParseError::Syntax(SyntaxError::UnexpectedEnd {
-                expected: "expression".to_string(),
                 span: self.current_span(),
             }));
         };
@@ -225,7 +223,7 @@ impl<'a> MathicParser<'a> {
     }
 
     fn parse_primary_expr(&self) -> ParserResult<ExprStmt> {
-        let lookahead = self.next()?.expect("Should be a token");
+        let lookahead = self.next()?;
         let span = lookahead.span.clone();
 
         let kind = match lookahead.token {

@@ -71,11 +71,14 @@ impl<'a> MathicParser<'a> {
         self.lexer
             .borrow_mut()
             .next()
-            .map_err(|(e, span)| ParseError::Lexical(e, span))
+            .map_err(|(e, span)| ParseError::Lexical(e, span))?
+            .ok_or(ParseError::Syntax(SyntaxError::UnexpectedEnd {
+                span: self.current_span(),
+            }))
     }
 
     /// Returns the next token without advancing the lexer.
-    fn peek(&self) -> ParserResult<LexerOutput<'a>> {
+    fn peek(&self) -> ParserResult<Option<LexerOutput<'a>>> {
         self.lexer
             .borrow_mut()
             .peek()
@@ -97,8 +100,8 @@ impl<'a> MathicParser<'a> {
     /// Consumes the next token.
     ///
     /// Returns a parser error if the token does not match the expected one.
-    fn consume_token(&self, expected: Token) -> ParserResult<SpannedToken<'a>> {
-        if let Ok(Some(res)) = self.next() {
+    fn consume_token(&self, expected: Token) -> ParserResult<LexerOutput<'a>> {
+        if let Ok(res) = self.next() {
             if res.token == expected {
                 Ok(res)
             } else {
@@ -109,7 +112,6 @@ impl<'a> MathicParser<'a> {
             }
         } else {
             Err(ParseError::Syntax(SyntaxError::UnexpectedEnd {
-                expected: format!("{}", expected),
                 span: self.current_span(),
             }))
         }
@@ -118,9 +120,9 @@ impl<'a> MathicParser<'a> {
     /// Tries to match the expected token.
     ///
     /// Consumes the token and returning it if there's a match.
-    fn match_token(&self, expected: Token) -> ParserResult<LexerOutput<'a>> {
+    fn match_token(&self, expected: Token) -> ParserResult<Option<LexerOutput<'a>>> {
         if self.check_next(expected)? {
-            return self.next();
+            return Ok(Some(self.next()?));
         }
 
         Ok(None)
@@ -129,10 +131,10 @@ impl<'a> MathicParser<'a> {
     /// Tries to match any of the expected tokens.
     ///
     /// Consumes and returns the first matched token.
-    fn match_any_token(&self, expected: &[Token]) -> ParserResult<LexerOutput<'a>> {
+    fn match_any_token(&self, expected: &[Token]) -> ParserResult<Option<LexerOutput<'a>>> {
         for t in expected.iter() {
             if self.check_next(t.to_owned())? {
-                return self.next();
+                return Ok(Some(self.next()?));
             }
         }
 

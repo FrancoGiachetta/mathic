@@ -13,7 +13,7 @@ pub mod function;
 pub mod instruction;
 pub mod value;
 
-#[derive(Debug)]
+#[derive(Debug, Default)]
 #[allow(dead_code)]
 pub struct Ir {
     pub functions: Vec<Function>,

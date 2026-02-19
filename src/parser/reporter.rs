@@ -111,26 +111,12 @@ pub fn format_error(file_path: &Path, error: &ParseError) {
                         help_msg.to_string(),
                     )
                 }
-                SyntaxError::UnexpectedEnd { expected, span } => {
-                    let help_msg = match expected.as_str() {
-                        "statement" => {
-                            "file ended unexpectedly - check for missing closing braces '}'"
-                        }
-                        "identifier" => "expected an identifier (variable or function name)",
-
-                        "expression" => {
-                            "expression is incomplete - check for missing operands or operators"
-                        }
-
-                        other => other,
-                    };
-                    (
-                        "E002",
-                        format!("expected \"{}\", found end of file", expected),
-                        span,
-                        help_msg.to_string(),
-                    )
-                }
+                SyntaxError::UnexpectedEnd { span } => (
+                    "E002",
+                    format!("found an unexpected end of file"),
+                    span,
+                    "".to_string(),
+                ),
                 SyntaxError::MissingToken { expected, span } => (
                     "E003",
                     format!("expected '{}'", expected),

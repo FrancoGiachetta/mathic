@@ -34,7 +34,7 @@ impl<'a> From<SpannedToken<'a>> for FoundToken {
 #[derive(Debug, Clone)]
 pub enum SyntaxError {
     UnexpectedToken { found: FoundToken, expected: String },
-    UnexpectedEnd { expected: String, span: Span },
+    UnexpectedEnd { span: Span },
     MissingToken { expected: Token, span: Span },
 }
 

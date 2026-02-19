@@ -13,7 +13,6 @@ impl<'a> MathicParser<'a> {
     pub fn parse_stmt(&self) -> ParserResult<Stmt> {
         let Ok(Some(lookahead)) = self.peek() else {
             return Err(ParseError::Syntax(SyntaxError::UnexpectedEnd {
-                expected: "statement".to_string(),
                 span: self.current_span(),
             }));
         };
@@ -88,7 +87,7 @@ impl<'a> MathicParser<'a> {
     }
 
     pub fn parse_return(&self) -> ParserResult<ExprStmt> {
-        let return_token = self.next()?.expect("Should be return token");
+        let return_token = self.next()?;
 
         let value = self.parse_expr()?;
 

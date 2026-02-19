@@ -4,8 +4,8 @@ use logos::{Lexer, Logos};
 
 use crate::parser::{error::LexError, token::Token};
 
-pub type LexerOutput<'a> = Option<SpannedToken<'a>>;
-pub type LexerResult<'a> = Result<Option<SpannedToken<'a>>, (LexError, Span)>;
+pub type LexerOutput<'a> = SpannedToken<'a>;
+pub type LexerResult<'a> = Result<Option<LexerOutput<'a>>, (LexError, Span)>;
 pub type Span = Range<usize>;
 
 #[derive(Debug, Clone, PartialEq, Eq)]
