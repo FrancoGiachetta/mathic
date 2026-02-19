@@ -38,6 +38,7 @@ impl<'a> MathicParser<'a> {
     pub fn parse(&self) -> ParserResult<Program> {
         let mut funcs = Vec::new();
         let mut _structs = Vec::new();
+        let mut start_span = None;
 
         while let Ok(Some(SpannedToken {
             token,
@@ -45,6 +46,11 @@ impl<'a> MathicParser<'a> {
             span,
         })) = self.peek()
         {
+            // Track the start of the program
+            if start_span.is_none() {
+                start_span = Some(span.clone());
+            }
+
             match token {
                 Token::Df => funcs.push(self.parse_func()?),
                 Token::Struct => todo!("parse struct"),
@@ -60,9 +66,15 @@ impl<'a> MathicParser<'a> {
             }
         }
 
+        let end_span = self.current_span();
+        let span = start_span
+            .map(|s| self.merge_spans(&s, &end_span))
+            .unwrap_or(end_span);
+
         Ok(Program {
             funcs,
             structs: _structs,
+            span,
         })
     }
 
@@ -87,6 +99,11 @@ impl<'a> MathicParser<'a> {
     /// This is convenient when returning errors which depend on the code.
     fn current_span(&self) -> Span {
         self.lexer.borrow().span()
+    }
+
+    /// Merges two spans into one that covers both.
+    fn merge_spans(&self, start: &Span, end: &Span) -> Span {
+        start.start.min(end.start)..start.end.max(end.end)
     }
 
     /// Consumes the next token.

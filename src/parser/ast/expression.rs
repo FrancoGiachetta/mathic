@@ -1,35 +1,41 @@
-use crate::parser::token::Token;
+use crate::parser::{ast::Span, token::Token};
+
+#[derive(Debug, PartialEq, Eq)]
+pub struct ExprStmt {
+    pub kind: ExprStmtKind,
+    pub span: Span,
+}
 
 #[derive(Debug, PartialEq, Eq)]
 #[allow(dead_code)]
-pub enum ExprStmt {
+pub enum ExprStmtKind {
     Primary(PrimaryExpr),
     BinOp {
-        lhs: Box<Self>,
+        lhs: Box<ExprStmt>,
         op: Token,
-        rhs: Box<Self>,
+        rhs: Box<ExprStmt>,
     },
     Call {
         calle: String,
-        args: Vec<Self>,
+        args: Vec<ExprStmt>,
     },
-    Group(Box<Self>),
+    Group(Box<ExprStmt>),
     Index {
         name: Token,
         pos: Token,
     },
     Logical {
-        lhs: Box<Self>,
+        lhs: Box<ExprStmt>,
         op: Token,
-        rhs: Box<Self>,
+        rhs: Box<ExprStmt>,
     },
     Unary {
         op: Token,
-        rhs: Box<Self>,
+        rhs: Box<ExprStmt>,
     },
     Assign {
         name: String,
-        expr: Box<Self>,
+        expr: Box<ExprStmt>,
     },
 }
 

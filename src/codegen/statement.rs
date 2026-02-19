@@ -5,19 +5,22 @@ use melior::{
 
 use crate::{
     codegen::{MathicCodeGen, error::CodegenError},
-    parser::ast::{expression::ExprStmt, statement::Stmt},
+    parser::ast::{
+        expression::ExprStmt,
+        statement::{Stmt, StmtKind},
+    },
 };
 
 impl MathicCodeGen<'_> {
     pub fn compile_statement(&self, block: &Block, stmt: &Stmt) -> Result<(), CodegenError> {
-        match stmt {
-            Stmt::Decl(decl_stmt) => self.compile_declaration(block, decl_stmt),
-            Stmt::Block(block_stmt) => self.compile_block(block, &block_stmt.stmts),
-            Stmt::If(if_stmt) => self.compile_if(block, if_stmt),
-            Stmt::While(while_stmt) => self.compile_while(block, while_stmt),
-            Stmt::For(for_stmt) => self.compile_for(block, for_stmt),
-            Stmt::Return(return_stmt) => self.compile_return(block, return_stmt),
-            Stmt::Expr(expr) => {
+        match &stmt.kind {
+            StmtKind::Decl(decl_stmt) => self.compile_declaration(block, decl_stmt),
+            StmtKind::Block(block_stmt) => self.compile_block(block, &block_stmt.stmts),
+            StmtKind::If(if_stmt) => self.compile_if(block, if_stmt),
+            StmtKind::While(while_stmt) => self.compile_while(block, while_stmt),
+            StmtKind::For(for_stmt) => self.compile_for(block, for_stmt),
+            StmtKind::Return(return_stmt) => self.compile_return(block, return_stmt),
+            StmtKind::Expr(expr) => {
                 let _ = self.compile_expression(block, expr)?;
                 Ok(())
             }

@@ -9,7 +9,7 @@ use melior::{
 use crate::{
     codegen::{MathicCodeGen, error::CodegenError},
     parser::{
-        ast::expression::{ExprStmt, PrimaryExpr},
+        ast::expression::{ExprStmt, ExprStmtKind, PrimaryExpr},
         token::Token,
     },
 };
@@ -23,15 +23,15 @@ impl MathicCodeGen<'_> {
     where
         'func: 'ctx,
     {
-        match expr {
-            ExprStmt::Primary(primary_expr) => self.compile_primary(block, primary_expr),
-            ExprStmt::Group(expr) => self.compile_expression(block, expr),
-            ExprStmt::BinOp { lhs, op, rhs } => self.compile_binop(block, lhs, op, rhs),
-            ExprStmt::Logical { lhs, op, rhs } => self.compile_logical(block, lhs, op, rhs),
-            ExprStmt::Unary { op, rhs } => self.compile_unary(block, op, rhs),
-            ExprStmt::Call { calle, args } => self.compile_call(block, calle, args),
-            ExprStmt::Index { name: _, pos: _ } => unimplemented!("Indexing not implemented"),
-            ExprStmt::Assign { name, expr } => self.compile_assign(block, name, expr),
+        match &expr.kind {
+            ExprStmtKind::Primary(primary_expr) => self.compile_primary(block, primary_expr),
+            ExprStmtKind::Group(expr) => self.compile_expression(block, expr),
+            ExprStmtKind::BinOp { lhs, op, rhs } => self.compile_binop(block, lhs, op, rhs),
+            ExprStmtKind::Logical { lhs, op, rhs } => self.compile_logical(block, lhs, op, rhs),
+            ExprStmtKind::Unary { op, rhs } => self.compile_unary(block, op, rhs),
+            ExprStmtKind::Call { calle, args } => self.compile_call(block, calle, args),
+            ExprStmtKind::Index { name: _, pos: _ } => unimplemented!("Indexing not implemented"),
+            ExprStmtKind::Assign { name, expr } => self.compile_assign(block, name, expr),
         }
     }
 

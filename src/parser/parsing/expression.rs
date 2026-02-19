@@ -1,6 +1,6 @@
 use crate::parser::{
     MathicParser, ParserResult,
-    ast::expression::{ExprStmt, PrimaryExpr},
+    ast::expression::{ExprStmt, ExprStmtKind, PrimaryExpr},
     error::{ParseError, SyntaxError},
     token::Token,
 };
@@ -11,40 +11,51 @@ impl<'a> MathicParser<'a> {
     }
 
     fn parse_assignment(&self) -> ParserResult<ExprStmt> {
-        let Some(lookeahead) = self.peek()? else {
+        let Some(lookahead) = self.peek()? else {
             return Err(ParseError::Syntax(SyntaxError::UnexpectedEnd {
                 expected: "expression".to_string(),
                 span: self.current_span(),
             }));
         };
-        let expr = self.parse_logic_or()?;
+        let lhs = self.parse_logic_or()?;
 
         if self.match_token(Token::Eq)?.is_some() {
-            let ExprStmt::Primary(PrimaryExpr::Ident(name)) = expr else {
+            let ExprStmtKind::Primary(PrimaryExpr::Ident(name)) = lhs.kind else {
                 return Err(ParseError::Syntax(SyntaxError::UnexpectedToken {
-                    found: lookeahead.into(),
+                    found: lookahead.into(),
                     expected: "identifier".to_string(),
                 }));
             };
 
-            let expr = Box::new(self.parse_logic_or()?);
+            let rhs = self.parse_logic_or()?;
+            let span = self.merge_spans(&lhs.span, &rhs.span);
 
-            return Ok(ExprStmt::Assign { name, expr });
+            return Ok(ExprStmt {
+                kind: ExprStmtKind::Assign {
+                    name,
+                    expr: Box::new(rhs),
+                },
+                span,
+            });
         }
 
-        Ok(expr)
+        Ok(lhs)
     }
 
     fn parse_logic_or(&self) -> ParserResult<ExprStmt> {
         let mut left = self.parse_logic_and()?;
 
-        while let Some(span_or) = self.match_token(Token::Or)? {
+        while let Some(op_token) = self.match_token(Token::Or)? {
             let right = self.parse_logic_and()?;
+            let span = self.merge_spans(&left.span, &right.span);
 
-            left = ExprStmt::Logical {
-                lhs: Box::new(left),
-                op: span_or.token,
-                rhs: Box::new(right),
+            left = ExprStmt {
+                kind: ExprStmtKind::Logical {
+                    lhs: Box::new(left),
+                    op: op_token.token,
+                    rhs: Box::new(right),
+                },
+                span,
             };
         }
 
@@ -54,13 +65,17 @@ impl<'a> MathicParser<'a> {
     fn parse_logic_and(&self) -> ParserResult<ExprStmt> {
         let mut left = self.parse_equality()?;
 
-        while let Some(span_and) = self.match_token(Token::And)? {
+        while let Some(op_token) = self.match_token(Token::And)? {
             let right = self.parse_equality()?;
+            let span = self.merge_spans(&left.span, &right.span);
 
-            left = ExprStmt::Logical {
-                lhs: Box::new(left),
-                op: span_and.token,
-                rhs: Box::new(right),
+            left = ExprStmt {
+                kind: ExprStmtKind::Logical {
+                    lhs: Box::new(left),
+                    op: op_token.token,
+                    rhs: Box::new(right),
+                },
+                span,
             };
         }
 
@@ -72,11 +87,15 @@ impl<'a> MathicParser<'a> {
 
         while let Some(op) = self.match_any_token(&[Token::EqEq, Token::BangEq])? {
             let rhs = self.parse_inequality()?;
+            let span = self.merge_spans(&expr.span, &rhs.span);
 
-            expr = ExprStmt::BinOp {
-                lhs: Box::new(expr),
-                op: op.token,
-                rhs: Box::new(rhs),
+            expr = ExprStmt {
+                kind: ExprStmtKind::BinOp {
+                    lhs: Box::new(expr),
+                    op: op.token,
+                    rhs: Box::new(rhs),
+                },
+                span,
             };
         }
 
@@ -90,10 +109,15 @@ impl<'a> MathicParser<'a> {
             self.match_any_token(&[Token::Greater, Token::EqLess, Token::Less, Token::EqGrater])?
         {
             let rhs = self.parse_term()?;
-            expr = ExprStmt::BinOp {
-                lhs: Box::new(expr),
-                op: op.token,
-                rhs: Box::new(rhs),
+            let span = self.merge_spans(&expr.span, &rhs.span);
+
+            expr = ExprStmt {
+                kind: ExprStmtKind::BinOp {
+                    lhs: Box::new(expr),
+                    op: op.token,
+                    rhs: Box::new(rhs),
+                },
+                span,
             };
         }
 
@@ -105,11 +129,15 @@ impl<'a> MathicParser<'a> {
 
         while let Some(op) = self.match_any_token(&[Token::Plus, Token::Minus])? {
             let rhs = self.parse_factor()?;
+            let span = self.merge_spans(&expr.span, &rhs.span);
 
-            expr = ExprStmt::BinOp {
-                lhs: Box::new(expr),
-                op: op.token,
-                rhs: Box::new(rhs),
+            expr = ExprStmt {
+                kind: ExprStmtKind::BinOp {
+                    lhs: Box::new(expr),
+                    op: op.token,
+                    rhs: Box::new(rhs),
+                },
+                span,
             };
         }
 
@@ -121,11 +149,15 @@ impl<'a> MathicParser<'a> {
 
         while let Some(op) = self.match_any_token(&[Token::Star, Token::Slash])? {
             let rhs = self.parse_unary()?;
+            let span = self.merge_spans(&expr.span, &rhs.span);
 
-            expr = ExprStmt::BinOp {
-                lhs: Box::new(expr),
-                op: op.token,
-                rhs: Box::new(rhs),
+            expr = ExprStmt {
+                kind: ExprStmtKind::BinOp {
+                    lhs: Box::new(expr),
+                    op: op.token,
+                    rhs: Box::new(rhs),
+                },
+                span,
             };
         }
 
@@ -135,10 +167,14 @@ impl<'a> MathicParser<'a> {
     fn parse_unary(&self) -> ParserResult<ExprStmt> {
         if let Some(op) = self.match_any_token(&[Token::Bang, Token::Minus])? {
             let rhs = self.parse_unary()?;
+            let span = self.merge_spans(&op.span, &rhs.span);
 
-            return Ok(ExprStmt::Unary {
-                op: op.token,
-                rhs: Box::new(rhs),
+            return Ok(ExprStmt {
+                kind: ExprStmtKind::Unary {
+                    op: op.token,
+                    rhs: Box::new(rhs),
+                },
+                span,
             });
         }
 
@@ -170,11 +206,14 @@ impl<'a> MathicParser<'a> {
 
             self.consume_token(Token::RParen)?;
 
-            if let ExprStmt::Primary(PrimaryExpr::Ident(calle)) = expr {
-                expr = ExprStmt::Call { calle, args };
+            let span = self.merge_spans(&expr.span, &self.current_span());
+
+            if let ExprStmtKind::Primary(PrimaryExpr::Ident(calle)) = expr.kind {
+                expr = ExprStmt {
+                    kind: ExprStmtKind::Call { calle, args },
+                    span,
+                };
             } else {
-                // Safe to unwrap because its the first lookhead token. if it
-                // weren't there, there would be an error before.
                 return Err(ParseError::Syntax(SyntaxError::UnexpectedToken {
                     found: lookahead.into(),
                     expected: "identifier".to_string(),
@@ -186,19 +225,23 @@ impl<'a> MathicParser<'a> {
     }
 
     fn parse_primary_expr(&self) -> ParserResult<ExprStmt> {
-        // Safe to do since this check is done in parse_expr.
         let lookahead = self.next()?.expect("Should be a token");
+        let span = lookahead.span.clone();
 
-        let expr = match lookahead.token {
-            Token::Num => ExprStmt::Primary(PrimaryExpr::Num(lookahead.lexeme.to_string())),
-            Token::True => ExprStmt::Primary(PrimaryExpr::Bool(true)),
-            Token::False => ExprStmt::Primary(PrimaryExpr::Bool(false)),
-            Token::Ident => ExprStmt::Primary(PrimaryExpr::Ident(lookahead.lexeme.to_string())),
+        let kind = match lookahead.token {
+            Token::Num => ExprStmtKind::Primary(PrimaryExpr::Num(lookahead.lexeme.to_string())),
+            Token::True => ExprStmtKind::Primary(PrimaryExpr::Bool(true)),
+            Token::False => ExprStmtKind::Primary(PrimaryExpr::Bool(false)),
+            Token::Ident => ExprStmtKind::Primary(PrimaryExpr::Ident(lookahead.lexeme.to_string())),
             Token::LParen => {
                 let expr = self.parse_expr()?;
+                let close_paren = self.consume_token(Token::RParen)?;
+                let span = self.merge_spans(&span, &close_paren.span);
 
-                self.consume_token(Token::RParen)?;
-                ExprStmt::Group(Box::new(expr))
+                return Ok(ExprStmt {
+                    kind: ExprStmtKind::Group(Box::new(expr)),
+                    span,
+                });
             }
             _ => {
                 return Err(ParseError::Syntax(SyntaxError::UnexpectedToken {
@@ -208,6 +251,6 @@ impl<'a> MathicParser<'a> {
             }
         };
 
-        Ok(expr)
+        Ok(ExprStmt { kind, span })
     }
 }
