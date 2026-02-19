@@ -12,5 +12,4 @@ pub use crate::parser::lexer::Span;
 pub struct Program {
     pub structs: Vec<StructDecl>,
     pub funcs: Vec<FuncDecl>,
-    pub span: Span,
 }

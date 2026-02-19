@@ -5,6 +5,7 @@ pub mod compiler;
 pub mod error;
 pub mod executor;
 mod ffi;
+mod lowering;
 mod parser;
 
 #[cfg(test)]
