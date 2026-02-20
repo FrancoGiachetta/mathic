@@ -1,13 +1,15 @@
+use std::mem;
+
 use crate::{
     lowering::{
         Lowerer,
         ir::{
-            basic_block::Terminator,
-            function::{Function, LocalKind},
-            instruction::LValInstruct,
+            basic_block::{BasicBlock, Terminator},
+            function::Function,
         },
     },
     parser::ast::{
+        Span,
         declaration::DeclStmt,
         statement::{Stmt, StmtKind},
     },
@@ -16,29 +18,13 @@ use crate::{
 impl Lowerer {
     pub fn lower_stmt(&self, stmt: &Stmt, func: &mut Function) {
         match &stmt.kind {
-            StmtKind::Decl(DeclStmt::Var(var)) => {
-                let local_idx =
-                    func.add_local(var.name.clone(), LocalKind::Temp, stmt.span.clone());
-                let init = self.lower_expr(func, &var.expr);
-                func.push_instruction(LValInstruct::Let {
-                    local_idx,
-                    init,
-                    span: Some(stmt.span.clone()),
-                });
-            }
-            StmtKind::Decl(_) => {
-                todo!()
-            }
+            StmtKind::Decl(decl) => self.lower_declaration(func, decl, &stmt.span),
             StmtKind::Return(expr) => {
                 let value = self.lower_expr(func, expr);
-                func.last_basic_block().terminator =
+                func.get_basic_block_mut(func.last_block_idx()).terminator =
                     Terminator::Return(Some(value), Some(stmt.span.clone()));
             }
-            StmtKind::Block(block_stmt) => {
-                for s in &block_stmt.stmts {
-                    self.lower_stmt(s, func);
-                }
-            }
+            StmtKind::Block(block_stmt) => self.lower_block(func, &block_stmt.stmts),
             StmtKind::Expr(expr) => {
                 let _ = self.lower_expr(func, expr);
             }
@@ -46,5 +32,43 @@ impl Lowerer {
                 todo!()
             }
         }
+    }
+
+    fn lower_declaration(&self, func: &mut Function, stmt: &DeclStmt, span: &Span) {
+        match stmt {
+            DeclStmt::Var(var_decl) => {
+                self.lower_var_declaration(func, var_decl, span.clone());
+            }
+            DeclStmt::Struct(_struct_decl) => todo!(),
+            DeclStmt::Func(func_decl) => self.lower_function(func, func_decl, span.clone()),
+        }
+    }
+
+    fn lower_block(&self, func: &mut Function, stmts: &[Stmt]) {
+        // Create a new scope for the block.
+        let old_sym_table = mem::take(&mut func.sym_table);
+        let curr_block_idx = func.last_block_idx();
+
+        func.get_basic_block_mut(curr_block_idx).terminator = Terminator::Branch {
+            target: curr_block_idx,
+            params: Vec::new(),
+            span: None,
+        };
+
+        func.add_block(BasicBlock::new(
+            curr_block_idx + 1,
+            Terminator::Branch {
+                target: curr_block_idx + 2,
+                params: Vec::new(),
+                span: None,
+            },
+        ));
+
+        for s in stmts {
+            self.lower_stmt(s, func);
+        }
+
+        // Once the
+        func.sym_table = old_sym_table;
     }
 }

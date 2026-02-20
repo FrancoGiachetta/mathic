@@ -2,8 +2,8 @@ use crate::{
     lowering::{
         Lowerer,
         ir::{
-            basic_block::Terminator,
-            function::Function,
+            basic_block::{BasicBlock, Terminator},
+            function::{Function, LocalKind},
             instruction::{BinaryOp, LValInstruct, LogicalOp, RValInstruct, UnaryOp},
             value::{ContExpr, Value},
         },
@@ -83,7 +83,7 @@ impl Lowerer {
         };
         let value = self.lower_expr(func, expr);
 
-        func.last_basic_block()
+        func.get_basic_block_mut(func.last_block_idx())
             .instructions
             .push(LValInstruct::Assign {
                 local_idx,
@@ -103,15 +103,22 @@ impl Lowerer {
     ) -> RValInstruct {
         let args: Vec<RValInstruct> = args.iter().map(|arg| self.lower_expr(func, arg)).collect();
 
-        let local_idx = func.add_local_temp();
+        let local_idx = func.add_local(None, LocalKind::BlockParam);
 
-        func.last_basic_block().terminator = Terminator::Call {
+        let dest_block_idx = func.last_block_idx() + 1;
+
+        func.get_basic_block_mut(func.last_block_idx()).terminator = Terminator::Call {
             callee,
             args,
             span: Some(span),
             return_dest: Value::InMemory(local_idx),
-            dest_block: func.last_block_idx(),
+            dest_block: dest_block_idx,
         };
+
+        func.add_block(BasicBlock::new(
+            dest_block_idx,
+            Terminator::Return(None, None),
+        ));
 
         RValInstruct::Use(Value::InMemory(local_idx), None)
     }

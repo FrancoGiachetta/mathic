@@ -2,6 +2,7 @@ use std::fmt::{self, Display, Formatter};
 
 use super::instruction::LValInstruct;
 use super::value::Value;
+use crate::lowering::ir::function::Local;
 use crate::lowering::ir::instruction::RValInstruct;
 use crate::parser::ast::Span;
 
@@ -9,7 +10,7 @@ use crate::parser::ast::Span;
 pub type BlockId = usize;
 
 /// A basic block in the control flow graph
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 #[allow(dead_code)]
 pub struct BasicBlock {
     pub id: BlockId,
@@ -28,13 +29,17 @@ impl BasicBlock {
 }
 
 /// Terminator instructions that end a basic block
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 #[allow(dead_code)]
 pub enum Terminator {
     /// Return from function (optional value)
     Return(Option<RValInstruct>, Option<Span>),
     /// Unconditional branch
-    Branch(BlockId, Option<Span>),
+    Branch {
+        target: BlockId,
+        params: Vec<Value>,
+        span: Option<Span>,
+    },
     /// Conditional branch
     CondBranch {
         condition: RValInstruct,
@@ -59,7 +64,7 @@ impl Display for Terminator {
         match self {
             Self::Return(Some(v), _) => write!(f, "return {}", v),
             Self::Return(None, _) => write!(f, "return"),
-            Self::Branch(target, _) => write!(f, "br block{}", target),
+            Self::Branch { target, .. } => write!(f, "br block{} []", target),
             Self::CondBranch {
                 condition,
                 then_block,

@@ -10,38 +10,35 @@ use crate::{
 };
 
 /// A function in the IR
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 #[allow(dead_code)]
 pub struct Function {
     pub name: String,
-    pub params: Vec<Param>,
-    pub locals: Vec<Local>,
-    pub local_indexes: HashMap<String, usize>,
+    pub sym_table: SymbolTable,
     pub basic_blocks: Vec<BasicBlock>,
     pub span: Span,
 }
 
-/// Function parameter
-#[derive(Debug, Clone)]
-#[allow(dead_code)]
-pub struct Param {
-    pub name: String,
-    pub index: usize,
-    pub span: Span,
-}
-
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[derive(Debug, Clone, Copy)]
 pub enum LocalKind {
     Param,
+    BlockParam,
     Temp,
 }
 
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone)]
 pub struct Local {
     pub local_idx: usize,
     pub kind: LocalKind,
     pub debug_name: Option<String>,
-    pub span: Option<Span>,
+}
+
+#[derive(Debug, Clone, Default)]
+pub struct SymbolTable {
+    pub locals: Vec<Local>,
+    pub functions: Vec<Function>,
+    pub local_indexes: HashMap<String, usize>,
+    pub function_indexes: HashMap<String, usize>,
 }
 
 impl Function {
@@ -49,51 +46,51 @@ impl Function {
     pub fn new(name: String, span: Span) -> Self {
         Self {
             name,
-            params: Vec::new(),
-            locals: Vec::new(),
-            local_indexes: HashMap::new(),
+            sym_table: Default::default(),
             basic_blocks: vec![BasicBlock::new(0, Terminator::Return(None, None))],
             span,
         }
     }
 
     /// Adds a user-defined local.
-    pub fn add_local(&mut self, name: String, kind: LocalKind, span: Span) -> usize {
-        let idx = self.locals.len();
-        self.locals.push(Local {
+    pub fn add_local(&mut self, debug_name: Option<String>, kind: LocalKind) -> usize {
+        let idx = self.sym_table.locals.len();
+
+        self.sym_table.locals.push(Local {
             local_idx: idx,
             kind,
-            debug_name: Some(name.clone()),
-            span: Some(span),
+            debug_name: debug_name.clone(),
         });
-        self.local_indexes.insert(name, idx);
+
+        if let Some(name) = debug_name {
+            self.sym_table.local_indexes.insert(name, idx);
+        }
 
         idx
     }
 
-    /// Adds a temp local.
-    ///
-    /// This is reserved for compiler created locals.
-    pub fn add_local_temp(&mut self) -> usize {
-        let idx = self.locals.len();
-        self.locals.push(Local {
-            local_idx: idx,
-            kind: LocalKind::Temp,
-            debug_name: None,
-            span: None,
-        });
+    pub fn add_function(&mut self, func: Function) -> usize {
+        let idx = self.sym_table.functions.len();
+
+        self.sym_table.functions.push(func);
 
         idx
     }
 
     pub fn get_local_idx_from_name(&self, name: &str) -> Option<usize> {
-        self.local_indexes.get(name).copied()
+        self.sym_table.local_indexes.get(name).copied()
+    }
+
+    pub fn get_function_idx_from_name(&self, name: &str) -> Option<usize> {
+        self.sym_table.function_indexes.get(name).copied()
     }
 
     /// Add a basic block
     pub fn add_block(&mut self, block: BasicBlock) -> BlockId {
         let id = block.id;
+
         self.basic_blocks.push(block);
+
         id
     }
 
@@ -102,9 +99,8 @@ impl Function {
         self.basic_blocks[last_index].instructions.push(inst);
     }
 
-    pub fn last_basic_block(&mut self) -> &mut BasicBlock {
-        let last_index = self.basic_blocks.len() - 1;
-        &mut self.basic_blocks[last_index]
+    pub fn get_basic_block_mut(&mut self, idx: usize) -> &mut BasicBlock {
+        &mut self.basic_blocks[idx]
     }
 
     pub fn last_block_idx(&self) -> BlockId {
@@ -115,16 +111,21 @@ impl Function {
 impl Display for Function {
     fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
         let params = self
-            .params
+            .sym_table
+            .locals
             .iter()
-            .map(|p| p.name.clone())
+            .filter(|local| matches!(local.kind, LocalKind::Param))
+            .map(|p| p.debug_name.clone().unwrap())
             .collect::<Vec<_>>()
             .join(", ");
 
         writeln!(f, "df {}({}) -> i64 {{", &self.name, params)?;
-        for block in self.basic_blocks.iter() {
-            writeln!(f, "    {}", block)?;
+        for func in self.sym_table.functions.iter() {
+            writeln!(f, "    {func}")?;
         }
-        write!(f, "}}")
+        for block in self.basic_blocks.iter() {
+            writeln!(f, "    {block}")?;
+        }
+        write!(f, "}}\n")
     }
 }

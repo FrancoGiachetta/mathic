@@ -4,7 +4,7 @@ use super::value::Value;
 use crate::parser::ast::Span;
 
 /// IR Instructions
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 #[allow(dead_code)]
 pub enum LValInstruct {
     /// Variable declaration with initial value
@@ -27,7 +27,7 @@ pub enum LValInstruct {
     },
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub enum RValInstruct {
     // Use a value
     Use(Value, Option<Span>),

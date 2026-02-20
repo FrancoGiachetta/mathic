@@ -2,7 +2,7 @@ pub mod ast_lowering;
 pub mod ir;
 
 use crate::{
-    lowering::ir::function::LocalKind,
+    lowering::ir::{basic_block::Terminator, function::LocalKind},
     parser::ast::{Program, declaration::FuncDecl},
 };
 use ir::{Ir, function::Function};
@@ -17,18 +17,18 @@ impl Lowerer {
     pub fn lower_program(&mut self, program: Program) -> Ir {
         let mut ir = Ir::new();
 
-        for func in program.funcs {
-            self.lower_function(func, &mut ir);
+        for func in program.funcs.iter() {
+            self.lower_entry_point(func, &mut ir);
         }
 
         ir
     }
 
-    fn lower_function(&self, func: FuncDecl, ir: &mut Ir) {
-        let mut ir_func = Function::new(func.name, func.span);
+    fn lower_entry_point(&self, func: &FuncDecl, ir: &mut Ir) {
+        let mut ir_func = Function::new(func.name.clone(), func.span.clone());
 
-        for param in func.params {
-            ir_func.add_local(param.name, LocalKind::Param, param.span);
+        for param in func.params.iter() {
+            ir_func.add_local(Some(param.name.clone()), LocalKind::Param);
         }
 
         for stmt in &func.body {
