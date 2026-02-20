@@ -113,7 +113,7 @@ pub fn format_error(file_path: &Path, error: &ParseError) {
                 }
                 SyntaxError::UnexpectedEnd { span } => (
                     "E002",
-                    format!("found an unexpected end of file"),
+                    "found an unexpected end of file".to_string(),
                     span,
                     "".to_string(),
                 ),

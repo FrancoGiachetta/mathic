@@ -1,12 +1,12 @@
 use crate::parser::{ast::Span, token::Token};
 
-#[derive(Debug, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub struct ExprStmt {
     pub kind: ExprStmtKind,
     pub span: Span,
 }
 
-#[derive(Debug, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 #[allow(dead_code)]
 pub enum ExprStmtKind {
     Primary(PrimaryExpr),
@@ -39,7 +39,7 @@ pub enum ExprStmtKind {
     },
 }
 
-#[derive(Debug, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 #[allow(dead_code)]
 pub enum PrimaryExpr {
     Ident(String),

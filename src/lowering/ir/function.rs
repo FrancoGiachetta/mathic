@@ -1,23 +1,24 @@
-//! Functions in the IR
-
-use std::collections::HashMap;
+use std::{
+    collections::HashMap,
+    fmt::{self, Display, Formatter},
+};
 
 use super::basic_block::{BasicBlock, BlockId};
 use crate::{
     lowering::ir::{basic_block::Terminator, instruction::LValInstruct},
-    parser::ast::{Span, declaration::Param as AstParam},
+    parser::ast::Span,
 };
 
 /// A function in the IR
 #[derive(Debug)]
 #[allow(dead_code)]
 pub struct Function {
-    name: String,
-    params: Vec<Param>,
-    locals: Vec<Local>,
-    local_indexes: HashMap<String, usize>,
-    basic_blocks: Vec<BasicBlock>,
-    span: Span,
+    pub name: String,
+    pub params: Vec<Param>,
+    pub locals: Vec<Local>,
+    pub local_indexes: HashMap<String, usize>,
+    pub basic_blocks: Vec<BasicBlock>,
+    pub span: Span,
 }
 
 /// Function parameter
@@ -39,6 +40,8 @@ pub enum LocalKind {
 pub struct Local {
     pub local_idx: usize,
     pub kind: LocalKind,
+    pub debug_name: Option<String>,
+    pub span: Option<Span>,
 }
 
 impl Function {
@@ -54,23 +57,14 @@ impl Function {
         }
     }
 
-    /// Add a parameter
-    pub fn add_param(&mut self, param: AstParam) -> usize {
-        let index = self.params.len();
-        self.params.push(Param {
-            name: param.name,
-            index,
-            span: param.span,
-        });
-        index
-    }
-
     /// Adds a user-defined local.
-    pub fn add_local(&mut self, name: String, kind: LocalKind) -> usize {
+    pub fn add_local(&mut self, name: String, kind: LocalKind, span: Span) -> usize {
         let idx = self.locals.len();
         self.locals.push(Local {
             local_idx: idx,
             kind,
+            debug_name: Some(name.clone()),
+            span: Some(span),
         });
         self.local_indexes.insert(name, idx);
 
@@ -85,6 +79,8 @@ impl Function {
         self.locals.push(Local {
             local_idx: idx,
             kind: LocalKind::Temp,
+            debug_name: None,
+            span: None,
         });
 
         idx
@@ -113,5 +109,22 @@ impl Function {
 
     pub fn last_block_idx(&self) -> BlockId {
         self.basic_blocks.len() - 1
+    }
+}
+
+impl Display for Function {
+    fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
+        let params = self
+            .params
+            .iter()
+            .map(|p| p.name.clone())
+            .collect::<Vec<_>>()
+            .join(", ");
+
+        writeln!(f, "df {}({}) -> i64 {{", &self.name, params)?;
+        for block in self.basic_blocks.iter() {
+            writeln!(f, "    {}", block)?;
+        }
+        write!(f, "}}")
     }
 }

@@ -64,9 +64,4 @@ impl<'src> MathicLexer<'src> {
 
         Ok(self.lookahead.clone())
     }
-
-    /// Returns the current position in the source.
-    pub fn span(&self) -> Span {
-        self.inner.span()
-    }
 }

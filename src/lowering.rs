@@ -6,11 +6,10 @@
 pub mod ir;
 pub mod ir_transformation;
 
-pub use ir_transformation::control_flow;
-pub use ir_transformation::expression;
-pub use ir_transformation::statement;
-
-use crate::parser::ast::{Program, declaration::FuncDecl};
+use crate::{
+    lowering::ir::function::LocalKind,
+    parser::ast::{Program, declaration::FuncDecl},
+};
 use ir::{Ir, function::Function};
 
 pub struct Lowerer;
@@ -34,7 +33,7 @@ impl Lowerer {
         let mut ir_func = Function::new(func.name, func.span);
 
         for param in func.params {
-            ir_func.add_param(param);
+            ir_func.add_local(param.name, LocalKind::Param, param.span);
         }
 
         for stmt in &func.body {

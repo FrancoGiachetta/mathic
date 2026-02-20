@@ -5,13 +5,13 @@ use crate::parser::ast::{
     expression::ExprStmt,
 };
 
-#[derive(Debug, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Stmt {
     pub kind: StmtKind,
     pub span: Span,
 }
 
-#[derive(Debug, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum StmtKind {
     Decl(DeclStmt),
     Block(BlockStmt),
@@ -22,7 +22,7 @@ pub enum StmtKind {
     Expr(ExprStmt),
 }
 
-#[derive(Debug, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub struct BlockStmt {
     pub stmts: Vec<Stmt>,
 }

@@ -17,7 +17,8 @@ impl Lowerer {
     pub fn lower_stmt(&self, stmt: &Stmt, func: &mut Function) {
         match &stmt.kind {
             StmtKind::Decl(DeclStmt::Var(var)) => {
-                let local_idx = func.add_local(var.name.clone(), LocalKind::Temp);
+                let local_idx =
+                    func.add_local(var.name.clone(), LocalKind::Temp, stmt.span.clone());
                 let init = self.lower_expr(func, &var.expr);
                 func.push_instruction(LValInstruct::Let {
                     local_idx,
@@ -38,7 +39,10 @@ impl Lowerer {
                     self.lower_stmt(s, func);
                 }
             }
-            StmtKind::If(_) | StmtKind::While(_) | StmtKind::For(_) | StmtKind::Expr(_) => {
+            StmtKind::Expr(expr) => {
+                let _ = self.lower_expr(func, expr);
+            }
+            StmtKind::If(_) | StmtKind::While(_) | StmtKind::For(_) => {
                 todo!()
             }
         }

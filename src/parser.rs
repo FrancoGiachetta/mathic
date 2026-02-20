@@ -19,6 +19,7 @@ pub type ParserResult<T> = Result<T, ParseError>;
 
 pub struct MathicParser<'a> {
     lexer: RefCell<MathicLexer<'a>>,
+    current_span: RefCell<Span>,
     _panic_mode: bool,
 }
 
@@ -26,6 +27,7 @@ impl<'a> MathicParser<'a> {
     pub fn new(source: &'a str) -> Self {
         Self {
             lexer: RefCell::new(MathicLexer::new(source)),
+            current_span: RefCell::new(0..0),
             _panic_mode: false,
         }
     }
@@ -72,6 +74,9 @@ impl<'a> MathicParser<'a> {
             .borrow_mut()
             .next()
             .map_err(|(e, span)| ParseError::Lexical(e, span))?
+            .inspect(|t| {
+                self.current_span.replace(t.span.clone());
+            })
             .ok_or(ParseError::Syntax(SyntaxError::UnexpectedEnd {
                 span: self.current_span(),
             }))
@@ -89,7 +94,9 @@ impl<'a> MathicParser<'a> {
     ///
     /// This is convenient when returning errors which depend on the code.
     fn current_span(&self) -> Span {
-        self.lexer.borrow().span()
+        let span = self.current_span.borrow();
+
+        span.start..span.end
     }
 
     /// Merges two spans into one that covers both.

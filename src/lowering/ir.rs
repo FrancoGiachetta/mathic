@@ -6,6 +6,8 @@
 //! - Basic blocks with explicit control flow
 //! - Easier to lower to MLIR than SSA form
 
+use std::fmt;
+
 use function::Function;
 
 pub mod basic_block;
@@ -30,5 +32,14 @@ impl Ir {
     /// Add a function to the IR
     pub fn add_function(&mut self, func: Function) {
         self.functions.push(func);
+    }
+}
+
+impl fmt::Display for Ir {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        for func in &self.functions {
+            writeln!(f, "{}", func)?;
+        }
+        Ok(())
     }
 }

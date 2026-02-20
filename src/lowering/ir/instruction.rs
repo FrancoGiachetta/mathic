@@ -1,5 +1,4 @@
-//! IR Instructions
-//! Variable-based (non-SSA) representation
+use std::fmt::{self, Display, Formatter};
 
 use super::value::Value;
 use crate::parser::ast::Span;
@@ -80,4 +79,74 @@ pub enum LogicalOp {
     Le,
     Gt,
     Ge,
+}
+
+impl Display for BinaryOp {
+    fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
+        match self {
+            Self::Add => write!(f, "+"),
+            Self::Sub => write!(f, "-"),
+            Self::Mul => write!(f, "*"),
+            Self::Div => write!(f, "/"),
+            Self::Mod => write!(f, "%"),
+        }
+    }
+}
+
+impl Display for UnaryOp {
+    fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
+        match self {
+            Self::Neg => write!(f, "-"),
+            Self::Not => write!(f, "!"),
+        }
+    }
+}
+
+impl Display for LogicalOp {
+    fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
+        match self {
+            Self::Eq => write!(f, "=="),
+            Self::Ne => write!(f, "!="),
+            Self::Lt => write!(f, "<"),
+            Self::Le => write!(f, "<="),
+            Self::Gt => write!(f, ">"),
+            Self::Ge => write!(f, ">="),
+        }
+    }
+}
+
+impl Display for RValInstruct {
+    fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
+        match self {
+            Self::Use(v, _) => write!(f, "{}", v),
+            Self::Binary { op, lhs, rhs, .. } => write!(f, "{} {} {}", lhs, op, rhs),
+            Self::Unary { op, operand, .. } => write!(f, "{}{}", op, operand),
+            Self::Logical { op, lhs, rhs, .. } => write!(f, "{} {} {}", lhs, op, rhs),
+        }
+    }
+}
+
+impl Display for LValInstruct {
+    fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
+        match self {
+            Self::Let {
+                local_idx, init, ..
+            } => {
+                write!(f, "let %{} = {}", local_idx, init)
+            }
+            Self::Assign {
+                local_idx, value, ..
+            } => {
+                write!(f, "%{} = {}", local_idx, value)
+            }
+            Self::Call { callee, args, .. } => {
+                let args_str = args
+                    .iter()
+                    .map(|a| a.to_string())
+                    .collect::<Vec<_>>()
+                    .join(", ");
+                write!(f, "call {}({})", callee, args_str)
+            }
+        }
+    }
 }

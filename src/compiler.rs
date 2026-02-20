@@ -16,6 +16,7 @@ use crate::{
     MathicResult,
     codegen::{MathicCodeGen, error::CodegenError},
     ffi,
+    lowering::Lowerer,
     parser::MathicParser,
 };
 
@@ -57,17 +58,26 @@ impl MathicCompiler {
         opt_lvl: OptLvl,
         file_path: Option<&Path>,
     ) -> MathicResult<Module<'func>> {
-        let parser = MathicParser::new(source);
-        let ast = match parser.parse() {
-            Ok(ast) => ast,
-            Err(e) => {
-                if let Some(path) = file_path {
-                    parser.format_error(path, &e);
-                }
+        let ast = {
+            let parser = MathicParser::new(source);
+            match parser.parse() {
+                Ok(ast) => ast,
+                Err(e) => {
+                    if let Some(path) = file_path {
+                        parser.format_error(path, &e);
+                    }
 
-                std::process::exit(1);
+                    std::process::exit(1);
+                }
             }
         };
+
+        if std::env::var("MATHIC_DBG_DUMP").is_ok() {
+            // Lower AST to IR (for debugging/display)
+            let mut lowerer = Lowerer::new();
+            let ir = lowerer.lower_program(ast.clone());
+            println!("{}", ir);
+        }
 
         // Generate Module.
         let mut module = ffi::create_module(&self.ctx, opt_lvl)?;
