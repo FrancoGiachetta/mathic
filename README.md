@@ -92,32 +92,37 @@ cargo --bin euler -- <path-to-file>.mth
 
 ```
 src/
-├── parser.rs              # Parser entry point
+├── parser.rs             # Parser entry point
 ├── parser/               # Frontend: Lexing and Parsing
-│   ├── lexer.rs         # Lexer definition
-│   ├── token.rs         # Token enum
-│   ├── error.rs         # Parse errors
+│   ├── lexer.rs          # Lexer definition
+│   ├── token.rs          # Token enum
+│   ├── error.rs          # Parse errors
 │   ├── reporter.rs       # Error reporting
-│   ├── ast.rs           # Program definition
-│   ├── ast/             # AST nodes
+│   ├── ast.rs            # Program definition
+│   ├── ast/              # AST nodes
 │   │   ├── expression.rs
 │   │   ├── statement.rs
 │   │   ├── control_flow.rs
 │   │   └── declaration.rs
-│   └── parsing/         # Recursive descent parser
+│   └── parsing/          # Recursive descent parser
 │       ├── expression.rs
 │       ├── statement.rs
 │       ├── control_flow.rs
 │       └── declaration.rs
 ├── lowering.rs           # Lowerer entry point
 ├── lowering/             # AST → IR lowering
-│   ├── ir.rs            # IR definition
-│   └── ir/              
-│       ├── basic_block.rs
-│       ├── function.rs
-│       ├── instruction.rs
-│       └── value.rs
-├── codegen.rs           # MLIR Generation
+│   ├── ir.rs             # Ir struct definition
+│   ├── ast_lowering.rs   # Lowerings entry point
+│   ├── ir/               # IR definitions
+│   │   ├── basic_block.rs
+│   │   ├── function.rs
+│   │   ├── instruction.rs
+│   │   └── value.rs
+│   └── ast_lowering/     # AST → IR transformation
+│       ├── statement.rs
+│       ├── expression.rs
+│       └── control_flow.rs
+├── codegen.rs            # MLIR Generation
 ├── codegen/             
 │   ├── expression.rs
 │   ├── statement.rs
@@ -127,10 +132,10 @@ src/
 │   └── error.rs
 ├── compiler.rs           # Compiler driver
 ├── executor.rs           # JIT execution
-├── ffi.rs               # MLIR/LLVM FFI bindings
-├── error.rs             # Error types
+├── ffi.rs                # MLIR/LLVM FFI bindings
+├── error.rs              # Error types
 └── bin/
-    └── euler.rs         # Binary entry point
+    └── euler.rs          # Binary entry point
 ```
 
 ### Pipeline
