@@ -9,7 +9,7 @@ use crate::parser::{
 
 impl<'a> MathicParser<'a> {
     pub fn parse_func(&self) -> ParserResult<FuncDecl> {
-        self.next()?; // Consume Df.
+        let start_span = self.next()?.span; // Consume Df.
 
         let name = {
             let ident = self.consume_token(Token::Ident)?;
@@ -30,10 +30,13 @@ impl<'a> MathicParser<'a> {
 
         let BlockStmt { stmts } = self.parse_block()?;
 
+        let span = self.merge_spans(&start_span, &self.current_span());
+
         Ok(FuncDecl {
             name,
             params,
             body: stmts,
+            span,
         })
     }
 
@@ -56,6 +59,7 @@ impl<'a> MathicParser<'a> {
         let identifier = self.consume_token(Token::Ident)?;
         let mut params = vec![Param {
             name: identifier.lexeme.to_string(),
+            span: identifier.span,
         }];
 
         while self.match_token(Token::Comma)?.is_some() {
@@ -65,6 +69,7 @@ impl<'a> MathicParser<'a> {
 
             params.push(Param {
                 name: identifier.lexeme.to_string(),
+                span: identifier.span,
             });
         }
 

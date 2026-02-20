@@ -90,25 +90,52 @@ cargo --bin euler -- <path-to-file>.mth
 
 ## 🏗️ Project Structure
 
-The compiler is organized into three main phases:
-
 ```
 src/
-├── parser/           # Frontend: Lexing and Parsing
-│   ├── lexer.rs      # Token definitions (Logos-based)
-│   ├── ast/          # AST node definitions
-│   ├── parsing/      # Recursive descent parser
-│   └── token.rs      # Token enum
-├── codegen/          # Middle-end: MLIR Generation
-│   ├── mod.rs        # Codegen context and entry point
-│   ├── declaration.rs # Function/variable compilation
-│   ├── statement.rs  # Statements (return, assign)
-│   ├── expression.rs # Expressions (binops, calls)
-│   ├── control_flow.rs # If/while/for compilation
-│   └── symbol_table.rs # Variable scoping
-├── compiler.rs       # Compiler driver (parse → MLIR → passes)
-├── executor.rs       # JIT execution using LLVM ORC
-└── ffi.rs            # MLIR/LLVM FFI bindings
+├── parser.rs             # Parser entry point
+├── parser/               # Frontend: Lexing and Parsing
+│   ├── lexer.rs          # Lexer definition
+│   ├── token.rs          # Token enum
+│   ├── error.rs          # Parse errors
+│   ├── reporter.rs       # Error reporting
+│   ├── ast.rs            # Program definition
+│   ├── ast/              # AST nodes
+│   │   ├── expression.rs
+│   │   ├── statement.rs
+│   │   ├── control_flow.rs
+│   │   └── declaration.rs
+│   └── parsing/          # Recursive descent parser
+│       ├── expression.rs
+│       ├── statement.rs
+│       ├── control_flow.rs
+│       └── declaration.rs
+├── lowering.rs           # Lowerer entry point
+├── lowering/             # AST → IR lowering
+│   ├── ir.rs             # Ir struct definition
+│   ├── ast_lowering.rs   # Lowerings entry point
+│   ├── ir/               # IR definitions
+│   │   ├── basic_block.rs
+│   │   ├── function.rs
+│   │   ├── instruction.rs
+│   │   └── value.rs
+│   └── ast_lowering/     # AST → IR transformation
+│       ├── statement.rs
+│       ├── expression.rs
+│       └── control_flow.rs
+├── codegen.rs            # MLIR Generation
+├── codegen/             
+│   ├── expression.rs
+│   ├── statement.rs
+│   ├── control_flow.rs
+│   ├── declaration.rs
+│   ├── symbol_table.rs
+│   └── error.rs
+├── compiler.rs           # Compiler driver
+├── executor.rs           # JIT execution
+├── ffi.rs                # MLIR/LLVM FFI bindings
+├── error.rs              # Error types
+└── bin/
+    └── euler.rs          # Binary entry point
 ```
 
 ### Pipeline
@@ -117,26 +144,30 @@ src/
 flowchart TD
     subgraph Frontend["📝 Frontend"]
         Source[Source Code<br/>.mth]
-        Source --> Parser[Parser]
-        Parser --> AST[AST]
+        Lexer[Lexer]
+        Parser[Parser]
+        AST[AST]
+        Source --> Lexer --> Parser --> AST
     end
-    
-    subgraph MiddleEnd["⚙️ Middle-End"]
-        AST --> Codegen[MLIR Codegen]
-        Codegen --> MLIR[MLIR IR]
-        MLIR --> Passes[MLIR Passes]
+
+    subgraph Lowering["⚙️ Lowering"]
+        AST --> Lowerer[Lowerer]
+        Lowerer --> IR[Mathic IR]
     end
-    
+
     subgraph Backend["🔧 Backend"]
-        Passes --> LLVM[LLVM IR]
+        IR --> Codegen[MLIR Codegen]
+        Codegen --> MLIR[MLIR IR]
+        MLIR --> LLVM[LLVM IR]
         LLVM --> Output{Output}
         Output --> JIT[JIT Execution]
         Output -.-> OBJ[Object File]
     end
-    
+
     style OBJ stroke-dasharray: 5 5
 ```
 
+- **IR**: Intermediate Representation. Variable-based, non-SSA format that sits between AST and MLIR.
 - **MLIR**: Multi-Level Intermediate Representation. Used as a flexible IR that preserves high-level constructs (functions, control flow) while enabling transformations.
 - **LLVM IR**: The compilation target. Low-level intermediate representation optimized by LLVM passes.
 

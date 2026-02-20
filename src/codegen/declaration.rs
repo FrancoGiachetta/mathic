@@ -19,9 +19,8 @@ impl MathicCodeGen<'_> {
             DeclStmt::Var(var_decl) => self.compile_var_decl(block, var_decl),
             DeclStmt::Struct(_struct_decl) => todo!(),
             DeclStmt::Func(func_decl) => {
-                let old_sym_table = self
-                    .sym_table
-                    .replace(SymbolTable::with_parent(self.sym_table.clone()));
+                // Create a fresh symbol table for the function scope
+                let old_sym_table = self.sym_table.replace(SymbolTable::new());
                 self.compile_function(block, func_decl)?;
                 self.sym_table.replace(old_sym_table);
 

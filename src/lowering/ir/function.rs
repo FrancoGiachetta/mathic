@@ -1,0 +1,131 @@
+use std::{
+    collections::HashMap,
+    fmt::{self, Display, Formatter},
+};
+
+use super::basic_block::{BasicBlock, BlockId};
+use crate::{
+    lowering::ir::{basic_block::Terminator, instruction::LValInstruct},
+    parser::ast::Span,
+};
+
+/// A function in the IR
+#[derive(Debug, Clone)]
+#[allow(dead_code)]
+pub struct Function {
+    pub name: String,
+    pub sym_table: SymbolTable,
+    pub basic_blocks: Vec<BasicBlock>,
+    pub span: Span,
+}
+
+#[derive(Debug, Clone, Copy)]
+pub enum LocalKind {
+    Param,
+    BlockParam,
+    Temp,
+}
+
+#[derive(Debug, Clone)]
+pub struct Local {
+    pub local_idx: usize,
+    pub kind: LocalKind,
+    pub debug_name: Option<String>,
+}
+
+#[derive(Debug, Clone, Default)]
+pub struct SymbolTable {
+    pub locals: Vec<Local>,
+    pub functions: Vec<Function>,
+    pub local_indexes: HashMap<String, usize>,
+    pub function_indexes: HashMap<String, usize>,
+}
+
+impl Function {
+    /// Create a new function
+    pub fn new(name: String, span: Span) -> Self {
+        Self {
+            name,
+            sym_table: Default::default(),
+            basic_blocks: vec![BasicBlock::new(0, Terminator::Return(None, None))],
+            span,
+        }
+    }
+
+    /// Adds a user-defined local.
+    pub fn add_local(&mut self, debug_name: Option<String>, kind: LocalKind) -> usize {
+        let idx = self.sym_table.locals.len();
+
+        self.sym_table.locals.push(Local {
+            local_idx: idx,
+            kind,
+            debug_name: debug_name.clone(),
+        });
+
+        if let Some(name) = debug_name {
+            self.sym_table.local_indexes.insert(name, idx);
+        }
+
+        idx
+    }
+
+    pub fn add_function(&mut self, func: Function) -> usize {
+        let idx = self.sym_table.functions.len();
+
+        self.sym_table.functions.push(func);
+
+        idx
+    }
+
+    pub fn get_local_idx_from_name(&self, name: &str) -> Option<usize> {
+        self.sym_table.local_indexes.get(name).copied()
+    }
+
+    pub fn get_function_idx_from_name(&self, name: &str) -> Option<usize> {
+        self.sym_table.function_indexes.get(name).copied()
+    }
+
+    /// Add a basic block
+    pub fn add_block(&mut self, block: BasicBlock) -> BlockId {
+        let id = block.id;
+
+        self.basic_blocks.push(block);
+
+        id
+    }
+
+    pub fn push_instruction(&mut self, inst: LValInstruct) {
+        let last_index = self.basic_blocks.len() - 1;
+        self.basic_blocks[last_index].instructions.push(inst);
+    }
+
+    pub fn get_basic_block_mut(&mut self, idx: usize) -> &mut BasicBlock {
+        &mut self.basic_blocks[idx]
+    }
+
+    pub fn last_block_idx(&self) -> BlockId {
+        self.basic_blocks.len() - 1
+    }
+}
+
+impl Display for Function {
+    fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
+        let params = self
+            .sym_table
+            .locals
+            .iter()
+            .filter(|local| matches!(local.kind, LocalKind::Param))
+            .map(|p| p.debug_name.clone().unwrap())
+            .collect::<Vec<_>>()
+            .join(", ");
+
+        writeln!(f, "df {}({}) -> i64 {{", &self.name, params)?;
+        for func in self.sym_table.functions.iter() {
+            writeln!(f, "    {func}")?;
+        }
+        for block in self.basic_blocks.iter() {
+            writeln!(f, "    {block}")?;
+        }
+        write!(f, "}}\n")
+    }
+}
