@@ -1,10 +1,5 @@
-//! Lowering module: AST to IR to MLIR
-//!
-//! This module handles the transformation pipeline:
-//! AST → IR → MLIR → LLVM
-
+pub mod ast_lowering;
 pub mod ir;
-pub mod ir_transformation;
 
 use crate::{
     lowering::ir::function::LocalKind,

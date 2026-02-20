@@ -138,7 +138,7 @@ src/
 ```mermaid
 flowchart TD
     subgraph Frontend["📝 Frontend"]
-        Source[Source Code<br/>.mathic]
+        Source[Source Code<br/>.mth]
         Lexer[Lexer]
         Parser[Parser]
         AST[AST]
