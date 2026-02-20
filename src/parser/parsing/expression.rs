@@ -206,9 +206,9 @@ impl<'a> MathicParser<'a> {
 
             let span = self.merge_spans(&expr.span, &self.current_span());
 
-            if let ExprStmtKind::Primary(PrimaryExpr::Ident(calle)) = expr.kind {
+            if let ExprStmtKind::Primary(PrimaryExpr::Ident(callee)) = expr.kind {
                 expr = ExprStmt {
-                    kind: ExprStmtKind::Call { calle, args },
+                    kind: ExprStmtKind::Call { callee, args },
                     span,
                 };
             } else {

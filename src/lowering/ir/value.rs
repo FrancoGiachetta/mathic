@@ -1,17 +1,16 @@
+#[derive(Debug, Clone, PartialEq)]
+pub enum Value {
+    // Holds the index to find the associated local
+    InMemory(usize),
+    // Holds the value as-is
+    Const(ContExpr),
+}
+
 /// Constant expressions
 #[derive(Debug, Clone, PartialEq)]
 #[allow(dead_code)]
 pub enum ContExpr {
-    Int(i64),
-}
-
-#[derive(Debug, Clone, PartialEq)]
-#[allow(dead_code)]
-pub enum Value {
-    /// Named local variable
-    Local(String),
-    /// Function parameter by index
-    Param(usize),
-    /// Constant value
-    Const(ContExpr),
+    Int(String),
+    Bool(bool),
+    Void
 }

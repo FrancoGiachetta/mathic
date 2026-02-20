@@ -3,10 +3,12 @@
 //! This module handles the transformation pipeline:
 //! AST → IR → MLIR → LLVM
 
-pub mod control_flow;
-pub mod expression;
 pub mod ir;
-pub mod statement;
+pub mod ir_transformation;
+
+pub use ir_transformation::control_flow;
+pub use ir_transformation::expression;
+pub use ir_transformation::statement;
 
 use crate::parser::ast::{Program, declaration::FuncDecl};
 use ir::{Ir, function::Function};

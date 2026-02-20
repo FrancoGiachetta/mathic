@@ -29,7 +29,7 @@ impl MathicCodeGen<'_> {
             ExprStmtKind::BinOp { lhs, op, rhs } => self.compile_binop(block, lhs, op, rhs),
             ExprStmtKind::Logical { lhs, op, rhs } => self.compile_logical(block, lhs, op, rhs),
             ExprStmtKind::Unary { op, rhs } => self.compile_unary(block, op, rhs),
-            ExprStmtKind::Call { calle, args } => self.compile_call(block, calle, args),
+            ExprStmtKind::Call { callee, args } => self.compile_call(block, callee, args),
             ExprStmtKind::Index { name: _, pos: _ } => unimplemented!("Indexing not implemented"),
             ExprStmtKind::Assign { name, expr } => self.compile_assign(block, name, expr),
         }

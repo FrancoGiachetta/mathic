@@ -25,7 +25,7 @@ pub struct FuncDecl {
     pub name: String,
     pub params: Vec<Param>,
     pub body: Vec<Stmt>,
-    pub span: Span
+    pub span: Span,
 }
 
 #[derive(Debug, PartialEq, Eq)]

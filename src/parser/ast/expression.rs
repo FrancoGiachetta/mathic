@@ -16,7 +16,7 @@ pub enum ExprStmtKind {
         rhs: Box<ExprStmt>,
     },
     Call {
-        calle: String,
+        callee: String,
         args: Vec<ExprStmt>,
     },
     Group(Box<ExprStmt>),

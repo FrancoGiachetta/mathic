@@ -5,54 +5,51 @@ use super::value::Value;
 use crate::parser::ast::Span;
 
 /// IR Instructions
-#[derive(Debug, Clone)]
+#[derive(Debug)]
 #[allow(dead_code)]
-pub enum Instruction {
+pub enum LValInstruct {
     /// Variable declaration with initial value
     Let {
-        name: String,
-        init: Value,
+        local_idx: usize,
+        init: RValInstruct,
         span: Option<Span>,
     },
-
     /// Variable assignment (mutation)
     Assign {
-        name: String,
-        value: Value,
+        local_idx: usize,
+        value: RValInstruct,
         span: Option<Span>,
     },
-
-    /// Binary arithmetic operation
-    Binary {
-        dest: String,
-        op: BinaryOp,
-        lhs: Value,
-        rhs: Value,
-        span: Option<Span>,
-    },
-
-    /// Unary operation
-    Unary {
-        dest: String,
-        op: UnaryOp,
-        operand: Value,
-        span: Option<Span>,
-    },
-
-    /// Comparison operation
-    Compare {
-        dest: String,
-        pred: ComparisonOp,
-        lhs: Value,
-        rhs: Value,
-        span: Option<Span>,
-    },
-
     /// Function call
     Call {
-        dest: String,
         callee: String,
-        args: Vec<Value>,
+        args: Vec<RValInstruct>,
+        span: Option<Span>,
+    },
+}
+
+#[derive(Debug)]
+pub enum RValInstruct {
+    // Use a value
+    Use(Value, Option<Span>),
+    /// Binary arithmetic operation
+    Binary {
+        op: BinaryOp,
+        lhs: Box<RValInstruct>,
+        rhs: Box<RValInstruct>,
+        span: Option<Span>,
+    },
+    /// Unary operation
+    Unary {
+        op: UnaryOp,
+        operand: Box<RValInstruct>,
+        span: Option<Span>,
+    },
+
+    Logical {
+        op: LogicalOp,
+        lhs: Box<RValInstruct>,
+        rhs: Box<RValInstruct>,
         span: Option<Span>,
     },
 }
@@ -76,7 +73,7 @@ pub enum UnaryOp {
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 #[allow(dead_code)]
-pub enum ComparisonOp {
+pub enum LogicalOp {
     Eq,
     Ne,
     Lt,
