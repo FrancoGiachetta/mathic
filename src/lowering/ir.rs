@@ -8,7 +8,7 @@
 
 use std::fmt;
 
-use function::Function;
+use function::{Function, write_function_ir};
 
 pub mod basic_block;
 pub mod function;
@@ -38,7 +38,7 @@ impl Ir {
 impl fmt::Display for Ir {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         for func in &self.functions {
-            writeln!(f, "{}", func)?;
+            write_function_ir(func, f, 0)?;
         }
         Ok(())
     }

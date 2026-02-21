@@ -1,13 +1,37 @@
-use std::{
-    collections::HashMap,
-    fmt::{self, Display, Formatter},
-};
+use std::collections::HashMap;
 
-use super::basic_block::{BasicBlock, BlockId};
+use super::basic_block::{BasicBlock, BlockId, write_block_ir};
 use crate::{
-    lowering::ir::{basic_block::Terminator, instruction::LValInstruct},
+    lowering::ir::basic_block::Terminator, lowering::ir::instruction::LValInstruct,
     parser::ast::Span,
 };
+
+pub fn write_function_ir<W: std::fmt::Write>(
+    func: &Function,
+    f: &mut W,
+    indent: usize,
+) -> std::fmt::Result {
+    let indent_str = " ".repeat(indent);
+    let inner_indent = " ".repeat(indent + 4);
+
+    let params = func
+        .sym_table
+        .locals
+        .iter()
+        .filter(|local| matches!(local.kind, LocalKind::Param))
+        .map(|p| p.debug_name.clone().unwrap())
+        .collect::<Vec<_>>()
+        .join(", ");
+
+    writeln!(f, "{}df {}({}) -> i64 {{", indent_str, func.name, params)?;
+    for nested_func in func.sym_table.functions.iter() {
+        write_function_ir(nested_func, f, indent + 4)?;
+    }
+    for block in func.basic_blocks.iter() {
+        write_block_ir(block, f, indent + 4)?;
+    }
+    writeln!(f, "{}}}\n", indent_str)
+}
 
 /// A function in the IR
 #[derive(Debug, Clone)]
@@ -105,27 +129,5 @@ impl Function {
 
     pub fn last_block_idx(&self) -> BlockId {
         self.basic_blocks.len() - 1
-    }
-}
-
-impl Display for Function {
-    fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
-        let params = self
-            .sym_table
-            .locals
-            .iter()
-            .filter(|local| matches!(local.kind, LocalKind::Param))
-            .map(|p| p.debug_name.clone().unwrap())
-            .collect::<Vec<_>>()
-            .join(", ");
-
-        writeln!(f, "df {}({}) -> i64 {{", &self.name, params)?;
-        for func in self.sym_table.functions.iter() {
-            writeln!(f, "    {func}")?;
-        }
-        for block in self.basic_blocks.iter() {
-            writeln!(f, "    {block}")?;
-        }
-        write!(f, "}}\n")
     }
 }

@@ -2,14 +2,11 @@ use std::fmt::{self, Display, Formatter};
 
 use super::instruction::LValInstruct;
 use super::value::Value;
-use crate::lowering::ir::function::Local;
 use crate::lowering::ir::instruction::RValInstruct;
 use crate::parser::ast::Span;
 
-/// Block identifier
 pub type BlockId = usize;
 
-/// A basic block in the control flow graph
 #[derive(Debug, Clone)]
 #[allow(dead_code)]
 pub struct BasicBlock {
@@ -37,7 +34,7 @@ pub enum Terminator {
     /// Unconditional branch
     Branch {
         target: BlockId,
-        params: Vec<Value>,
+        args: Vec<Value>,
         span: Option<Span>,
     },
     /// Conditional branch
@@ -59,12 +56,34 @@ pub enum Terminator {
     },
 }
 
+pub fn write_block_ir<W: std::fmt::Write>(
+    block: &BasicBlock,
+    f: &mut W,
+    indent: usize,
+) -> std::fmt::Result {
+    let inner_indent = " ".repeat(indent + 4);
+
+    writeln!(f, "{}block{}: {{", " ".repeat(indent), block.id)?;
+    for inst in &block.instructions {
+        writeln!(f, "{}{}", inner_indent, inst)?;
+    }
+    writeln!(f, "{}{}", inner_indent, block.terminator)?;
+    writeln!(f, "{}}}", " ".repeat(indent))
+}
+
 impl Display for Terminator {
     fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
         match self {
             Self::Return(Some(v), _) => write!(f, "return {}", v),
             Self::Return(None, _) => write!(f, "return"),
-            Self::Branch { target, .. } => write!(f, "br block{} []", target),
+            Self::Branch { target, args, .. } => {
+                let args_str = args
+                    .iter()
+                    .map(|p| p.to_string())
+                    .collect::<Vec<_>>()
+                    .join(", ");
+                write!(f, "br block{} [{}]", target, args_str)
+            }
             Self::CondBranch {
                 condition,
                 then_block,
@@ -89,7 +108,7 @@ impl Display for Terminator {
                     .map(|a| a.to_string())
                     .collect::<Vec<_>>()
                     .join(", ");
-                write!(f, "call {} = {}({})", return_dest, callee, args_str)
+                write!(f, "{} = call {}({})", return_dest, callee, args_str)
             }
         }
     }
@@ -97,11 +116,6 @@ impl Display for Terminator {
 
 impl Display for BasicBlock {
     fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
-        writeln!(f, "block{}: {{", self.id)?;
-        for inst in &self.instructions {
-            writeln!(f, "        {}", inst)?;
-        }
-        writeln!(f, "        {}", self.terminator)?;
-        write!(f, "    }}")
+        write_block_ir(self, f, 0)
     }
 }

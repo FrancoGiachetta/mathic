@@ -2,7 +2,7 @@ pub mod ast_lowering;
 pub mod ir;
 
 use crate::{
-    lowering::ir::{basic_block::Terminator, function::LocalKind},
+    lowering::ir::function::LocalKind,
     parser::ast::{Program, declaration::FuncDecl},
 };
 use ir::{Ir, function::Function};

@@ -51,7 +51,7 @@ impl Lowerer {
 
         func.get_basic_block_mut(curr_block_idx).terminator = Terminator::Branch {
             target: curr_block_idx,
-            params: Vec::new(),
+            args: Vec::new(),
             span: None,
         };
 
@@ -59,7 +59,7 @@ impl Lowerer {
             curr_block_idx + 1,
             Terminator::Branch {
                 target: curr_block_idx + 2,
-                params: Vec::new(),
+                args: Vec::new(),
                 span: None,
             },
         ));

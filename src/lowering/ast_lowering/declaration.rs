@@ -2,7 +2,6 @@ use crate::{
     lowering::{
         Lowerer,
         ir::{
-            basic_block::Terminator,
             function::{Function, LocalKind},
             instruction::LValInstruct,
         },

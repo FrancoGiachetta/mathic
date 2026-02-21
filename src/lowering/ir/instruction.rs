@@ -19,12 +19,6 @@ pub enum LValInstruct {
         value: RValInstruct,
         span: Option<Span>,
     },
-    /// Function call
-    Call {
-        callee: String,
-        args: Vec<RValInstruct>,
-        span: Option<Span>,
-    },
 }
 
 #[derive(Debug, Clone)]
@@ -138,14 +132,6 @@ impl Display for LValInstruct {
                 local_idx, value, ..
             } => {
                 write!(f, "%{} = {}", local_idx, value)
-            }
-            Self::Call { callee, args, .. } => {
-                let args_str = args
-                    .iter()
-                    .map(|a| a.to_string())
-                    .collect::<Vec<_>>()
-                    .join(", ");
-                write!(f, "call {}({})", callee, args_str)
             }
         }
     }
