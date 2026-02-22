@@ -1,9 +1,8 @@
-use std::{cell::RefCell, path::Path};
+use std::cell::RefCell;
 
 use ast::Program;
 use error::{FoundToken, ParseError, SyntaxError};
 use lexer::{MathicLexer, Span, SpannedToken};
-use reporter::format_error;
 use token::Token;
 
 use crate::parser::lexer::LexerOutput;
@@ -12,7 +11,6 @@ pub mod ast;
 pub mod error;
 pub mod lexer;
 pub mod parsing;
-pub mod reporter;
 pub mod token;
 
 pub type ParserResult<T> = Result<T, ParseError>;
@@ -30,11 +28,6 @@ impl<'a> MathicParser<'a> {
             current_span: RefCell::new(0..0),
             _panic_mode: false,
         }
-    }
-
-    /// Formats a parse error with source context
-    pub fn format_error(&self, file_path: &Path, error: &ParseError) {
-        format_error(file_path, error)
     }
 
     pub fn parse(&self) -> ParserResult<Program> {

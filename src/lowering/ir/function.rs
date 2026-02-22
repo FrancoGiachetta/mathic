@@ -2,7 +2,10 @@ use std::collections::HashMap;
 
 use super::basic_block::{BasicBlock, BlockId, write_block_ir};
 use crate::{
-    lowering::ir::basic_block::Terminator, lowering::ir::instruction::LValInstruct,
+    lowering::{
+        error::LoweringError,
+        ir::{basic_block::Terminator, instruction::LValInstruct},
+    },
     parser::ast::Span,
 };
 
@@ -51,7 +54,21 @@ impl Function {
     }
 
     /// Adds a user-defined local.
-    pub fn add_local(&mut self, debug_name: Option<String>, kind: LocalKind) -> usize {
+    pub fn add_local(
+        &mut self,
+        debug_name: Option<String>,
+        span: Option<Span>,
+        kind: LocalKind,
+    ) -> Result<usize, LoweringError> {
+        if let Some(name) = &debug_name
+            && self.sym_table.local_indexes.contains_key(name)
+        {
+            return Err(LoweringError::DuplicateDeclaration {
+                name: name.clone(),
+                span: span.unwrap(),
+            });
+        }
+
         let idx = self.sym_table.locals.len();
 
         self.sym_table.locals.push(Local {
@@ -64,7 +81,7 @@ impl Function {
             self.sym_table.local_indexes.insert(name, idx);
         }
 
-        idx
+        Ok(idx)
     }
 
     pub fn add_function(&mut self, func: Function) -> usize {
@@ -119,7 +136,7 @@ pub fn write_function_ir<W: std::fmt::Write>(
         .locals
         .iter()
         .filter(|local| matches!(local.kind, LocalKind::Param))
-        .map(|p| p.debug_name.clone().unwrap())
+        .map(|p| format!("%{}", p.local_idx))
         .collect::<Vec<_>>()
         .join(", ");
 

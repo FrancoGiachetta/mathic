@@ -1,6 +1,7 @@
 use crate::{
     lowering::{
         Lowerer,
+        error::LoweringError,
         ir::{
             basic_block::Terminator,
             function::{Function, LocalKind},
@@ -15,7 +16,11 @@ use crate::{
 };
 
 impl Lowerer {
-    pub fn lower_expr(&self, func: &mut Function, expr: &ExprStmt) -> RValInstruct {
+    pub fn lower_expr(
+        &self,
+        func: &mut Function,
+        expr: &ExprStmt,
+    ) -> Result<RValInstruct, LoweringError> {
         match &expr.kind {
             ExprStmtKind::Primary(val) => self.lower_primary_value(func, val, expr.span.clone()),
             ExprStmtKind::Binary { lhs, op, rhs } => {
@@ -45,11 +50,11 @@ impl Lowerer {
         name: &str,
         expr: &ExprStmt,
         span: Span,
-    ) -> RValInstruct {
+    ) -> Result<RValInstruct, LoweringError> {
         let Some(local_idx) = func.get_local_idx_from_name(name) else {
             panic!("variable is not declared");
         };
-        let value = self.lower_expr(func, expr);
+        let value = self.lower_expr(func, expr)?;
 
         func.get_basic_block_mut(func.last_block_idx())
             .instructions
@@ -59,7 +64,7 @@ impl Lowerer {
                 span: Some(span),
             });
 
-        RValInstruct::Use(Value::Const(ContExpr::Void), None)
+        Ok(RValInstruct::Use(Value::Const(ContExpr::Void), None))
     }
 
     fn lower_call(
@@ -68,10 +73,13 @@ impl Lowerer {
         callee: String,
         args: &[ExprStmt],
         span: Span,
-    ) -> RValInstruct {
-        let args: Vec<RValInstruct> = args.iter().map(|arg| self.lower_expr(func, arg)).collect();
+    ) -> Result<RValInstruct, LoweringError> {
+        let args: Vec<RValInstruct> = args
+            .iter()
+            .map(|arg| self.lower_expr(func, arg))
+            .collect::<Result<_, _>>()?;
 
-        let local_idx = func.add_local(None, LocalKind::Temp);
+        let local_idx = func.add_local(None, None, LocalKind::Temp)?;
 
         let dest_block_idx = func.last_block_idx() + 1;
 
@@ -85,7 +93,7 @@ impl Lowerer {
 
         func.add_block(Terminator::Return(None, None), None);
 
-        RValInstruct::Use(Value::InMemory(local_idx), None)
+        Ok(RValInstruct::Use(Value::InMemory(local_idx), None))
     }
 
     fn lower_binary_op(
@@ -95,16 +103,16 @@ impl Lowerer {
         op: BinaryOp,
         rhs: &ExprStmt,
         span: Span,
-    ) -> RValInstruct {
-        let lhs = self.lower_expr(func, lhs).into();
-        let rhs = self.lower_expr(func, rhs).into();
+    ) -> Result<RValInstruct, LoweringError> {
+        let lhs = self.lower_expr(func, lhs)?.into();
+        let rhs = self.lower_expr(func, rhs)?.into();
 
-        RValInstruct::Binary {
+        Ok(RValInstruct::Binary {
             op,
             lhs,
             rhs,
             span: Some(span),
-        }
+        })
     }
 
     fn lower_logical_op(
@@ -114,16 +122,16 @@ impl Lowerer {
         op: LogicalOp,
         rhs: &ExprStmt,
         span: Span,
-    ) -> RValInstruct {
-        let lhs = self.lower_expr(func, lhs).into();
-        let rhs = self.lower_expr(func, rhs).into();
+    ) -> Result<RValInstruct, LoweringError> {
+        let lhs = self.lower_expr(func, lhs)?.into();
+        let rhs = self.lower_expr(func, rhs)?.into();
 
-        RValInstruct::Logical {
+        Ok(RValInstruct::Logical {
             op,
             lhs,
             rhs,
             span: Some(span),
-        }
+        })
     }
 
     fn lower_unary_op(
@@ -132,14 +140,14 @@ impl Lowerer {
         op: UnaryOp,
         rhs: &ExprStmt,
         span: Span,
-    ) -> RValInstruct {
-        let rhs = self.lower_expr(func, rhs).into();
+    ) -> Result<RValInstruct, LoweringError> {
+        let rhs = self.lower_expr(func, rhs)?.into();
 
-        RValInstruct::Unary {
+        Ok(RValInstruct::Unary {
             op,
             operand: rhs,
             span: Some(span),
-        }
+        })
     }
 
     fn lower_primary_value(
@@ -147,7 +155,7 @@ impl Lowerer {
         func: &mut Function,
         expr: &PrimaryExpr,
         span: Span,
-    ) -> RValInstruct {
+    ) -> Result<RValInstruct, LoweringError> {
         let value = match expr {
             PrimaryExpr::Ident(name) => {
                 if let Some(idx) = func.get_local_idx_from_name(name) {
@@ -161,6 +169,6 @@ impl Lowerer {
             PrimaryExpr::Str(_) => todo!(),
         };
 
-        RValInstruct::Use(value, Some(span))
+        Ok(RValInstruct::Use(value, Some(span)))
     }
 }
