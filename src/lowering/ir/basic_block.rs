@@ -101,6 +101,7 @@ impl Display for Terminator {
                     .map(|a| a.to_string())
                     .collect::<Vec<_>>()
                     .join(", ");
+
                 write!(f, "{} = call {}({})", return_dest, callee, args_str)
             }
         }

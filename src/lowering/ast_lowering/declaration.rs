@@ -25,6 +25,8 @@ impl Lowerer {
 
         let init = self.lower_expr(func, &stmt.expr)?;
 
+        // FUTURE: check the expression is the same type as the declaration.
+
         func.push_instruction(LValInstruct::Let {
             local_idx,
             init,

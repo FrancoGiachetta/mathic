@@ -20,6 +20,9 @@ impl Lowerer {
 
         let condition = self.lower_expr(func, condition)?;
 
+        // FUTURE: check if the condition is of type boolean.
+
+        // Hold the index of the current block to create the condition branch later.
         let trigger_block_idx = func.last_block_idx();
 
         let (true_block, false_block) = if let Some(else_block) = else_block {

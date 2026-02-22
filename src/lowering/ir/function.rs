@@ -96,6 +96,16 @@ impl Function {
         self.sym_table.local_indexes.get(name).copied()
     }
 
+    #[allow(dead_code)]
+    pub fn get_function_idx_from_name(&self, name: &str) -> Option<usize> {
+        self.sym_table.function_indexes.get(name).copied()
+    }
+
+    #[allow(dead_code)]
+    pub fn get_function(&self, idx: usize) -> Option<&Function> {
+        self.sym_table.functions.get(idx)
+    }
+
     /// Add a basic block
     pub fn add_block(&mut self, terminator: Terminator, span: Option<Span>) -> BlockId {
         let id = self.basic_blocks.len();
@@ -141,11 +151,14 @@ pub fn write_function_ir<W: std::fmt::Write>(
         .join(", ");
 
     writeln!(f, "{}df {}({}) -> i64 {{", indent_str, func.name, params)?;
+
     for nested_func in func.sym_table.functions.iter() {
         write_function_ir(nested_func, f, indent + 4)?;
     }
+
     for block in func.basic_blocks.iter() {
         write_block_ir(block, f, indent + 4)?;
     }
+
     writeln!(f, "{}}}\n", indent_str)
 }

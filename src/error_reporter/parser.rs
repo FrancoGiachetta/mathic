@@ -18,7 +18,7 @@ pub fn format_error<'err>(
                 LexError::UnterminatedComment => ("L004", "unterminated comment".to_string()),
                 LexError::InvalidNumber(n) => ("L005", format!("invalid number: {}", n)),
             };
-            (code, msg, span.clone(), "lexical error".to_string())
+            (code, msg, span.clone(), "Lexical Error".to_string())
         }
         ParseError::Syntax(syntax_error) => match syntax_error {
             SyntaxError::UnexpectedToken { found, expected } => {
@@ -63,7 +63,7 @@ pub fn format_error<'err>(
 
     ariadne::Report::build(ariadne::ReportKind::Error, report_span.clone())
         .with_code(code)
-        .with_message("syntax error")
+        .with_message("Syntax Error")
         .with_label(
             ariadne::Label::new(report_span)
                 .with_color(ariadne::Color::Red)

@@ -51,10 +51,15 @@ impl Lowerer {
         expr: &ExprStmt,
         span: Span,
     ) -> Result<RValInstruct, LoweringError> {
-        let Some(local_idx) = func.get_local_idx_from_name(name) else {
-            panic!("variable is not declared");
-        };
+        let local_idx =
+            func.get_local_idx_from_name(name)
+                .ok_or(LoweringError::UndeclaredVariable {
+                    name: name.to_string(),
+                    span: span.clone(),
+                })?;
         let value = self.lower_expr(func, expr)?;
+
+        // FUTURE: check that value is of the same type as the local.
 
         func.get_basic_block_mut(func.last_block_idx())
             .instructions
@@ -78,6 +83,9 @@ impl Lowerer {
             .iter()
             .map(|arg| self.lower_expr(func, arg))
             .collect::<Result<_, _>>()?;
+
+        // FUTURE: check that the amount of args matches the expected and that
+        // every type matches the expected type.
 
         let local_idx = func.add_local(None, None, LocalKind::Temp)?;
 
@@ -107,6 +115,8 @@ impl Lowerer {
         let lhs = self.lower_expr(func, lhs)?.into();
         let rhs = self.lower_expr(func, rhs)?.into();
 
+        // FUTURE: check that both lhs and rhs are of the same numeric type.
+
         Ok(RValInstruct::Binary {
             op,
             lhs,
@@ -126,6 +136,8 @@ impl Lowerer {
         let lhs = self.lower_expr(func, lhs)?.into();
         let rhs = self.lower_expr(func, rhs)?.into();
 
+        // FUTURE: check that both lhs and rhs are of type boolean.
+
         Ok(RValInstruct::Logical {
             op,
             lhs,
@@ -143,6 +155,9 @@ impl Lowerer {
     ) -> Result<RValInstruct, LoweringError> {
         let rhs = self.lower_expr(func, rhs)?.into();
 
+        // FUTURE: check that rhs is type of type numeric or boolean depending
+        // on op.
+
         Ok(RValInstruct::Unary {
             op,
             operand: rhs,
@@ -157,13 +172,12 @@ impl Lowerer {
         span: Span,
     ) -> Result<RValInstruct, LoweringError> {
         let value = match expr {
-            PrimaryExpr::Ident(name) => {
-                if let Some(idx) = func.get_local_idx_from_name(name) {
-                    Value::InMemory(idx)
-                } else {
-                    panic!("variable is not declared");
-                }
-            }
+            PrimaryExpr::Ident(name) => Value::InMemory(func.get_local_idx_from_name(name).ok_or(
+                LoweringError::UndeclaredVariable {
+                    name: name.clone(),
+                    span: span.clone(),
+                },
+            )?),
             PrimaryExpr::Num(n) => Value::Const(ContExpr::Int(n.clone())),
             PrimaryExpr::Bool(b) => Value::Const(ContExpr::Bool(*b)),
             PrimaryExpr::Str(_) => todo!(),
