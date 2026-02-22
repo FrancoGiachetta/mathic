@@ -37,9 +37,8 @@ pub struct Local {
 #[allow(dead_code)]
 pub struct SymbolTable {
     pub locals: Vec<Local>,
-    pub functions: Vec<Function>,
     pub local_indexes: HashMap<String, usize>,
-    pub function_indexes: HashMap<String, usize>,
+    pub functions: HashMap<String, Function>,
 }
 
 impl Function {
@@ -84,12 +83,8 @@ impl Function {
         Ok(idx)
     }
 
-    pub fn add_function(&mut self, func: Function) -> usize {
-        let idx = self.sym_table.functions.len();
-
-        self.sym_table.functions.push(func);
-
-        idx
+    pub fn add_function(&mut self, func: Function) {
+        self.sym_table.functions.insert(func.name.clone(), func);
     }
 
     pub fn get_local_idx_from_name(&self, name: &str) -> Option<usize> {
@@ -97,13 +92,8 @@ impl Function {
     }
 
     #[allow(dead_code)]
-    pub fn get_function_idx_from_name(&self, name: &str) -> Option<usize> {
-        self.sym_table.function_indexes.get(name).copied()
-    }
-
-    #[allow(dead_code)]
-    pub fn get_function(&self, idx: usize) -> Option<&Function> {
-        self.sym_table.functions.get(idx)
+    pub fn get_function(&self, name: &str) -> Option<&Function> {
+        self.sym_table.functions.get(name)
     }
 
     /// Add a basic block
@@ -152,7 +142,7 @@ pub fn write_function_ir<W: std::fmt::Write>(
 
     writeln!(f, "{}df {}({}) -> i64 {{", indent_str, func.name, params)?;
 
-    for nested_func in func.sym_table.functions.iter() {
+    for (_, nested_func) in func.sym_table.functions.iter() {
         write_function_ir(nested_func, f, indent + 4)?;
     }
 

@@ -79,29 +79,36 @@ impl Lowerer {
         args: &[ExprStmt],
         span: Span,
     ) -> Result<RValInstruct, LoweringError> {
-        let args: Vec<RValInstruct> = args
-            .iter()
-            .map(|arg| self.lower_expr(func, arg))
-            .collect::<Result<_, _>>()?;
+        // FIX: this currently checks for functions local to the one being compiled.
+        // it should allow to call global functions as well.
 
-        // FUTURE: check that the amount of args matches the expected and that
-        // every type matches the expected type.
+        if let Some(_func_to_call) = func.get_function(&callee) {
+            let args: Vec<RValInstruct> = args
+                .iter()
+                .map(|arg| self.lower_expr(func, arg))
+                .collect::<Result<_, _>>()?;
 
-        let local_idx = func.add_local(None, None, LocalKind::Temp)?;
+            // FUTURE: check that the amount of args matches the expected and that
+            // every type matches the expected type.
 
-        let dest_block_idx = func.last_block_idx() + 1;
+            let local_idx = func.add_local(None, None, LocalKind::Temp)?;
 
-        func.get_basic_block_mut(func.last_block_idx()).terminator = Terminator::Call {
-            callee,
-            args,
-            span: Some(span),
-            return_dest: Value::InMemory(local_idx),
-            dest_block: dest_block_idx,
-        };
+            let dest_block_idx = func.last_block_idx() + 1;
 
-        func.add_block(Terminator::Return(None, None), None);
+            func.get_basic_block_mut(func.last_block_idx()).terminator = Terminator::Call {
+                callee,
+                args,
+                span: Some(span),
+                return_dest: Value::InMemory(local_idx),
+                dest_block: dest_block_idx,
+            };
 
-        Ok(RValInstruct::Use(Value::InMemory(local_idx), None))
+            func.add_block(Terminator::Return(None, None), None);
+
+            Ok(RValInstruct::Use(Value::InMemory(local_idx), None))
+        } else {
+            Err(LoweringError::UndefinedFunction { name: callee, span })
+        }
     }
 
     fn lower_binary_op(
