@@ -1,3 +1,5 @@
+use std::fmt::{Display, Formatter};
+
 use thiserror::Error;
 
 use crate::parser::{
@@ -15,7 +17,6 @@ pub enum LexError {
     InvalidNumber(String),
 }
 
-/// Owned version of SpannedToken for error reporting
 #[derive(Debug, Clone)]
 pub struct FoundToken {
     pub lexeme: String,
@@ -32,13 +33,58 @@ impl<'a> From<SpannedToken<'a>> for FoundToken {
 }
 
 #[derive(Debug, Clone)]
-pub enum SyntaxError {
-    UnexpectedToken { found: FoundToken, expected: String },
-    UnexpectedEnd { span: Span },
-    MissingToken { expected: Token, span: Span },
+pub enum ExpectedToken {
+    Statement,
+    Identifier,
+    Expression,
+    Token(Token),
+    Custom(String),
 }
 
-// ============ Unified ParseError ============
+impl Display for ExpectedToken {
+    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+        match self {
+            ExpectedToken::Statement => write!(f, "statement"),
+            ExpectedToken::Expression => write!(f, "expression"),
+            ExpectedToken::Identifier => write!(f, "identifier"),
+            ExpectedToken::Token(t) => write!(f, "{}", t),
+            ExpectedToken::Custom(s) => write!(f, "{}", s),
+        }
+    }
+}
+
+impl ExpectedToken {
+    pub fn help(&self) -> &'static str {
+        match self {
+            ExpectedToken::Statement => {
+                "valid statements include: function declarations, if/while/for, return, or blocks"
+            }
+            ExpectedToken::Identifier => {
+                "only variable or function names can be called, e.g., 'foo()' or 'bar()'"
+            }
+            ExpectedToken::Expression => {
+                "expressions can be: numbers, booleans, identifiers, or parenthesized expressions"
+            }
+            ExpectedToken::Token(_) | ExpectedToken::Custom(_) => "",
+        }
+    }
+}
+
+#[derive(Debug, Clone)]
+pub enum SyntaxError {
+    UnexpectedToken {
+        found: FoundToken,
+        expected: ExpectedToken,
+    },
+    UnexpectedEnd {
+        span: Span,
+    },
+    MissingToken {
+        expected: Token,
+        span: Span,
+    },
+}
+
 #[derive(Debug, Error)]
 pub enum ParseError {
     #[error("Lexical error")]

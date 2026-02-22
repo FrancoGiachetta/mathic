@@ -1,7 +1,7 @@
 use std::cell::RefCell;
 
 use ast::Program;
-use error::{FoundToken, ParseError, SyntaxError};
+use error::{ExpectedToken, FoundToken, ParseError, SyntaxError};
 use lexer::{MathicLexer, Span, SpannedToken};
 use token::Token;
 
@@ -49,7 +49,9 @@ impl<'a> MathicParser<'a> {
                             lexeme: lexeme.to_string(),
                             span,
                         },
-                        expected: "function or struct definition".to_string(),
+                        expected: ExpectedToken::Custom(
+                            "function or struct definition".to_string(),
+                        ),
                     }));
                 }
             }

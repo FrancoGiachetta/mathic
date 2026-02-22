@@ -3,7 +3,7 @@ use crate::parser::{
     ast::expression::{
         ArithOp, BinaryOp, CmpOp, ExprStmt, ExprStmtKind, LogicalOp, PrimaryExpr, UnaryOp,
     },
-    error::{ParseError, SyntaxError},
+    error::{ExpectedToken, ParseError, SyntaxError},
     token::Token,
 };
 
@@ -24,7 +24,7 @@ impl<'a> MathicParser<'a> {
             let ExprStmtKind::Primary(PrimaryExpr::Ident(name)) = lhs.kind else {
                 return Err(ParseError::Syntax(SyntaxError::UnexpectedToken {
                     found: lookahead.into(),
-                    expected: "identifier".to_string(),
+                    expected: ExpectedToken::Identifier,
                 }));
             };
 
@@ -58,7 +58,7 @@ impl<'a> MathicParser<'a> {
                         _ => {
                             return Err(ParseError::Syntax(SyntaxError::UnexpectedToken {
                                 found: op.into(),
-                                expected: "or".to_string(),
+                                expected: ExpectedToken::Token(Token::Or),
                             }));
                         }
                     },
@@ -86,7 +86,7 @@ impl<'a> MathicParser<'a> {
                         _ => {
                             return Err(ParseError::Syntax(SyntaxError::UnexpectedToken {
                                 found: op.into(),
-                                expected: "and".to_string(),
+                                expected: ExpectedToken::Token(Token::And),
                             }));
                         }
                     },
@@ -115,7 +115,7 @@ impl<'a> MathicParser<'a> {
                         _ => {
                             return Err(ParseError::Syntax(SyntaxError::UnexpectedToken {
                                 found: op.into(),
-                                expected: "equality expression".to_string(),
+                                expected: ExpectedToken::Custom("either == or !=".to_string()),
                             }));
                         }
                     },
@@ -148,7 +148,9 @@ impl<'a> MathicParser<'a> {
                         _ => {
                             return Err(ParseError::Syntax(SyntaxError::UnexpectedToken {
                                 found: op.into(),
-                                expected: "inequality expression".to_string(),
+                                expected: ExpectedToken::Custom(
+                                    "either <, >, <= or >=".to_string(),
+                                ),
                             }));
                         }
                     },
@@ -177,7 +179,7 @@ impl<'a> MathicParser<'a> {
                         _ => {
                             return Err(ParseError::Syntax(SyntaxError::UnexpectedToken {
                                 found: op.into(),
-                                expected: "arithmetic expression".to_string(),
+                                expected: ExpectedToken::Custom("either + or -".to_string()),
                             }));
                         }
                     },
@@ -206,7 +208,7 @@ impl<'a> MathicParser<'a> {
                         _ => {
                             return Err(ParseError::Syntax(SyntaxError::UnexpectedToken {
                                 found: op.into(),
-                                expected: "arithmetic expression".to_string(),
+                                expected: ExpectedToken::Custom("either * or /".to_string()),
                             }));
                         }
                     },
@@ -232,7 +234,7 @@ impl<'a> MathicParser<'a> {
                         _ => {
                             return Err(ParseError::Syntax(SyntaxError::UnexpectedToken {
                                 found: op.into(),
-                                expected: "unary expression".to_string(),
+                                expected: ExpectedToken::Custom("either ! or -".to_string()),
                             }));
                         }
                     },
@@ -279,7 +281,7 @@ impl<'a> MathicParser<'a> {
             } else {
                 return Err(ParseError::Syntax(SyntaxError::UnexpectedToken {
                     found: lookahead.into(),
-                    expected: "identifier".to_string(),
+                    expected: ExpectedToken::Identifier,
                 }));
             }
         }
@@ -309,7 +311,7 @@ impl<'a> MathicParser<'a> {
             _ => {
                 return Err(ParseError::Syntax(SyntaxError::UnexpectedToken {
                     found: lookahead.into(),
-                    expected: "expression".to_string(),
+                    expected: ExpectedToken::Identifier,
                 }));
             }
         };

@@ -21,26 +21,12 @@ pub fn format_error<'err>(
             (code, msg, span.clone(), "Lexical Error".to_string())
         }
         ParseError::Syntax(syntax_error) => match syntax_error {
-            SyntaxError::UnexpectedToken { found, expected } => {
-                let help_msg = match expected.as_str() {
-                    "statement" => {
-                        "valid statements include: function declarations, if/while/for, return, or blocks"
-                    }
-                    "identifier" => {
-                        "only variable or function names can be called, e.g., 'foo()' or 'bar()'"
-                    }
-                    "expression" => {
-                        "expressions can be: numbers, booleans, identifiers, or parenthesized expressions"
-                    }
-                    other => other,
-                };
-                (
-                    "E001",
-                    format!("expected {}, found '{}'", expected, found.lexeme),
-                    found.span.clone(),
-                    help_msg.to_string(),
-                )
-            }
+            SyntaxError::UnexpectedToken { found, expected } => (
+                "E001",
+                format!("expected {}, found '{}'", expected, found.lexeme),
+                found.span.clone(),
+                expected.help().to_string(),
+            ),
             SyntaxError::UnexpectedEnd { span } => (
                 "E002",
                 "found an unexpected end of file".to_string(),
