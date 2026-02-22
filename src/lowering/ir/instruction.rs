@@ -1,7 +1,10 @@
 use std::fmt::{self, Display, Formatter};
 
 use super::value::Value;
-use crate::parser::ast::Span;
+use crate::parser::ast::{
+    Span,
+    expression::{ArithOp, BinaryOp, CmpOp, LogicalOp, UnaryOp},
+};
 
 /// IR Instructions
 #[derive(Debug, Clone)]
@@ -22,6 +25,7 @@ pub enum LValInstruct {
 }
 
 #[derive(Debug, Clone)]
+#[allow(dead_code)]
 pub enum RValInstruct {
     // Use a value
     Use(Value, Option<Span>),
@@ -38,7 +42,7 @@ pub enum RValInstruct {
         operand: Box<RValInstruct>,
         span: Option<Span>,
     },
-
+    // Logical operation
     Logical {
         op: LogicalOp,
         lhs: Box<RValInstruct>,
@@ -47,42 +51,24 @@ pub enum RValInstruct {
     },
 }
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-#[allow(dead_code)]
-pub enum BinaryOp {
-    Add,
-    Sub,
-    Mul,
-    Div,
-    Mod,
-}
-
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-#[allow(dead_code)]
-pub enum UnaryOp {
-    Neg,
-    Not,
-}
-
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-#[allow(dead_code)]
-pub enum LogicalOp {
-    Eq,
-    Ne,
-    Lt,
-    Le,
-    Gt,
-    Ge,
-}
-
 impl Display for BinaryOp {
     fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
         match self {
-            Self::Add => write!(f, "+"),
-            Self::Sub => write!(f, "-"),
-            Self::Mul => write!(f, "*"),
-            Self::Div => write!(f, "/"),
-            Self::Mod => write!(f, "%"),
+            BinaryOp::Arithmetic(arith) => match arith {
+                ArithOp::Add => write!(f, "+"),
+                ArithOp::Sub => write!(f, "-"),
+                ArithOp::Mul => write!(f, "*"),
+                ArithOp::Div => write!(f, "/"),
+                ArithOp::Mod => write!(f, "%"),
+            },
+            BinaryOp::Compare(cmp) => match cmp {
+                CmpOp::Eq => write!(f, "=="),
+                CmpOp::Ne => write!(f, "!="),
+                CmpOp::Lt => write!(f, "<"),
+                CmpOp::Le => write!(f, "<="),
+                CmpOp::Gt => write!(f, ">"),
+                CmpOp::Ge => write!(f, ">="),
+            },
         }
     }
 }
@@ -99,12 +85,8 @@ impl Display for UnaryOp {
 impl Display for LogicalOp {
     fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
         match self {
-            Self::Eq => write!(f, "=="),
-            Self::Ne => write!(f, "!="),
-            Self::Lt => write!(f, "<"),
-            Self::Le => write!(f, "<="),
-            Self::Gt => write!(f, ">"),
-            Self::Ge => write!(f, ">="),
+            LogicalOp::And => write!(f, "and"),
+            LogicalOp::Or => write!(f, "or"),
         }
     }
 }

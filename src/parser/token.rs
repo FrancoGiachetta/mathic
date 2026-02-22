@@ -48,7 +48,7 @@ pub enum Token {
     #[token("<=")]
     EqLess,
     #[token(">=")]
-    EqGrater,
+    EqGreater,
     #[token("==")]
     EqEq,
     #[token("!=")]

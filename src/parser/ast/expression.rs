@@ -10,9 +10,9 @@ pub struct ExprStmt {
 #[allow(dead_code)]
 pub enum ExprStmtKind {
     Primary(PrimaryExpr),
-    BinOp {
+    Binary {
         lhs: Box<ExprStmt>,
-        op: Token,
+        op: BinaryOp,
         rhs: Box<ExprStmt>,
     },
     Call {
@@ -26,17 +26,55 @@ pub enum ExprStmtKind {
     },
     Logical {
         lhs: Box<ExprStmt>,
-        op: Token,
+        op: LogicalOp,
         rhs: Box<ExprStmt>,
     },
     Unary {
-        op: Token,
+        op: UnaryOp,
         rhs: Box<ExprStmt>,
     },
     Assign {
         name: String,
         expr: Box<ExprStmt>,
     },
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum BinaryOp {
+    Arithmetic(ArithOp),
+    Compare(CmpOp),
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum CmpOp {
+    Eq,
+    Ne,
+    Lt,
+    Le,
+    Gt,
+    Ge,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[allow(dead_code)]
+pub enum ArithOp {
+    Add,
+    Sub,
+    Mul,
+    Div,
+    Mod,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum UnaryOp {
+    Neg,
+    Not,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum LogicalOp {
+    And,
+    Or,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]

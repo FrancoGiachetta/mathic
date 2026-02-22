@@ -1,6 +1,8 @@
 use crate::parser::{
     MathicParser, ParserResult,
-    ast::expression::{ExprStmt, ExprStmtKind, PrimaryExpr},
+    ast::expression::{
+        ArithOp, BinaryOp, CmpOp, ExprStmt, ExprStmtKind, LogicalOp, PrimaryExpr, UnaryOp,
+    },
     error::{ParseError, SyntaxError},
     token::Token,
 };
@@ -44,14 +46,22 @@ impl<'a> MathicParser<'a> {
     fn parse_logic_or(&self) -> ParserResult<ExprStmt> {
         let mut left = self.parse_logic_and()?;
 
-        while let Some(op_token) = self.match_token(Token::Or)? {
+        while let Some(op) = self.match_token(Token::Or)? {
             let right = self.parse_logic_and()?;
             let span = self.merge_spans(&left.span, &right.span);
 
             left = ExprStmt {
                 kind: ExprStmtKind::Logical {
                     lhs: Box::new(left),
-                    op: op_token.token,
+                    op: match op.token {
+                        Token::Or => LogicalOp::Or,
+                        _ => {
+                            return Err(ParseError::Syntax(SyntaxError::UnexpectedToken {
+                                found: op.into(),
+                                expected: "or".to_string(),
+                            }));
+                        }
+                    },
                     rhs: Box::new(right),
                 },
                 span,
@@ -64,14 +74,22 @@ impl<'a> MathicParser<'a> {
     fn parse_logic_and(&self) -> ParserResult<ExprStmt> {
         let mut left = self.parse_equality()?;
 
-        while let Some(op_token) = self.match_token(Token::And)? {
+        while let Some(op) = self.match_token(Token::And)? {
             let right = self.parse_equality()?;
             let span = self.merge_spans(&left.span, &right.span);
 
             left = ExprStmt {
                 kind: ExprStmtKind::Logical {
                     lhs: Box::new(left),
-                    op: op_token.token,
+                    op: match op.token {
+                        Token::And => LogicalOp::And,
+                        _ => {
+                            return Err(ParseError::Syntax(SyntaxError::UnexpectedToken {
+                                found: op.into(),
+                                expected: "and".to_string(),
+                            }));
+                        }
+                    },
                     rhs: Box::new(right),
                 },
                 span,
@@ -89,9 +107,18 @@ impl<'a> MathicParser<'a> {
             let span = self.merge_spans(&expr.span, &rhs.span);
 
             expr = ExprStmt {
-                kind: ExprStmtKind::BinOp {
+                kind: ExprStmtKind::Binary {
                     lhs: Box::new(expr),
-                    op: op.token,
+                    op: match op.token {
+                        Token::EqEq => BinaryOp::Compare(CmpOp::Eq),
+                        Token::BangEq => BinaryOp::Compare(CmpOp::Ne),
+                        _ => {
+                            return Err(ParseError::Syntax(SyntaxError::UnexpectedToken {
+                                found: op.into(),
+                                expected: "equality expression".to_string(),
+                            }));
+                        }
+                    },
                     rhs: Box::new(rhs),
                 },
                 span,
@@ -105,15 +132,26 @@ impl<'a> MathicParser<'a> {
         let mut expr = self.parse_term()?;
 
         while let Some(op) =
-            self.match_any_token(&[Token::Greater, Token::EqLess, Token::Less, Token::EqGrater])?
+            self.match_any_token(&[Token::Greater, Token::EqLess, Token::Less, Token::EqGreater])?
         {
             let rhs = self.parse_term()?;
             let span = self.merge_spans(&expr.span, &rhs.span);
 
             expr = ExprStmt {
-                kind: ExprStmtKind::BinOp {
+                kind: ExprStmtKind::Binary {
                     lhs: Box::new(expr),
-                    op: op.token,
+                    op: match op.token {
+                        Token::Less => BinaryOp::Compare(CmpOp::Lt),
+                        Token::EqLess => BinaryOp::Compare(CmpOp::Le),
+                        Token::Greater => BinaryOp::Compare(CmpOp::Gt),
+                        Token::EqGreater => BinaryOp::Compare(CmpOp::Ge),
+                        _ => {
+                            return Err(ParseError::Syntax(SyntaxError::UnexpectedToken {
+                                found: op.into(),
+                                expected: "inequality expression".to_string(),
+                            }));
+                        }
+                    },
                     rhs: Box::new(rhs),
                 },
                 span,
@@ -131,9 +169,18 @@ impl<'a> MathicParser<'a> {
             let span = self.merge_spans(&expr.span, &rhs.span);
 
             expr = ExprStmt {
-                kind: ExprStmtKind::BinOp {
+                kind: ExprStmtKind::Binary {
                     lhs: Box::new(expr),
-                    op: op.token,
+                    op: match op.token {
+                        Token::Plus => BinaryOp::Arithmetic(ArithOp::Add),
+                        Token::Minus => BinaryOp::Arithmetic(ArithOp::Sub),
+                        _ => {
+                            return Err(ParseError::Syntax(SyntaxError::UnexpectedToken {
+                                found: op.into(),
+                                expected: "arithmetic expression".to_string(),
+                            }));
+                        }
+                    },
                     rhs: Box::new(rhs),
                 },
                 span,
@@ -151,9 +198,18 @@ impl<'a> MathicParser<'a> {
             let span = self.merge_spans(&expr.span, &rhs.span);
 
             expr = ExprStmt {
-                kind: ExprStmtKind::BinOp {
+                kind: ExprStmtKind::Binary {
                     lhs: Box::new(expr),
-                    op: op.token,
+                    op: match &op.token {
+                        Token::Star => BinaryOp::Arithmetic(ArithOp::Mul),
+                        Token::Slash => BinaryOp::Arithmetic(ArithOp::Div),
+                        _ => {
+                            return Err(ParseError::Syntax(SyntaxError::UnexpectedToken {
+                                found: op.into(),
+                                expected: "arithmetic expression".to_string(),
+                            }));
+                        }
+                    },
                     rhs: Box::new(rhs),
                 },
                 span,
@@ -170,7 +226,16 @@ impl<'a> MathicParser<'a> {
 
             return Ok(ExprStmt {
                 kind: ExprStmtKind::Unary {
-                    op: op.token,
+                    op: match op.token {
+                        Token::Bang => UnaryOp::Not,
+                        Token::Minus => UnaryOp::Neg,
+                        _ => {
+                            return Err(ParseError::Syntax(SyntaxError::UnexpectedToken {
+                                found: op.into(),
+                                expected: "unary expression".to_string(),
+                            }));
+                        }
+                    },
                     rhs: Box::new(rhs),
                 },
                 span,

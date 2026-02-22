@@ -8,9 +8,8 @@ use melior::{
 
 use crate::{
     codegen::{MathicCodeGen, error::CodegenError},
-    parser::{
-        ast::expression::{ExprStmt, ExprStmtKind, PrimaryExpr},
-        token::Token,
+    parser::ast::expression::{
+        ArithOp, BinaryOp, CmpOp, ExprStmt, ExprStmtKind, LogicalOp, PrimaryExpr, UnaryOp,
     },
 };
 
@@ -26,9 +25,9 @@ impl MathicCodeGen<'_> {
         match &expr.kind {
             ExprStmtKind::Primary(primary_expr) => self.compile_primary(block, primary_expr),
             ExprStmtKind::Group(expr) => self.compile_expression(block, expr),
-            ExprStmtKind::BinOp { lhs, op, rhs } => self.compile_binop(block, lhs, op, rhs),
-            ExprStmtKind::Logical { lhs, op, rhs } => self.compile_logical(block, lhs, op, rhs),
-            ExprStmtKind::Unary { op, rhs } => self.compile_unary(block, op, rhs),
+            ExprStmtKind::Binary { lhs, op, rhs } => self.compile_binop(block, lhs, op, rhs),
+            ExprStmtKind::Logical { lhs, op, rhs } => self.compile_logical(block, lhs, *op, rhs),
+            ExprStmtKind::Unary { op, rhs } => self.compile_unary(block, *op, rhs),
             ExprStmtKind::Call { callee, args } => self.compile_call(block, callee, args),
             ExprStmtKind::Index { name: _, pos: _ } => unimplemented!("Indexing not implemented"),
             ExprStmtKind::Assign { name, expr } => self.compile_assign(block, name, expr),
@@ -57,7 +56,7 @@ impl MathicCodeGen<'_> {
         &'func self,
         block: &'func Block<'ctx>,
         lhs: &ExprStmt,
-        op: &Token,
+        op: LogicalOp,
         rhs: &ExprStmt,
     ) -> Result<Value<'ctx, 'func>, CodegenError>
     where
@@ -69,14 +68,8 @@ impl MathicCodeGen<'_> {
         let rhs_val = self.compile_expression(block, rhs)?;
 
         Ok(match op {
-            Token::And => block.andi(lhs_val, rhs_val, location)?,
-            Token::Or => block.ori(lhs_val, rhs_val, location)?,
-            _ => {
-                return Err(CodegenError::InvalidOperation(format!(
-                    "expected logical operation, got: {:?}",
-                    op
-                )));
-            }
+            LogicalOp::And => block.andi(lhs_val, rhs_val, location)?,
+            LogicalOp::Or => block.ori(lhs_val, rhs_val, location)?,
         })
     }
 
@@ -84,7 +77,7 @@ impl MathicCodeGen<'_> {
         &'func self,
         block: &'func Block<'ctx>,
         lhs: &ExprStmt,
-        op: &Token,
+        op: &BinaryOp,
         rhs: &ExprStmt,
     ) -> Result<Value<'ctx, 'func>, CodegenError>
     where
@@ -96,94 +89,96 @@ impl MathicCodeGen<'_> {
         let rhs_val = self.compile_expression(block, rhs)?;
 
         Ok(match op {
-            Token::EqEq => {
-                let val = block.cmpi(self.ctx, CmpiPredicate::Eq, lhs_val, rhs_val, location)?;
-                block.extui(val, lhs_val.r#type(), location)?
-            }
-            Token::BangEq => {
-                let val = block.cmpi(self.ctx, CmpiPredicate::Ne, lhs_val, rhs_val, location)?;
-                block.extui(val, lhs_val.r#type(), location)?
-            }
-            Token::Less => {
-                let val = block.cmpi(
-                    self.ctx,
-                    // For now only positive numbers.
-                    if false {
-                        CmpiPredicate::Slt
-                    } else {
-                        CmpiPredicate::Ult
-                    },
-                    lhs_val,
-                    rhs_val,
-                    location,
-                )?;
-                block.extui(val, lhs_val.r#type(), location)?
-            }
-            Token::EqLess => {
-                let val = block.cmpi(
-                    self.ctx,
-                    if false {
-                        CmpiPredicate::Sle
-                    } else {
-                        CmpiPredicate::Ule
-                    },
-                    lhs_val,
-                    rhs_val,
-                    location,
-                )?;
-                block.extui(val, lhs_val.r#type(), location)?
-            }
-            Token::Greater => {
-                let val = block.cmpi(
-                    self.ctx,
-                    if false {
-                        CmpiPredicate::Sgt
-                    } else {
-                        CmpiPredicate::Ugt
-                    },
-                    lhs_val,
-                    rhs_val,
-                    location,
-                )?;
-                block.extui(val, lhs_val.r#type(), location)?
-            }
-            Token::EqGrater => {
-                let val = block.cmpi(
-                    self.ctx,
-                    if false {
-                        CmpiPredicate::Sge
-                    } else {
-                        CmpiPredicate::Uge
-                    },
-                    lhs_val,
-                    rhs_val,
-                    location,
-                )?;
-                block.extui(val, lhs_val.r#type(), location)?
-            }
-            Token::Plus => block.addi(lhs_val, rhs_val, location)?,
-            Token::Minus => block.subi(lhs_val, rhs_val, location)?,
-            Token::Star => block.muli(lhs_val, rhs_val, location)?,
-            Token::Slash => {
-                if true {
-                    block.divsi(lhs_val, rhs_val, location)?
-                } else {
-                    block.divui(lhs_val, rhs_val, location)?
+            BinaryOp::Compare(cmp) => match cmp {
+                CmpOp::Eq => {
+                    let val =
+                        block.cmpi(self.ctx, CmpiPredicate::Eq, lhs_val, rhs_val, location)?;
+                    block.extui(val, lhs_val.r#type(), location)?
                 }
-            }
-            _ => {
-                return Err(CodegenError::InvalidOperation(format!(
-                    "expected binary operation operation, got: {:?}",
-                    op
-                )));
-            }
+                CmpOp::Ne => {
+                    let val =
+                        block.cmpi(self.ctx, CmpiPredicate::Ne, lhs_val, rhs_val, location)?;
+                    block.extui(val, lhs_val.r#type(), location)?
+                }
+                CmpOp::Lt => {
+                    let val = block.cmpi(
+                        self.ctx,
+                        // For now only positive numbers.
+                        if false {
+                            CmpiPredicate::Slt
+                        } else {
+                            CmpiPredicate::Ult
+                        },
+                        lhs_val,
+                        rhs_val,
+                        location,
+                    )?;
+                    block.extui(val, lhs_val.r#type(), location)?
+                }
+                CmpOp::Le => {
+                    let val = block.cmpi(
+                        self.ctx,
+                        if false {
+                            CmpiPredicate::Sle
+                        } else {
+                            CmpiPredicate::Ule
+                        },
+                        lhs_val,
+                        rhs_val,
+                        location,
+                    )?;
+                    block.extui(val, lhs_val.r#type(), location)?
+                }
+                CmpOp::Gt => {
+                    let val = block.cmpi(
+                        self.ctx,
+                        if false {
+                            CmpiPredicate::Sgt
+                        } else {
+                            CmpiPredicate::Ugt
+                        },
+                        lhs_val,
+                        rhs_val,
+                        location,
+                    )?;
+                    block.extui(val, lhs_val.r#type(), location)?
+                }
+                CmpOp::Ge => {
+                    let val = block.cmpi(
+                        self.ctx,
+                        if false {
+                            CmpiPredicate::Sge
+                        } else {
+                            CmpiPredicate::Uge
+                        },
+                        lhs_val,
+                        rhs_val,
+                        location,
+                    )?;
+                    block.extui(val, lhs_val.r#type(), location)?
+                }
+            },
+            BinaryOp::Arithmetic(arith) => match arith {
+                ArithOp::Add => block.addi(lhs_val, rhs_val, location)?,
+                ArithOp::Sub => block.subi(lhs_val, rhs_val, location)?,
+                ArithOp::Mul => block.muli(lhs_val, rhs_val, location)?,
+                ArithOp::Div => {
+                    if true {
+                        block.divsi(lhs_val, rhs_val, location)?
+                    } else {
+                        block.divui(lhs_val, rhs_val, location)?
+                    }
+                }
+
+                ArithOp::Mod => todo!(),
+            },
         })
     }
 
     fn compile_unary<'func, 'ctx>(
         &'func self,
         block: &'func Block<'ctx>,
-        op: &Token,
+        op: UnaryOp,
         rhs: &ExprStmt,
     ) -> Result<Value<'ctx, 'func>, CodegenError>
     where
@@ -193,20 +188,14 @@ impl MathicCodeGen<'_> {
         let rhs_val = self.compile_expression(block, rhs)?;
 
         Ok(match op {
-            Token::Bang => {
+            UnaryOp::Not => {
                 let k0 = block.const_int_from_type(self.ctx, location, 0, rhs_val.r#type())?;
                 block.andi(k0, rhs_val, location)?
             }
-            Token::Minus => {
+            UnaryOp::Neg => {
                 let k_neg_1 =
                     block.const_int_from_type(self.ctx, location, -1, rhs_val.r#type())?;
                 block.muli(k_neg_1, rhs_val, location)?
-            }
-            _ => {
-                return Err(CodegenError::InvalidOperation(format!(
-                    "expected unary operation operation, got: {:?}",
-                    op
-                )));
             }
         })
     }

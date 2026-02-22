@@ -25,4 +25,5 @@ pub enum StmtKind {
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct BlockStmt {
     pub stmts: Vec<Stmt>,
+    pub span: Span,
 }

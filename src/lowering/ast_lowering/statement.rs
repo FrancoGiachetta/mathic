@@ -3,15 +3,12 @@ use std::mem;
 use crate::{
     lowering::{
         Lowerer,
-        ir::{
-            basic_block::{BasicBlock, Terminator},
-            function::Function,
-        },
+        ir::{basic_block::Terminator, function::Function},
     },
     parser::ast::{
         Span,
         declaration::DeclStmt,
-        statement::{Stmt, StmtKind},
+        statement::{BlockStmt, Stmt, StmtKind},
     },
 };
 
@@ -24,11 +21,12 @@ impl Lowerer {
                 func.get_basic_block_mut(func.last_block_idx()).terminator =
                     Terminator::Return(Some(value), Some(stmt.span.clone()));
             }
-            StmtKind::Block(block_stmt) => self.lower_block(func, &block_stmt.stmts),
+            StmtKind::Block(block_stmt) => self.lower_block(func, block_stmt),
             StmtKind::Expr(expr) => {
                 let _ = self.lower_expr(func, expr);
             }
-            StmtKind::If(_) | StmtKind::While(_) | StmtKind::For(_) => {
+            StmtKind::If(if_stmt) => self.lower_if(func, if_stmt),
+            StmtKind::While(_) | StmtKind::For(_) => {
                 todo!()
             }
         }
@@ -44,27 +42,25 @@ impl Lowerer {
         }
     }
 
-    fn lower_block(&self, func: &mut Function, stmts: &[Stmt]) {
+    fn lower_block(&self, func: &mut Function, block: &BlockStmt) {
         // Create a new scope for the block.
         let old_sym_table = mem::take(&mut func.sym_table);
         let curr_block_idx = func.last_block_idx();
 
         func.get_basic_block_mut(curr_block_idx).terminator = Terminator::Branch {
             target: curr_block_idx,
-            args: Vec::new(),
             span: None,
         };
 
-        func.add_block(BasicBlock::new(
-            curr_block_idx + 1,
+        func.add_block(
             Terminator::Branch {
                 target: curr_block_idx + 2,
-                args: Vec::new(),
                 span: None,
             },
-        ));
+            Some(block.span.clone()),
+        );
 
-        for s in stmts {
+        for s in block.stmts.iter() {
             self.lower_stmt(s, func);
         }
 

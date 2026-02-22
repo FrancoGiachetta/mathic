@@ -28,7 +28,7 @@ impl<'a> MathicParser<'a> {
 
         // Return type parsing should be here.
 
-        let BlockStmt { stmts } = self.parse_block()?;
+        let BlockStmt { stmts, .. } = self.parse_block()?;
 
         let span = self.merge_spans(&start_span, &self.current_span());
 

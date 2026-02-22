@@ -73,7 +73,7 @@ impl<'a> MathicParser<'a> {
     }
 
     pub fn parse_block(&self) -> ParserResult<BlockStmt> {
-        self.consume_token(Token::LBrace)?;
+        let start_span = self.consume_token(Token::LBrace)?;
 
         let mut stmts = Vec::new();
 
@@ -81,9 +81,12 @@ impl<'a> MathicParser<'a> {
             stmts.push(self.parse_stmt()?);
         }
 
-        self.consume_token(Token::RBrace)?;
+        let end_span = self.consume_token(Token::RBrace)?;
 
-        Ok(BlockStmt { stmts })
+        Ok(BlockStmt {
+            stmts,
+            span: self.merge_spans(&start_span.span, &end_span.span),
+        })
     }
 
     pub fn parse_return(&self) -> ParserResult<ExprStmt> {

@@ -2,18 +2,15 @@ use crate::{
     lowering::{
         Lowerer,
         ir::{
-            basic_block::{BasicBlock, Terminator},
+            basic_block::Terminator,
             function::{Function, LocalKind},
-            instruction::{BinaryOp, LValInstruct, LogicalOp, RValInstruct, UnaryOp},
+            instruction::{LValInstruct, RValInstruct},
             value::{ContExpr, Value},
         },
     },
-    parser::{
-        ast::{
-            Span,
-            expression::{ExprStmt, ExprStmtKind, PrimaryExpr},
-        },
-        token::Token,
+    parser::ast::{
+        Span,
+        expression::{BinaryOp, ExprStmt, ExprStmtKind, LogicalOp, PrimaryExpr, UnaryOp},
     },
 };
 
@@ -21,29 +18,12 @@ impl Lowerer {
     pub fn lower_expr(&self, func: &mut Function, expr: &ExprStmt) -> RValInstruct {
         match &expr.kind {
             ExprStmtKind::Primary(val) => self.lower_primary_value(func, val, expr.span.clone()),
-            ExprStmtKind::BinOp { lhs, op, rhs } => self.lower_binary_op(
-                func,
-                lhs,
-                match op {
-                    Token::Plus => BinaryOp::Add,
-                    Token::Minus => BinaryOp::Sub,
-                    Token::Star => BinaryOp::Mul,
-                    Token::Slash => BinaryOp::Div,
-                    _ => panic!("Invalid token"),
-                },
-                rhs,
-                expr.span.clone(),
-            ),
-            ExprStmtKind::Unary { op, rhs } => self.lower_unary_op(
-                func,
-                match op {
-                    Token::Minus => UnaryOp::Neg,
-                    Token::Bang => UnaryOp::Not,
-                    _ => panic!("Invalid token"),
-                },
-                rhs,
-                expr.span.clone(),
-            ),
+            ExprStmtKind::Binary { lhs, op, rhs } => {
+                self.lower_binary_op(func, lhs, *op, rhs, expr.span.clone())
+            }
+            ExprStmtKind::Unary { op, rhs } => {
+                self.lower_unary_op(func, *op, rhs, expr.span.clone())
+            }
             ExprStmtKind::Group(expr) => self.lower_expr(func, expr),
             ExprStmtKind::Call { callee, args } => {
                 self.lower_call(func, callee.clone(), args, expr.span.clone())
@@ -52,21 +32,9 @@ impl Lowerer {
                 name,
                 expr: assign_expr,
             } => self.lower_assignment(func, name, assign_expr, expr.span.clone()),
-            ExprStmtKind::Logical { lhs, op, rhs } => self.lower_logical_op(
-                func,
-                lhs,
-                match op {
-                    Token::EqEq => LogicalOp::Eq,
-                    Token::BangEq => LogicalOp::Ne,
-                    Token::Less => LogicalOp::Lt,
-                    Token::EqLess => LogicalOp::Le,
-                    Token::Greater => LogicalOp::Gt,
-                    Token::EqGrater => LogicalOp::Ge,
-                    _ => panic!("Invalid token"),
-                },
-                rhs,
-                expr.span.clone(),
-            ),
+            ExprStmtKind::Logical { lhs, op, rhs } => {
+                self.lower_logical_op(func, lhs, *op, rhs, expr.span.clone())
+            }
             ExprStmtKind::Index { .. } => todo!(),
         }
     }
@@ -103,7 +71,7 @@ impl Lowerer {
     ) -> RValInstruct {
         let args: Vec<RValInstruct> = args.iter().map(|arg| self.lower_expr(func, arg)).collect();
 
-        let local_idx = func.add_local(None, LocalKind::BlockParam);
+        let local_idx = func.add_local(None, LocalKind::Temp);
 
         let dest_block_idx = func.last_block_idx() + 1;
 
@@ -115,10 +83,7 @@ impl Lowerer {
             dest_block: dest_block_idx,
         };
 
-        func.add_block(BasicBlock::new(
-            dest_block_idx,
-            Terminator::Return(None, None),
-        ));
+        func.add_block(Terminator::Return(None, None), None);
 
         RValInstruct::Use(Value::InMemory(local_idx), None)
     }

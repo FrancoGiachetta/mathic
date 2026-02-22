@@ -13,14 +13,16 @@ pub struct BasicBlock {
     pub id: BlockId,
     pub instructions: Vec<LValInstruct>,
     pub terminator: Terminator,
+    pub span: Option<Span>,
 }
 
 impl BasicBlock {
-    pub fn new(id: BlockId, terminator: Terminator) -> Self {
+    pub fn new(id: BlockId, terminator: Terminator, span: Option<Span>) -> Self {
         Self {
             id,
             instructions: Vec::new(),
             terminator,
+            span,
         }
     }
 }
@@ -32,16 +34,12 @@ pub enum Terminator {
     /// Return from function (optional value)
     Return(Option<RValInstruct>, Option<Span>),
     /// Unconditional branch
-    Branch {
-        target: BlockId,
-        args: Vec<Value>,
-        span: Option<Span>,
-    },
+    Branch { target: BlockId, span: Option<Span> },
     /// Conditional branch
     CondBranch {
         condition: RValInstruct,
-        then_block: BlockId,
-        else_block: BlockId,
+        true_block: BlockId,
+        false_block: BlockId,
         span: Option<Span>,
     },
     /// Unreachable code
@@ -76,24 +74,19 @@ impl Display for Terminator {
         match self {
             Self::Return(Some(v), _) => write!(f, "return {}", v),
             Self::Return(None, _) => write!(f, "return"),
-            Self::Branch { target, args, .. } => {
-                let args_str = args
-                    .iter()
-                    .map(|p| p.to_string())
-                    .collect::<Vec<_>>()
-                    .join(", ");
-                write!(f, "br block{} [{}]", target, args_str)
+            Self::Branch { target, .. } => {
+                write!(f, "br block{} ", target)
             }
             Self::CondBranch {
                 condition,
-                then_block,
-                else_block,
+                true_block,
+                false_block,
                 ..
             } => {
                 write!(
                     f,
-                    "cond_br {} then block{} else block{}",
-                    condition, then_block, else_block
+                    "cond_br ({}) then block{} else block{}",
+                    condition, true_block, false_block
                 )
             }
             Self::Unreachable(_) => write!(f, "unreachable"),
