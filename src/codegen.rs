@@ -25,8 +25,8 @@ use crate::{
 pub mod control_flow;
 pub mod declaration;
 pub mod error;
-pub mod expression;
 pub mod function_ctx;
+pub mod rvalue;
 pub mod statement;
 pub mod symbol_table;
 
@@ -124,7 +124,7 @@ impl<'ctx> MathicCodeGen<'ctx> {
         }
 
         for (block, mlir_block) in func.basic_blocks.iter().zip(&mlir_blocks) {
-            // self.compile_block(&mlir_block, block.instructions)?;
+            // self.compile_block(&fn_ctx, &mlir_block, block.instructions)?;
 
             self.compile_terminator(&mut fn_ctx, &mlir_block, &block.terminator)?;
         }
@@ -145,18 +145,21 @@ impl<'ctx> MathicCodeGen<'ctx> {
         Ok(())
     }
 
-    fn compile_terminator(
-        &self,
-        fn_ctx: &mut FunctionCtx,
-        block: &Block,
+    fn compile_terminator<'func>(
+        &'func self,
+        fn_ctx: &mut FunctionCtx<'ctx, 'func>,
+        block: &'func Block<'ctx>,
         terminator: &Terminator,
-    ) -> Result<(), CodegenError> {
+    ) -> Result<(), CodegenError>
+    where
+        'func: 'ctx,
+    {
         let location = Location::unknown(self.ctx);
 
         match terminator {
-            Terminator::Return(rval_instruct, range) => match rval_instruct {
+            Terminator::Return(rval_instruct, _) => match rval_instruct {
                 Some(rvalue) => {
-                    let val = self.compile_expression(block, rvalue)?;
+                    let val = self.compile_rvalue(fn_ctx, block, rvalue)?;
 
                     block.append_operation(
                         func::r#return(&[val], Location::unknown(self.ctx)).into(),
@@ -164,16 +167,16 @@ impl<'ctx> MathicCodeGen<'ctx> {
                 }
                 None => block.append_operation(func::r#return(&[], location).into()),
             },
-            Terminator::Branch { target, span } => {
+            Terminator::Branch { target, .. } => {
                 block.append_operation(cf::br(&fn_ctx.get_block(*target), &[], location).into())
             }
             Terminator::CondBranch {
                 condition,
                 true_block,
                 false_block,
-                span,
+                ..
             } => {
-                let cond_val = self.compile_expression(block, condition)?;
+                let cond_val = self.compile_rvalue(fn_ctx, block, condition)?;
 
                 block.append_operation(cf::cond_br(
                     self.ctx,
@@ -185,20 +188,20 @@ impl<'ctx> MathicCodeGen<'ctx> {
                     location,
                 ))
             }
-            Terminator::Unreachable(range) => {
+            Terminator::Unreachable(_) => {
                 block.append_operation(llvm::unreachable(location).into())
             }
             Terminator::Call {
                 callee,
                 args,
-                span,
-                return_dest,
+                return_dest: _,
                 dest_block,
+                ..
             } => {
                 let mut args_vals = Vec::with_capacity(args.len());
 
                 for arg in args.iter() {
-                    args_vals.push(self.compile_expression(block, arg)?);
+                    args_vals.push(self.compile_rvalue(fn_ctx, block, arg)?);
                 }
 
                 let return_ptr =

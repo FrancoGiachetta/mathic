@@ -39,7 +39,7 @@ pub enum RValInstruct {
     /// Unary operation
     Unary {
         op: UnaryOp,
-        operand: Box<RValInstruct>,
+        rhs: Box<RValInstruct>,
         span: Option<Span>,
     },
     // Logical operation
@@ -96,7 +96,7 @@ impl Display for RValInstruct {
         match self {
             Self::Use(v, _) => write!(f, "{}", v),
             Self::Binary { op, lhs, rhs, .. } => write!(f, "{} {} {}", lhs, op, rhs),
-            Self::Unary { op, operand, .. } => write!(f, "{}{}", op, operand),
+            Self::Unary { op, rhs, .. } => write!(f, "{}{}", op, rhs),
             Self::Logical { op, lhs, rhs, .. } => write!(f, "{} {} {}", lhs, op, rhs),
         }
     }

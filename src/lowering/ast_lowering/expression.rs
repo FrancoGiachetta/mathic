@@ -162,7 +162,7 @@ impl Lowerer {
 
         Ok(RValInstruct::Unary {
             op,
-            operand: rhs,
+            rhs,
             span: Some(span),
         })
     }

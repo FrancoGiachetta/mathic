@@ -1,71 +1,52 @@
 use melior::{
-    dialect::{arith::CmpiPredicate, func},
-    helpers::{ArithBlockExt, BuiltinBlockExt, LlvmBlockExt},
-    ir::{
-        Block, Location, Value, ValueLike, attribute::FlatSymbolRefAttribute, r#type::IntegerType,
-    },
+    dialect::arith::CmpiPredicate,
+    helpers::{ArithBlockExt, LlvmBlockExt},
+    ir::{Block, Location, Value, ValueLike, r#type::IntegerType},
 };
 
 use crate::{
-    codegen::{MathicCodeGen, error::CodegenError},
-    parser::ast::expression::{
-        ArithOp, BinaryOp, CmpOp, ExprStmt, ExprStmtKind, LogicalOp, PrimaryExpr, UnaryOp,
-    },
+    codegen::{MathicCodeGen, error::CodegenError, function_ctx::FunctionCtx},
+    lowering::ir::{instruction::RValInstruct, value::Value as IRValue},
+    parser::ast::expression::{ArithOp, BinaryOp, CmpOp, LogicalOp, UnaryOp},
 };
 
 impl MathicCodeGen<'_> {
-    pub fn compile_expression<'ctx, 'func>(
+    pub fn compile_rvalue<'ctx, 'func>(
         &'func self,
+        fn_ctx: &mut FunctionCtx<'ctx, 'func>,
         block: &'func Block<'ctx>,
-        expr: &ExprStmt,
+        rvalue: &RValInstruct,
     ) -> Result<Value<'ctx, 'func>, CodegenError>
     where
         'func: 'ctx,
     {
-        match &expr.kind {
-            ExprStmtKind::Primary(primary_expr) => self.compile_primary(block, primary_expr),
-            ExprStmtKind::Group(expr) => self.compile_expression(block, expr),
-            ExprStmtKind::Binary { lhs, op, rhs } => self.compile_binop(block, lhs, op, rhs),
-            ExprStmtKind::Logical { lhs, op, rhs } => self.compile_logical(block, lhs, *op, rhs),
-            ExprStmtKind::Unary { op, rhs } => self.compile_unary(block, *op, rhs),
-            ExprStmtKind::Call { callee, args } => self.compile_call(block, callee, args),
-            ExprStmtKind::Index { name: _, pos: _ } => unimplemented!("Indexing not implemented"),
-            ExprStmtKind::Assign { name, expr } => self.compile_assign(block, name, expr),
+        match rvalue {
+            RValInstruct::Use(value, _) => self.compile_value_use(fn_ctx, block, value),
+            RValInstruct::Binary { op, lhs, rhs, .. } => {
+                self.compile_binop(fn_ctx, block, lhs, *op, rhs)
+            }
+            RValInstruct::Unary { op, rhs, .. } => self.compile_unary(fn_ctx, block, *op, rhs),
+            RValInstruct::Logical { op, lhs, rhs, .. } => {
+                self.compile_logical(fn_ctx, block, lhs, *op, rhs)
+            }
         }
-    }
-
-    fn compile_assign<'ctx, 'func>(
-        &'func self,
-        block: &'func Block<'ctx>,
-        name: &str,
-        expr: &ExprStmt,
-    ) -> Result<Value<'ctx, 'func>, CodegenError>
-    where
-        'func: 'ctx,
-    {
-        let location = Location::unknown(self.ctx);
-        let value = self.compile_expression(block, expr)?;
-        let ptr = self.get_sym(name)?;
-
-        block.store(self.ctx, location, ptr, value)?;
-
-        Ok(value)
     }
 
     fn compile_logical<'ctx, 'func>(
         &'func self,
+        fn_ctx: &mut FunctionCtx<'ctx, 'func>,
         block: &'func Block<'ctx>,
-        lhs: &ExprStmt,
+        lhs: &RValInstruct,
         op: LogicalOp,
-        rhs: &ExprStmt,
+        rhs: &RValInstruct,
     ) -> Result<Value<'ctx, 'func>, CodegenError>
     where
         'func: 'ctx,
     {
         let location = Location::unknown(self.ctx);
 
-        let lhs_val = self.compile_expression(block, lhs)?;
-        let rhs_val = self.compile_expression(block, rhs)?;
+        let lhs_val = self.compile_rvalue(fn_ctx, block, lhs)?;
+        let rhs_val = self.compile_rvalue(fn_ctx, block, rhs)?;
 
         Ok(match op {
             LogicalOp::And => block.andi(lhs_val, rhs_val, location)?,
@@ -75,18 +56,19 @@ impl MathicCodeGen<'_> {
 
     fn compile_binop<'ctx, 'func>(
         &'func self,
+        fn_ctx: &mut FunctionCtx<'ctx, 'func>,
         block: &'func Block<'ctx>,
-        lhs: &ExprStmt,
-        op: &BinaryOp,
-        rhs: &ExprStmt,
+        lhs: &RValInstruct,
+        op: BinaryOp,
+        rhs: &RValInstruct,
     ) -> Result<Value<'ctx, 'func>, CodegenError>
     where
         'func: 'ctx,
     {
         let location = Location::unknown(self.ctx);
 
-        let lhs_val = self.compile_expression(block, lhs)?;
-        let rhs_val = self.compile_expression(block, rhs)?;
+        let lhs_val = self.compile_rvalue(fn_ctx, block, lhs)?;
+        let rhs_val = self.compile_rvalue(fn_ctx, block, rhs)?;
 
         Ok(match op {
             BinaryOp::Compare(cmp) => match cmp {
@@ -177,15 +159,16 @@ impl MathicCodeGen<'_> {
 
     fn compile_unary<'func, 'ctx>(
         &'func self,
+        fn_ctx: &mut FunctionCtx<'ctx, 'func>,
         block: &'func Block<'ctx>,
         op: UnaryOp,
-        rhs: &ExprStmt,
+        rhs: &RValInstruct,
     ) -> Result<Value<'ctx, 'func>, CodegenError>
     where
         'func: 'ctx,
     {
         let location = Location::unknown(self.ctx);
-        let rhs_val = self.compile_expression(block, rhs)?;
+        let rhs_val = self.compile_rvalue(fn_ctx, block, rhs)?;
 
         Ok(match op {
             UnaryOp::Not => {
@@ -200,58 +183,56 @@ impl MathicCodeGen<'_> {
         })
     }
 
-    fn compile_call<'ctx, 'func>(
+    fn compile_value_use<'ctx, 'func>(
         &'func self,
+        fn_ctx: &mut FunctionCtx<'ctx, 'func>,
         block: &'func Block<'ctx>,
-        calle: &str,
-        args: &[ExprStmt],
-    ) -> Result<Value<'ctx, 'func>, CodegenError>
-    where
-        'func: 'ctx,
-    {
-        let location = Location::unknown(self.ctx);
-        let args = args
-            .iter()
-            .map(|arg| self.compile_expression(block, arg))
-            .collect::<Result<Vec<Value>, _>>()?;
-
-        Ok(block.append_op_result(func::call(
-            self.ctx,
-            FlatSymbolRefAttribute::new(self.ctx, &format!("mathic__{}", calle)),
-            &args,
-            &[IntegerType::new(self.ctx, 64).into()],
-            location,
-        ))?)
-    }
-
-    fn compile_primary<'ctx, 'func>(
-        &'func self,
-        block: &'func Block<'ctx>,
-        expr: &PrimaryExpr,
+        value: &IRValue,
     ) -> Result<Value<'ctx, 'func>, CodegenError>
     where
         'func: 'ctx,
     {
         let location = Location::unknown(self.ctx);
 
-        match expr {
-            PrimaryExpr::Ident(name) => {
-                let ptr = self.get_sym(name)?;
+        Ok(match value {
+            IRValue::InMemory(local_idx) => {
+                let local_ptr = fn_ctx.get_local(*local_idx).expect("Invalid local idx");
 
-                Ok(block.load(
+                block.load(
                     self.ctx,
                     location,
-                    ptr,
+                    local_ptr,
                     IntegerType::new(self.ctx, 64).into(),
-                )?)
+                )?
             }
-            PrimaryExpr::Num(val) => {
-                let parsed_val: u64 = val.parse()?;
-                Ok(block.const_int(self.ctx, location, parsed_val, 64)?)
-            }
-            PrimaryExpr::Str(_) => unimplemented!("String literals not implemented"),
-            PrimaryExpr::Bool(val) => Ok(block.const_int(self.ctx, location, *val as u8, 64)?),
-        }
+            IRValue::Const(const_expr) => match const_expr {
+                crate::lowering::ir::value::ContExpr::Int(val) => {
+                    block.const_int(self.ctx, location, val, 64)?
+                }
+                crate::lowering::ir::value::ContExpr::Bool(val) => {
+                    block.const_int(self.ctx, location, *val as u8, 64)?
+                }
+                crate::lowering::ir::value::ContExpr::Void => todo!(),
+            },
+        })
+        // match expr {
+        //     PrimaryExpr::Ident(name) => {
+        //         let ptr = self.get_sym(name)?;
+
+        //         Ok(block.load(
+        //             self.ctx,
+        //             location,
+        //             ptr,
+        //             IntegerType::new(self.ctx, 64).into(),
+        //         )?)
+        //     }
+        //     PrimaryExpr::Num(val) => {
+        //         let parsed_val: u64 = val.parse()?;
+        //         Ok(block.const_int(self.ctx, location, parsed_val, 64)?)
+        //     }
+        //     PrimaryExpr::Str(_) => unimplemented!("String literals not implemented"),
+        //     PrimaryExpr::Bool(val) => Ok(block.const_int(self.ctx, location, *val as u8, 64)?),
+        // }
     }
 }
 

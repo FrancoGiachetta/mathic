@@ -18,7 +18,7 @@ impl<'ctx, 'this> FunctionCtx<'ctx, 'this> {
         self.locals.push(value.to_raw());
     }
 
-    pub fn get_local(&self, idx: usize) -> Option<Value> {
+    pub fn get_local(&self, idx: usize) -> Option<Value<'ctx, '_>> {
         self.locals
             .get(idx)
             .copied()
