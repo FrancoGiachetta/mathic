@@ -4,8 +4,8 @@ use logos::{Lexer, Logos};
 
 use crate::parser::{error::LexError, token::Token};
 
-pub type LexerOutput<'a> = Option<SpannedToken<'a>>;
-pub type LexerResult<'a> = Result<Option<SpannedToken<'a>>, (LexError, Span)>;
+pub type LexerOutput<'a> = SpannedToken<'a>;
+pub type LexerResult<'a> = Result<Option<LexerOutput<'a>>, (LexError, Span)>;
 pub type Span = Range<usize>;
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -63,10 +63,5 @@ impl<'src> MathicLexer<'src> {
         }
 
         Ok(self.lookahead.clone())
-    }
-
-    /// Returns the current position in the source.
-    pub fn span(&self) -> Span {
-        self.inner.span()
     }
 }

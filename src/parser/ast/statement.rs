@@ -1,11 +1,18 @@
 use crate::parser::ast::{
+    Span,
     control_flow::{ForStmt, IfStmt, WhileStmt},
     declaration::DeclStmt,
     expression::ExprStmt,
 };
 
-#[derive(Debug, PartialEq, Eq)]
-pub enum Stmt {
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct Stmt {
+    pub kind: StmtKind,
+    pub span: Span,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum StmtKind {
     Decl(DeclStmt),
     Block(BlockStmt),
     If(IfStmt),
@@ -15,7 +22,8 @@ pub enum Stmt {
     Expr(ExprStmt),
 }
 
-#[derive(Debug, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub struct BlockStmt {
     pub stmts: Vec<Stmt>,
+    pub span: Span,
 }

@@ -5,6 +5,7 @@ build:
 .PHONY: clean
 clean: 
 	cargo clean
+	rm dump*
 
 .PHONY: check
 check: 

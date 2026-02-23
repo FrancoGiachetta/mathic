@@ -3,17 +3,13 @@ df main() {
 }
 
 df fib(number) {
-	let return_val = 0;
-
 	if (number <= 0) {
-		return_val = 0;
+		return 0;
 	} else {
 		if (number == 1) {
-			return_val = 1;
-		} else {
-			return_val = fib(number - 1) + fib(number - 2);
+			return 1;
 		}
 	}
 
-	return return_val;
+	return fib(number - 1) + fib(number - 2);
 }
