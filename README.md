@@ -61,81 +61,59 @@ cargo --bin euler -- <path-to-file>.mth
 
 > ⚠️ **Note**: This project is in early development. Features are being added incrementally.
 
-### 🏗️ Language Features
-
-#### Statements
-- ✅ **Function declarations** (`df` keyword)
-- ✅ **Return statements**
-- ✅ **Block statements**
-- ✅ **Variable declarations** (`let` keyword)
-- ✅ **Variable assignments**
-- 🚧 **Struct declarations**
-- 🚧 **Symbolic declarations**
-
-#### Control Flow
-- ✅ **If statements**
-- ✅ **While loops**
-- ✅ **For loops**
-
-#### Expressions
-- ✅ **Primary expressions** (identifiers, numbers, booleans)
-- ✅ **Arithmetic operations** (+, -, *, /)
-- ✅ **Comparison operations** (==, !=, >, >=, <, <=)
-- ✅ **Logical operations** (and, or)
-- ✅ **Unary operations** (!, -)
-- ✅ **Function calls**
-- ✅ **Parenthesized expressions**
-
 ---
 
 ## 🏗️ Project Structure
 
 ```
 src/
-├── parser.rs             # Parser entry point
-├── parser/               # Frontend: Lexing and Parsing
-│   ├── lexer.rs          # Lexer definition
-│   ├── token.rs          # Token enum
-│   ├── error.rs          # Parse errors
-│   ├── reporter.rs       # Error reporting
-│   ├── ast.rs            # Program definition
-│   ├── ast/              # AST nodes
-│   │   ├── expression.rs
-│   │   ├── statement.rs
-│   │   ├── control_flow.rs
-│   │   └── declaration.rs
-│   └── parsing/          # Recursive descent parser
-│       ├── expression.rs
-│       ├── statement.rs
-│       ├── control_flow.rs
-│       └── declaration.rs
-├── lowering.rs           # Lowerer entry point
-├── lowering/             # AST → IR lowering
-│   ├── ir.rs             # Ir struct definition
-│   ├── ast_lowering.rs   # Lowerings entry point
-│   ├── ir/               # IR definitions
+├── bin/
+│   └── euler.rs          # Binary entry point
+├── codegen.rs            # MLIR Generation
+├── codegen/             
+│   ├── declaration.rs
+│   ├── error.rs
+│   ├── expression.rs
+│   ├── statement.rs
+│   └── symbol_table.rs
+├── compiler.rs           # Compiler driver
+├── error.rs              # MathicError
+├── error_reporter.rs     # Error reporting entry point
+├── error_reporter/       # Centralized error reporters
+│   ├── lowering.rs
+│   └── parser.rs
+├── executor.rs           # JIT execution
+├── ffi.rs               # MLIR/LLVM FFI bindings
+├── lowering.rs          # Lowerer entry point
+├── lowering/            # AST → IR lowering
+│   ├── ast_lowering.rs  # Lowerings entry point
+│   ├── error.rs         # Semantic Errors
+│   ├── ir.rs            # Ir struct definition
+│   ├── ir/              # IR definitions
 │   │   ├── basic_block.rs
 │   │   ├── function.rs
 │   │   ├── instruction.rs
 │   │   └── value.rs
-│   └── ast_lowering/     # AST → IR transformation
-│       ├── statement.rs
+│   └── ast_lowering/    # AST → IR transformation
+│       ├── control_flow.rs
 │       ├── expression.rs
-│       └── control_flow.rs
-├── codegen.rs            # MLIR Generation
-├── codegen/             
-│   ├── expression.rs
-│   ├── statement.rs
-│   ├── control_flow.rs
-│   ├── declaration.rs
-│   ├── symbol_table.rs
-│   └── error.rs
-├── compiler.rs           # Compiler driver
-├── executor.rs           # JIT execution
-├── ffi.rs                # MLIR/LLVM FFI bindings
-├── error.rs              # Error types
-└── bin/
-    └── euler.rs          # Binary entry point
+│       └── statement.rs
+├── parser.rs            # Parser entry point
+└── parser/              # Frontend: Lexing and Parsing
+    ├── ast.rs           # Program definition
+    ├── ast/             # AST nodes
+    │   ├── control_flow.rs
+    │   ├── declaration.rs
+    │   ├── expression.rs
+    │   └── statement.rs
+    ├── error.rs         # Lexical and Syntactic errors
+    ├── lexer.rs         # Lexer definition
+    ├── parsing/         # Recursive descent parser
+    │   ├── control_flow.rs
+    │   ├── declaration.rs
+    │   ├── expression.rs
+    │   └── statement.rs
+    └── token.rs         # Token enum
 ```
 
 ### Pipeline
@@ -167,11 +145,9 @@ flowchart TD
     style OBJ stroke-dasharray: 5 5
 ```
 
-- **IR**: Intermediate Representation. Variable-based, non-SSA format that sits between AST and MLIR.
+- **MTHIR**: Mathic Intermediate Representation that sits between AST and MLIR.
 - **MLIR**: Multi-Level Intermediate Representation. Used as a flexible IR that preserves high-level constructs (functions, control flow) while enabling transformations.
 - **LLVM IR**: The compilation target. Low-level intermediate representation optimized by LLVM passes.
-
-See [TODO.md](TODO.md) for known issues and planned features.
 
 ---
 
