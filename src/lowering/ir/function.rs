@@ -19,7 +19,7 @@ pub struct Function {
     pub span: Span,
 }
 
-#[derive(Debug, Clone, Copy)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum LocalKind {
     Param,
     Temp,

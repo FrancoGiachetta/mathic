@@ -24,11 +24,18 @@ impl Lowerer {
                     Terminator::Return(Some(value), Some(stmt.span.clone()));
             }
             StmtKind::Block(block_stmt) => {
+                let curr_block_idx = func.last_block_idx();
+
+                func.get_basic_block_mut(curr_block_idx).terminator = Terminator::Branch {
+                    target: curr_block_idx + 1,
+                    span: None,
+                };
+
                 let _ = self.lower_block(
                     func,
                     block_stmt,
                     Terminator::Branch {
-                        target: func.last_block_idx() + 2,
+                        target: curr_block_idx + 2,
                         span: None,
                     },
                 )?;

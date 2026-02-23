@@ -16,7 +16,7 @@ impl Lowerer {
         Self
     }
 
-    pub fn lower_program(&mut self, program: Program) -> Result<Ir, LoweringError> {
+    pub fn lower_program(&mut self, program: &Program) -> Result<Ir, LoweringError> {
         let mut ir = Ir::new();
 
         for func in program.funcs.iter() {

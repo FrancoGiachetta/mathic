@@ -63,17 +63,17 @@ impl MathicCompiler {
         source: &str,
         opt_lvl: OptLvl,
     ) -> MathicResult<Module<'func>> {
+        // Source code parsing.
         let ast = {
             let parser = MathicParser::new(source);
             parser.parse()?
         };
 
-        if std::env::var("MATHIC_DBG_DUMP").is_ok() {
+        // AST lowering and semantic checks.
+        let ir = {
             let mut lowerer = Lowerer::new();
-            let ir = lowerer.lower_program(ast.clone())?;
-
-            println!("{}", ir);
-        }
+            lowerer.lower_program(&ast)?
+        };
 
         // Generate Module.
         let mut module = ffi::create_module(&self.ctx, opt_lvl)?;
@@ -81,11 +81,12 @@ impl MathicCompiler {
         {
             let codegen = MathicCodeGen::new(&self.ctx, &module);
 
-            codegen.generate_module(ast)?;
+            codegen.generate_module(&ir)?;
         }
 
         if let Ok(v) = std::env::var("MATHIC_DBG_DUMP") {
             if v == "1" {
+                println!("{}", ir);
                 let file_path = PathBuf::from("dump-prepass.mlir");
                 let mut f = fs::File::create(file_path).unwrap();
                 write!(f, "{}", module.as_operation()).unwrap();
