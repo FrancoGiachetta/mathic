@@ -94,6 +94,7 @@ impl Display for Terminator {
                 callee,
                 args,
                 return_dest,
+                dest_block,
                 ..
             } => {
                 let args_str = args
@@ -102,7 +103,11 @@ impl Display for Terminator {
                     .collect::<Vec<_>>()
                     .join(", ");
 
-                write!(f, "{} = call {}({})", return_dest, callee, args_str)
+                write!(
+                    f,
+                    "{} = call {}({}) block{}",
+                    return_dest, callee, args_str, dest_block
+                )
             }
         }
     }

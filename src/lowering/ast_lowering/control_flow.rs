@@ -59,6 +59,8 @@ impl Lowerer {
                 },
             )?;
 
+            func.add_block(Terminator::Return(None, None), None);
+
             (then_block_idx, target_block_idx)
         };
 

@@ -1,5 +1,3 @@
-use std::mem;
-
 use crate::{
     lowering::{
         Lowerer,
@@ -72,13 +70,7 @@ impl Lowerer {
         block: &BlockStmt,
         terminator: Terminator,
     ) -> Result<BlockId, LoweringError> {
-        let old_sym_table = mem::take(&mut func.sym_table);
-        let curr_block_idx = func.last_block_idx();
-
-        func.get_basic_block_mut(curr_block_idx).terminator = Terminator::Branch {
-            target: curr_block_idx,
-            span: None,
-        };
+        let old_sym_table = func.sym_table.clone();
 
         let block_id = func.add_block(terminator, Some(block.span.clone()));
 
