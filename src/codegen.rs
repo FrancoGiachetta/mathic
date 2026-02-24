@@ -1,11 +1,9 @@
-use std::cell::RefCell;
-
 use melior::{
     Context,
     dialect::{cf, func, llvm},
     helpers::{BuiltinBlockExt, LlvmBlockExt},
     ir::{
-        Block, BlockLike, Identifier, Location, Module, Region, RegionLike, Value,
+        Block, BlockLike, Identifier, Location, Module, Region, RegionLike,
         attribute::{Attribute, FlatSymbolRefAttribute, StringAttribute, TypeAttribute},
         r#type::{FunctionType, IntegerType},
     },
@@ -13,7 +11,7 @@ use melior::{
 
 use crate::{
     MathicResult,
-    codegen::{error::CodegenError, function_ctx::FunctionCtx, symbol_table::SymbolTable},
+    codegen::{error::CodegenError, function_ctx::FunctionCtx},
     error::MathicError,
     lowering::ir::{
         Ir,
@@ -22,39 +20,19 @@ use crate::{
     },
 };
 
-pub mod control_flow;
-pub mod declaration;
 pub mod error;
 pub mod function_ctx;
 pub mod rvalue;
 pub mod statement;
-pub mod symbol_table;
 
 pub struct MathicCodeGen<'ctx> {
     ctx: &'ctx Context,
     module: &'ctx Module<'ctx>,
-    sym_table: RefCell<SymbolTable>,
 }
 
 impl<'ctx> MathicCodeGen<'ctx> {
     pub fn new(ctx: &'ctx Context, module: &'ctx Module<'ctx>) -> Self {
-        Self {
-            ctx,
-            module,
-            sym_table: Default::default(),
-        }
-    }
-
-    fn define_sym(&self, name: String, value: Value<'ctx, '_>) {
-        self.sym_table.borrow_mut().insert(name, value);
-    }
-
-    fn get_sym(&self, name: &str) -> Result<Value<'ctx, '_>, CodegenError> {
-        self.sym_table
-            .borrow()
-            .get(name)
-            .map(|v| unsafe { Value::from_raw(v) })
-            .ok_or(CodegenError::IdentifierNotFound(name.to_string()))
+        Self { ctx, module }
     }
 
     pub fn generate_module(&self, program: &Ir) -> MathicResult<()> {
@@ -67,8 +45,6 @@ impl<'ctx> MathicCodeGen<'ctx> {
 
         for func in program.functions.iter() {
             self.compile_entry_point(func)?;
-
-            self.sym_table.replace(SymbolTable::new());
         }
 
         Ok(())
@@ -124,7 +100,7 @@ impl<'ctx> MathicCodeGen<'ctx> {
         }
 
         for (block, mlir_block) in func.basic_blocks.iter().zip(&mlir_blocks) {
-            // self.compile_block(&fn_ctx, &mlir_block, block.instructions)?;
+            self.compile_block(&mut fn_ctx, &mlir_block, &block.instructions)?;
 
             self.compile_terminator(&mut fn_ctx, &mlir_block, &block.terminator)?;
         }
