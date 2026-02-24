@@ -100,9 +100,9 @@ impl<'ctx> MathicCodeGen<'ctx> {
         }
 
         for (block, mlir_block) in func.basic_blocks.iter().zip(&mlir_blocks) {
-            self.compile_block(&mut fn_ctx, &mlir_block, &block.instructions)?;
+            self.compile_block(&mut fn_ctx, mlir_block, &block.instructions)?;
 
-            self.compile_terminator(&mut fn_ctx, &mlir_block, &block.terminator)?;
+            self.compile_terminator(&mut fn_ctx, mlir_block, &block.terminator)?;
         }
 
         self.module.body().append_operation(func::func(
@@ -137,14 +137,12 @@ impl<'ctx> MathicCodeGen<'ctx> {
                 Some(rvalue) => {
                     let val = self.compile_rvalue(fn_ctx, block, rvalue)?;
 
-                    block.append_operation(
-                        func::r#return(&[val], Location::unknown(self.ctx)).into(),
-                    )
+                    block.append_operation(func::r#return(&[val], Location::unknown(self.ctx)))
                 }
-                None => block.append_operation(func::r#return(&[], location).into()),
+                None => block.append_operation(func::r#return(&[], location)),
             },
             Terminator::Branch { target, .. } => {
-                block.append_operation(cf::br(&fn_ctx.get_block(*target), &[], location).into())
+                block.append_operation(cf::br(&fn_ctx.get_block(*target), &[], location))
             }
             Terminator::CondBranch {
                 condition,
@@ -164,9 +162,7 @@ impl<'ctx> MathicCodeGen<'ctx> {
                     location,
                 ))
             }
-            Terminator::Unreachable(_) => {
-                block.append_operation(llvm::unreachable(location).into())
-            }
+            Terminator::Unreachable(_) => block.append_operation(llvm::unreachable(location)),
             Terminator::Call {
                 callee,
                 args,
@@ -185,7 +181,7 @@ impl<'ctx> MathicCodeGen<'ctx> {
 
                 let return_value = block.append_op_result(func::call(
                     self.ctx,
-                    FlatSymbolRefAttribute::new(self.ctx, &callee),
+                    FlatSymbolRefAttribute::new(self.ctx, callee),
                     &args_vals,
                     &[IntegerType::new(self.ctx, 64).into()],
                     location,
@@ -193,7 +189,7 @@ impl<'ctx> MathicCodeGen<'ctx> {
 
                 block.store(self.ctx, location, return_ptr, return_value)?;
 
-                block.append_operation(cf::br(&fn_ctx.get_block(*dest_block), &[], location).into())
+                block.append_operation(cf::br(&fn_ctx.get_block(*dest_block), &[], location))
             }
         };
 
