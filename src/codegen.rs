@@ -189,6 +189,8 @@ impl<'ctx> MathicCodeGen<'ctx> {
 
                 block.store(self.ctx, location, return_ptr, return_value)?;
 
+                fn_ctx.define_local(return_value);
+
                 block.append_operation(cf::br(&fn_ctx.get_block(*dest_block), &[], location))
             }
         };
