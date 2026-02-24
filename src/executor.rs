@@ -37,7 +37,7 @@ impl MathicExecutor {
     /// if the symbol was registered, the engine will find it and return the
     /// associated pointer, otherwise it will return None.
     pub fn lookup_symbol(&self, symbol_name: &str) -> Option<*mut ()> {
-        let ptr = self.engine.lookup(&format!("mathic_{}", symbol_name));
+        let ptr = self.engine.lookup(&format!("mathic__{}", symbol_name));
 
         if ptr.is_null() { None } else { Some(ptr) }
     }

@@ -57,6 +57,7 @@ impl Lowerer {
         }
 
         func.add_function(ir_func);
+
         Ok(())
     }
 }

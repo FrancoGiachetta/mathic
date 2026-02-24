@@ -119,12 +119,7 @@ impl Lowerer {
 
         // FUTURE: check that both lhs and rhs are of the same numeric type.
 
-        Ok(RValInstruct::Binary {
-            op,
-            lhs,
-            rhs,
-            span: Some(span),
-        })
+        Ok(RValInstruct::Binary { op, lhs, rhs, span })
     }
 
     fn lower_logical_op(
@@ -140,12 +135,7 @@ impl Lowerer {
 
         // FUTURE: check that both lhs and rhs are of type boolean.
 
-        Ok(RValInstruct::Logical {
-            op,
-            lhs,
-            rhs,
-            span: Some(span),
-        })
+        Ok(RValInstruct::Logical { op, lhs, rhs, span })
     }
 
     fn lower_unary_op(
@@ -160,11 +150,7 @@ impl Lowerer {
         // FUTURE: check that rhs is type of type numeric or boolean depending
         // on op.
 
-        Ok(RValInstruct::Unary {
-            op,
-            rhs,
-            span: Some(span),
-        })
+        Ok(RValInstruct::Unary { op, rhs, span })
     }
 
     fn lower_primary_value(

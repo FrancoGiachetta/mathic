@@ -1,7 +1,0 @@
-df main() {
-    let sum = 0;
-    for 0..10 {
-        sum = sum + 1;
-    }
-    return sum;
-}

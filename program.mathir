@@ -1,0 +1,27 @@
+df fib(%0) -> i64 {
+    block0: {
+        cond_br (%0 <= 1) then block1 else block2
+    }
+    block1: {
+        return %0
+    }
+    block2: {
+        %1 = call fib(%0 - 1) block3
+    }
+    block3: {
+        %2 = call fib(%0 - 2) block4
+    }
+    block4: {
+        return %1 + %2
+    }
+}
+
+df main() -> i64 {
+    block0: {
+        %0 = call fib(10) block1
+    }
+    block1: {
+        return %0
+    }
+}
+

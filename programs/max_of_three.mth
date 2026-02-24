@@ -1,0 +1,13 @@
+df main() {
+    let a = 5;
+    let b = 10;
+    let c = 3;
+    let max = a;
+    if (b > max) {
+        max = b;
+    }
+    if (c > max) {
+        max = c;
+    }
+    return max;
+}

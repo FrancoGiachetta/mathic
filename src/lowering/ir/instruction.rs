@@ -34,20 +34,20 @@ pub enum RValInstruct {
         op: BinaryOp,
         lhs: Box<RValInstruct>,
         rhs: Box<RValInstruct>,
-        span: Option<Span>,
+        span: Span,
     },
     /// Unary operation
     Unary {
         op: UnaryOp,
         rhs: Box<RValInstruct>,
-        span: Option<Span>,
+        span: Span,
     },
     // Logical operation
     Logical {
         op: LogicalOp,
         lhs: Box<RValInstruct>,
         rhs: Box<RValInstruct>,
-        span: Option<Span>,
+        span: Span,
     },
 }
 

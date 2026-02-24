@@ -33,7 +33,7 @@ pub fn format_error(file_path: &Path, error: &MathicError) {
     let report = match error {
         MathicError::Parse(parse_error) => parser::format_error(file_path, parse_error),
         MathicError::Lowering(lowering_error) => lowering::format_error(file_path, lowering_error),
-        MathicError::Codegen(_) => unimplemented!(),
+        MathicError::Codegen(codegen_error) => unimplemented!("{:?}", codegen_error),
         MathicError::Io(_) => unimplemented!(),
     };
 

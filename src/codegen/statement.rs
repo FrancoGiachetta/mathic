@@ -18,12 +18,14 @@ impl MathicCodeGen<'_> {
     where
         'func: 'ctx,
     {
-        let location = self.get_location(None)?;
-
         match inst {
             LValInstruct::Let {
-                local_idx: _, init, ..
+                local_idx: _,
+                init,
+                span,
             } => {
+                let location = self.get_location(span.clone())?;
+
                 let init_val = self.compile_rvalue(fn_ctx, block, init)?;
                 let ptr =
                     block.alloca1(self.ctx, location, IntegerType::new(self.ctx, 64).into(), 8)?;
@@ -33,8 +35,12 @@ impl MathicCodeGen<'_> {
                 fn_ctx.define_local(ptr);
             }
             LValInstruct::Assign {
-                local_idx, value, ..
+                local_idx,
+                value,
+                span,
             } => {
+                let location = self.get_location(span.clone())?;
+
                 let val = self.compile_rvalue(fn_ctx, block, value)?;
                 let ptr = fn_ctx.get_local(*local_idx).expect("invalid local idx");
 

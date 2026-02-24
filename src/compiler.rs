@@ -76,6 +76,21 @@ impl MathicCompiler {
             lowerer.lower_program(&ast)?
         };
 
+        if let Ok(v) = std::env::var("MATHIC_DBG_DUMP") {
+            if v == "1" {
+                let mathir_path = PathBuf::from("program.mathir");
+
+                let mut f_mathir = fs::File::create(mathir_path)?;
+
+                write!(f_mathir, "{}", ir)?;
+            } else {
+                tracing::warn!(
+                    "Incorrect value for MATHIC_DBG_DUMP: \"{}\", ignoring it",
+                    v
+                )
+            }
+        }
+
         // Generate Module.
         let mut module = ffi::create_module(&self.ctx, opt_lvl)?;
 
@@ -87,10 +102,11 @@ impl MathicCompiler {
 
         if let Ok(v) = std::env::var("MATHIC_DBG_DUMP") {
             if v == "1" {
-                println!("{}", ir);
                 let file_path = PathBuf::from("dump-prepass.mlir");
-                let mut f = fs::File::create(file_path).unwrap();
-                write!(f, "{}", module.as_operation()).unwrap();
+
+                let mut f_prepass_program = fs::File::create(file_path)?;
+
+                write!(f_prepass_program, "{}", module.as_operation())?;
             } else {
                 tracing::warn!(
                     "Incorrect value for MATHIC_DBG_DUMP: \"{}\", ignoring it",

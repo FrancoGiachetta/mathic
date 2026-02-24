@@ -101,16 +101,25 @@ impl<'ctx> MathicCodeGen<'ctx> {
 
         let mut mlir_blocks = Vec::with_capacity(func.basic_blocks.len() - 1);
 
-        for _ in 0..func.basic_blocks.len() {
+        // Create the entry block, the first block to be executed of every
+        // function.
+        let entry_block = {
+            let block = region.append_block(Block::new(&block_params));
+
+            mlir_blocks.push(block);
+
+            block
+        };
+
+        // Create the rest of the blocks.
+        for _ in 0..func.basic_blocks.len() - 1 {
             mlir_blocks.push(region.append_block(Block::new(&[])));
         }
 
         let mut fn_ctx = FunctionCtx::new(&mlir_blocks);
 
         {
-            let entry_block = mlir_blocks[0];
-
-            // Allocate space for locals and make them visible to the function
+            // Allocate space for params and make them visible to the function
             for (i, _) in func
                 .sym_table
                 .locals
@@ -127,12 +136,16 @@ impl<'ctx> MathicCodeGen<'ctx> {
             }
         }
 
+        // Generate code for every basic_block. For every block, we first
+        // compile its instructions. After that, the block's terminator
+        // instruction gets compiled.
         for (block, mlir_block) in func.basic_blocks.iter().zip(&mlir_blocks) {
             self.compile_block(&mut fn_ctx, mlir_block, &block.instructions)?;
 
             self.compile_terminator(&mut fn_ctx, mlir_block, &block.terminator)?;
         }
 
+        // Generator the function itself.
         self.module.body().append_operation(func::func(
             self.ctx,
             StringAttribute::new(self.ctx, &format!("mathic__{}", func.name)),
@@ -218,7 +231,7 @@ impl<'ctx> MathicCodeGen<'ctx> {
 
                 let return_value = block.append_op_result(func::call(
                     self.ctx,
-                    FlatSymbolRefAttribute::new(self.ctx, callee),
+                    FlatSymbolRefAttribute::new(self.ctx, &format!("mathic__{}", callee)),
                     &args_vals,
                     &[IntegerType::new(self.ctx, 64).into()],
                     self.get_location(span.clone())?,
@@ -226,7 +239,7 @@ impl<'ctx> MathicCodeGen<'ctx> {
 
                 block.store(self.ctx, unknown_location, return_ptr, return_value)?;
 
-                fn_ctx.define_local(return_value);
+                fn_ctx.define_local(return_ptr);
 
                 block.append_operation(cf::br(
                     &fn_ctx.get_block(*dest_block),
