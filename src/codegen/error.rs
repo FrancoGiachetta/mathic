@@ -20,4 +20,7 @@ pub enum CodegenError {
     ParseAttributeError,
     #[error("{0}")]
     Custom(String),
+
+    #[error(transparent)]
+    Io(#[from] std::io::Error),
 }

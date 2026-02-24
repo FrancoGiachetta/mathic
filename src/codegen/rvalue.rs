@@ -1,7 +1,7 @@
 use melior::{
     dialect::arith::CmpiPredicate,
     helpers::{ArithBlockExt, LlvmBlockExt},
-    ir::{Block, Location, Value, ValueLike, r#type::IntegerType},
+    ir::{Block, Value, ValueLike, r#type::IntegerType},
 };
 
 use crate::{
@@ -43,7 +43,7 @@ impl MathicCodeGen<'_> {
     where
         'func: 'ctx,
     {
-        let location = Location::unknown(self.ctx);
+        let location = self.get_location(None)?;
 
         let lhs_val = self.compile_rvalue(fn_ctx, block, lhs)?;
         let rhs_val = self.compile_rvalue(fn_ctx, block, rhs)?;
@@ -65,7 +65,7 @@ impl MathicCodeGen<'_> {
     where
         'func: 'ctx,
     {
-        let location = Location::unknown(self.ctx);
+        let location = self.get_location(None)?;
 
         let lhs_val = self.compile_rvalue(fn_ctx, block, lhs)?;
         let rhs_val = self.compile_rvalue(fn_ctx, block, rhs)?;
@@ -167,7 +167,7 @@ impl MathicCodeGen<'_> {
     where
         'func: 'ctx,
     {
-        let location = Location::unknown(self.ctx);
+        let location = self.get_location(None)?;
         let rhs_val = self.compile_rvalue(fn_ctx, block, rhs)?;
 
         Ok(match op {
@@ -192,7 +192,7 @@ impl MathicCodeGen<'_> {
     where
         'func: 'ctx,
     {
-        let location = Location::unknown(self.ctx);
+        let location = self.get_location(None)?;
 
         Ok(match value {
             IRValue::InMemory(local_idx) => {

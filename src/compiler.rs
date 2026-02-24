@@ -49,7 +49,7 @@ impl MathicCompiler {
         // Read source file
         let source = fs::read_to_string(file_path)?;
 
-        match self.compile_source(&source, opt_lvl) {
+        match self.compile_source(&source, opt_lvl, Some(file_path.to_path_buf())) {
             Err(e) => {
                 error_reporter::format_error(file_path, &e);
                 std::process::exit(1);
@@ -62,6 +62,7 @@ impl MathicCompiler {
         &'func self,
         source: &str,
         opt_lvl: OptLvl,
+        file_path: Option<PathBuf>,
     ) -> MathicResult<Module<'func>> {
         // Source code parsing.
         let ast = {
@@ -79,7 +80,7 @@ impl MathicCompiler {
         let mut module = ffi::create_module(&self.ctx, opt_lvl)?;
 
         {
-            let codegen = MathicCodeGen::new(&self.ctx, &module);
+            let codegen = MathicCodeGen::new(&self.ctx, &module, file_path);
 
             codegen.generate_module(&ir)?;
         }
@@ -92,7 +93,7 @@ impl MathicCompiler {
                 write!(f, "{}", module.as_operation()).unwrap();
             } else {
                 tracing::warn!(
-                    "Incorrect value for MATHIC_DBG_DUMP: \"{}\", igonring it",
+                    "Incorrect value for MATHIC_DBG_DUMP: \"{}\", ignoring it",
                     v
                 )
             }

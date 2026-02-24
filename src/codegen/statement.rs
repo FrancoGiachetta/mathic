@@ -1,6 +1,6 @@
 use melior::{
     helpers::LlvmBlockExt,
-    ir::{Block, Location, r#type::IntegerType},
+    ir::{Block, r#type::IntegerType},
 };
 
 use crate::{
@@ -18,7 +18,7 @@ impl MathicCodeGen<'_> {
     where
         'func: 'ctx,
     {
-        let location = Location::unknown(self.ctx);
+        let location = self.get_location(None)?;
 
         match inst {
             LValInstruct::Let {
