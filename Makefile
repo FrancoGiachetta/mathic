@@ -5,7 +5,7 @@ build:
 .PHONY: clean
 clean: 
 	cargo clean
-	rm dump*
+	rm *.mlir *.mathir
 
 .PHONY: check
 check: 
