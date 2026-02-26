@@ -1,0 +1,7 @@
+df main() {
+    df inner(a, b) {
+        return a * b;
+    }
+    let result = inner(3, 4);
+    return result;
+}

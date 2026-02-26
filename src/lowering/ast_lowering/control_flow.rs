@@ -152,13 +152,14 @@ impl Lowerer {
         };
 
         // The first block to add will be the start block. It will jump to the
-        // loop block (the block to it) until the condition is matched. Once
-        // this happens, it will jump to exit block (which is two blocks after it).
+        // loop block (the block to it) until the condition is not matched.
+        // Once this happens, it will jump to exit block (which is two blocks
+        // after it).
         let start_block_idx = func.add_block(
             Terminator::CondBranch {
                 condition,
-                true_block: end_block_idx,
-                false_block: loop_block_idx,
+                true_block: loop_block_idx,
+                false_block: end_block_idx,
                 span: None,
             },
             None,

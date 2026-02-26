@@ -1,3 +1,0 @@
-df main() {
-    return 42;
-}
