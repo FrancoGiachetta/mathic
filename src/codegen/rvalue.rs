@@ -6,7 +6,10 @@ use melior::{
 
 use crate::{
     codegen::{MathicCodeGen, error::CodegenError, function_ctx::FunctionCtx},
-    lowering::ir::{instruction::RValInstruct, value::Value as IRValue},
+    lowering::ir::{
+        instruction::RValInstruct,
+        value::{NumericConst, Value as IRValue},
+    },
     parser::ast::{
         Span,
         expression::{ArithOp, BinaryOp, CmpOp, LogicalOp, UnaryOp},
@@ -196,13 +199,74 @@ impl MathicCodeGen<'_> {
                 )?
             }
             IRValue::Const(const_expr) => match const_expr {
-                crate::lowering::ir::value::ContExpr::Int(val) => {
-                    block.const_int(self.ctx, location, val, 64)?
-                }
-                crate::lowering::ir::value::ContExpr::Bool(val) => {
+                crate::lowering::ir::value::ConstExpr::Numeric(num_const) => match num_const {
+                    NumericConst::I8(val) => block.const_int_from_type(
+                        self.ctx,
+                        location,
+                        val,
+                        IntegerType::new(self.ctx, 8).into(),
+                    )?,
+                    NumericConst::I16(val) => block.const_int_from_type(
+                        self.ctx,
+                        location,
+                        val,
+                        IntegerType::new(self.ctx, 16).into(),
+                    )?,
+                    NumericConst::I32(val) => block.const_int_from_type(
+                        self.ctx,
+                        location,
+                        val,
+                        IntegerType::new(self.ctx, 32).into(),
+                    )?,
+                    NumericConst::I64(val) => block.const_int_from_type(
+                        self.ctx,
+                        location,
+                        val,
+                        IntegerType::new(self.ctx, 64).into(),
+                    )?,
+                    NumericConst::I128(val) => block.const_int_from_type(
+                        self.ctx,
+                        location,
+                        val,
+                        IntegerType::new(self.ctx, 128).into(),
+                    )?,
+                    NumericConst::U8(val) => block.const_int_from_type(
+                        self.ctx,
+                        location,
+                        val,
+                        IntegerType::new(self.ctx, 8).into(),
+                    )?,
+                    NumericConst::U16(val) => block.const_int_from_type(
+                        self.ctx,
+                        location,
+                        val,
+                        IntegerType::new(self.ctx, 16).into(),
+                    )?,
+                    NumericConst::U32(val) => block.const_int_from_type(
+                        self.ctx,
+                        location,
+                        val,
+                        IntegerType::new(self.ctx, 32).into(),
+                    )?,
+                    NumericConst::U64(val) => block.const_int_from_type(
+                        self.ctx,
+                        location,
+                        val,
+                        IntegerType::new(self.ctx, 64).into(),
+                    )?,
+                    NumericConst::U128(val) => block.const_int_from_type(
+                        self.ctx,
+                        location,
+                        val,
+                        IntegerType::new(self.ctx, 128).into(),
+                    )?,
+                    NumericConst::F32(_) => todo!(),
+                    NumericConst::F64(_) => todo!(),
+                },
+                crate::lowering::ir::value::ConstExpr::Bool(val) => {
                     block.const_int(self.ctx, location, *val as u8, 1)?
                 }
-                crate::lowering::ir::value::ContExpr::Void => todo!(),
+                crate::lowering::ir::value::ConstExpr::Void => todo!(),
             },
         })
     }

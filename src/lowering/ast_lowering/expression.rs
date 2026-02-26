@@ -6,7 +6,7 @@ use crate::{
             basic_block::Terminator,
             function::{Function, LocalKind},
             instruction::{LValInstruct, RValInstruct},
-            value::{ContExpr, Value},
+            value::{ConstExpr, NumericConst, Value},
         },
     },
     parser::ast::{
@@ -69,7 +69,7 @@ impl Lowerer {
                 span: Some(span),
             });
 
-        Ok(RValInstruct::Use(Value::Const(ContExpr::Void), None))
+        Ok(RValInstruct::Use(Value::Const(ConstExpr::Void), None))
     }
 
     fn lower_call(
@@ -166,8 +166,10 @@ impl Lowerer {
                     span: span.clone(),
                 },
             )?),
-            PrimaryExpr::Num(n) => Value::Const(ContExpr::Int(n.clone())),
-            PrimaryExpr::Bool(b) => Value::Const(ContExpr::Bool(*b)),
+            PrimaryExpr::Num(n) => Value::Const(ConstExpr::Numeric(NumericConst::I64(
+                n.parse::<i64>().unwrap(),
+            ))),
+            PrimaryExpr::Bool(b) => Value::Const(ConstExpr::Bool(*b)),
             PrimaryExpr::Str(_) => todo!(),
         };
 

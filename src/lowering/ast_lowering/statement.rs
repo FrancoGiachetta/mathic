@@ -47,6 +47,7 @@ impl Lowerer {
             StmtKind::While(while_stmt) => self.lower_while(func, while_stmt, stmt.span.clone())?,
             StmtKind::For(for_stmt) => self.lower_for(func, for_stmt, stmt.span.clone())?,
         }
+
         Ok(())
     }
 
@@ -68,6 +69,7 @@ impl Lowerer {
             }
             DeclStmt::Func(func_decl) => self.lower_function(func, func_decl, span.clone())?,
         }
+
         Ok(())
     }
 
