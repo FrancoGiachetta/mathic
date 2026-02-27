@@ -15,7 +15,7 @@
 
 There are many ways of installing LLVM. Choose the one that fits your needs.
 
-#### macOS (Homebrew)
+#### MacOS (Homebrew)
 
 ```bash
 brew install llvm@21
