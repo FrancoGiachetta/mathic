@@ -55,6 +55,8 @@ pub enum Token {
     BangEq,
 
     // Keywords.
+    #[token("in")]
+    In,
     #[token("if")]
     If,
     #[token("else")]

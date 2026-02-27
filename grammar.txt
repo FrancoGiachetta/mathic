@@ -26,9 +26,8 @@
 
 ==== CONTROL FLOW ====
 
-<for_stmt>    := "for" <expr> ".." <expr> <block>
-               | "for" <ident> "in" <expr> <block>
-<while_stmt>  := "while" <expr> <block>
+<for_stmt>    := "for" <ident> "in" <expr> ".." <expr> <block>
+               | "for" <ident> "in" <expr> <block><while_stmt>  := "while" <expr> <block>
 <if_stmt>     := "if" <expr> <block> ("else" <block>)?
 <return_stmt> := "return" <expr> ";"
 <block>       := "{" <statement>* "}"
