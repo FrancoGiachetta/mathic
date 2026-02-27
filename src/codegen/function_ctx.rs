@@ -2,7 +2,7 @@ use melior::{
     dialect::func,
     helpers::{BuiltinBlockExt, LlvmBlockExt},
     ir::{
-        Block, BlockLike, BlockRef, Identifier, Region, RegionLike, Value, ValueLike,
+        Attribute, Block, BlockLike, BlockRef, Identifier, Region, RegionLike, Value, ValueLike,
         attribute::{StringAttribute, TypeAttribute},
         r#type::{FunctionType, IntegerType},
     },
@@ -44,11 +44,10 @@ impl<'ctx, 'this> FunctionCtx<'ctx, 'this> {
 }
 
 impl MathicCodeGen<'_> {
-    pub fn compile_inner_function<'ctx, 'func>(
+    pub fn compile_function<'ctx, 'func>(
         &'func self,
-        _fn_ctx: &mut FunctionCtx<'ctx, 'func>,
-        parent_func_block: &'func Block<'ctx>,
         inner_func: &Function,
+        attributes: &[(Identifier<'_>, Attribute<'_>)],
     ) -> Result<(), CodegenError>
     where
         'func: 'ctx,
@@ -112,7 +111,13 @@ impl MathicCodeGen<'_> {
 
         // Precompile inner functions .
         for (_, inner_func) in inner_func.sym_table.functions.iter() {
-            self.compile_inner_function(&mut inner_fn_ctx, &entry_block, inner_func)?;
+            self.compile_function(
+                inner_func,
+                &[(
+                    Identifier::new(self.ctx, "sym_visibility"),
+                    StringAttribute::new(self.ctx, "private").into(),
+                )],
+            )?;
         }
 
         // Generate code for every basic_block. For every block, we first
@@ -124,16 +129,13 @@ impl MathicCodeGen<'_> {
             self.compile_terminator(&mut inner_fn_ctx, mlir_block, &block.terminator)?;
         }
 
-        // Generator the function itself.
-        parent_func_block.append_operation(func::func(
+        // Generate the function itself.
+        self.module.body().append_operation(func::func(
             self.ctx,
             StringAttribute::new(self.ctx, &format!("mathic__{}", inner_func.name)),
             TypeAttribute::new(FunctionType::new(self.ctx, &params_types, &[i64_ty]).into()),
             region,
-            &[(
-                Identifier::new(self.ctx, "sym_visibility"),
-                StringAttribute::new(self.ctx, "nested").into(),
-            )],
+            attributes,
             location,
         ));
 
