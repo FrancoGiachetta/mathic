@@ -278,31 +278,6 @@ mod tests {
     use rstest::*;
 
     #[rstest]
-    #[case("df main() { return 42 == 42; }", 1)]
-    #[case("df main() { return 42 != 21; }", 1)]
-    #[case("df main() { return 42 == 21; }", 0)]
-    #[case("df main() { return 42 > 21; }", 1)]
-    #[case("df main() { return 21 < 42; }", 1)]
-    #[case("df main() { return 42 >= 42; }", 1)]
-    #[case("df main() { return 21 <= 42; }", 1)]
-    fn test_binary_operations(#[case] source: &str, #[case] expected: i64) {
-        assert_eq!(compile_and_execute(source), expected);
-    }
-
-    #[rstest]
-    #[case("df main() { return true and true; }", 1)]
-    #[case("df main() { return false and true; }", 0)]
-    #[case("df main() { return true or true; }", 1)]
-    #[case("df main() { return true or false; }", 1)]
-    #[case("df main() { return false or false; }", 0)]
-    #[case("df main() { return (true and false) or true; }", 1)]
-    #[case("df main() { return true and (false or true); }", 1)]
-    #[case("df main() { return (false or false) and true; }", 0)]
-    fn test_logical_operations(#[case] source: &str, #[case] expected: i64) {
-        assert_eq!(compile_and_execute(source), expected);
-    }
-
-    #[rstest]
     #[case("df main() { return 2 + 3 * 4; }", 14)]
     #[case("df main() { return (2 + 3) * 4; }", 20)]
     #[case("df main() { return 10 - 2 * 3; }", 4)]

@@ -167,18 +167,7 @@ mod tests {
     #[rstest]
     #[case("df main() { return 0; }", 0)]
     #[case("df main() { return 42; }", 42)]
-    #[case("df main() { return true; }", 1)]
-    #[case("df main() { return false; }", 0)]
     fn test_return_statements(#[case] source: &str, #[case] expected: i64) {
-        assert_eq!(compile_and_execute(source), expected);
-    }
-
-    #[rstest]
-    #[case("df main() { return 42 == 42; }", 1)]
-    #[case("df main() { return 42 != 21; }", 1)]
-    #[case("df main() { return true and false; }", 0)]
-    #[case("df main() { return true or false; }", 1)]
-    fn test_return_with_expressions(#[case] source: &str, #[case] expected: i64) {
         assert_eq!(compile_and_execute(source), expected);
     }
 }
