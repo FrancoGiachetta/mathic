@@ -65,8 +65,6 @@ cargo --bin euler -- <path-to-file>.mth
 
 For more details, see the [docs](./docs/README.md).
 
----
-
 <div align="center">
 
 **Built with ❤️ and 🦀 Rust**
