@@ -16,8 +16,7 @@ use crate::{
     MathicResult,
     codegen::MathicCodeGen,
     diagnostics::{self, CodegenError},
-    ffi,
-    lowering::Lowerer,
+    ffi, lowering,
     parser::MathicParser,
 };
 
@@ -72,10 +71,7 @@ impl MathicCompiler {
         };
 
         // AST lowering and semantic checks.
-        let ir = {
-            let mut lowerer = Lowerer::new();
-            lowerer.lower_program(&ast)?
-        };
+        let ir = { lowering::lower_program(&ast)? };
 
         if let Ok(v) = std::env::var("MATHIC_DBG_DUMP") {
             if v == "1" {
