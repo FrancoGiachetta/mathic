@@ -31,7 +31,7 @@ export TABLEGEN_210_PREFIX=$(brew --prefix)/opt/llvm@21
 
 #### Building from Source
 
-> Note: Building LLVM from source requires at least 6GB of RAM and ~20GB of
+> ⚠️ Note: Building LLVM from source requires at least 6GB of RAM and ~20GB of
 disk space. Ensure these requirements are met, as the build process is likely
 to fail otherwise.
 
@@ -39,7 +39,7 @@ to fail otherwise.
 ```bash
 git clone https://github.com/llvm/llvm-project.git
 cd llvm-project
-git checkout llvmorg-21.x.x
+git checkout llvmorg-21.1.7
 mkdir build && cd build
 ```
 
