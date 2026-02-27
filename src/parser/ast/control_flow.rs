@@ -15,6 +15,7 @@ pub struct WhileStmt {
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct ForStmt {
+    pub variable: String,
     pub start: ExprStmt,
     pub end: ExprStmt,
     pub body: BlockStmt,

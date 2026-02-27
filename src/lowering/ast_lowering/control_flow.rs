@@ -98,36 +98,57 @@ impl Lowerer {
         &self,
         func: &mut Function,
         stmt: &ForStmt,
-        _span: Span,
+        span: Span,
     ) -> Result<(), LoweringError> {
-        let ForStmt { start, end, body } = stmt;
+        let ForStmt {
+            variable,
+            start,
+            end,
+            body,
+        } = stmt;
 
-        // FUTURE: add proper support for variable tracking and custom steps.
-
-        let loop_tracker_idx = func.add_local(None, None, LocalKind::Temp)?;
+        let loop_tracker_idx =
+            func.add_local(Some(variable.clone()), Some(span.clone()), LocalKind::Temp)?;
         let loop_breaker_condition = RValInstruct::Binary {
             op: BinaryOp::Compare(CmpOp::Ge),
             lhs: Box::new(RValInstruct::Use(Value::InMemory(loop_tracker_idx), None)),
             rhs: Box::new(self.lower_expr(func, end)?),
             span: start.span.start..end.span.end,
         };
-        let before_instructions = vec![
-            LValInstruct::Assign {
-                local_idx: loop_tracker_idx,
-                value: RValInstruct::Binary {
-                    op: BinaryOp::Arithmetic(ArithOp::Sub),
-                    lhs: Box::new(RValInstruct::Use(Value::InMemory(loop_tracker_idx), None)),
-                    rhs: Box::new(RValInstruct::Use(1i64.into(), None)),
-                    span: start.span.start..end.span.end,
-                },
-                span: None,
-            };
-            1
-        ];
+
+        let before_instructions = vec![LValInstruct::Assign {
+            local_idx: loop_tracker_idx,
+            value: RValInstruct::Binary {
+                op: BinaryOp::Arithmetic(ArithOp::Sub),
+                lhs: Box::new(RValInstruct::Use(Value::InMemory(loop_tracker_idx), None)),
+                rhs: Box::new(RValInstruct::Use(1i64.into(), None)),
+                span: start.span.start..end.span.end,
+            },
+            span: None,
+        }];
+
+        // Initialize index variable.
+        let init = self.lower_expr(func, start)?;
+        func.push_instruction(LValInstruct::Let {
+            local_idx: loop_tracker_idx,
+            init,
+            span: None,
+        });
 
         self.lower_loop(func, body, loop_breaker_condition, before_instructions)
     }
 
+    /// Helper function to lower a loop.
+    ///
+    /// Given a block of statements and a condition, it creates the necessary
+    /// blocks and instructions to lower the loop.
+    ///
+    /// ## Parameters
+    /// `func`: the current function being lowered.
+    /// `loop_body`: loop's statements.
+    /// `condition`: loop's breaker condition.
+    /// `before_instructions`: set of instructions to execute before the next
+    /// iteration.
     fn lower_loop(
         &self,
         func: &mut Function,
@@ -135,7 +156,7 @@ impl Lowerer {
         condition: RValInstruct,
         before_instructions: Vec<LValInstruct>,
     ) -> Result<(), LoweringError> {
-        // Loops will take three basic blocks:
+        // Loops take three basic blocks:
         //  1. start: it is in charge of checking if we should continue
         //     looping or not.
         //  2. loop: it is in charge of executing the loop's statements.
