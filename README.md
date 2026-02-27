@@ -74,7 +74,7 @@ export TABLEGEN_210_PREFIX=<path-to-install-prefix>
 
 ## Usage
 
-After that, you can run the compiler:
+You can run a program using this command:
 
 ```bash
 cargo --bin euler -- <path-to-file>.mth 
