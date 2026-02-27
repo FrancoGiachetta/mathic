@@ -5,9 +5,9 @@ use crate::{
         function::Function,
     },
     parser::ast::{
+        Span,
         declaration::DeclStmt,
         statement::{BlockStmt, Stmt, StmtKind},
-        Span,
     },
 };
 

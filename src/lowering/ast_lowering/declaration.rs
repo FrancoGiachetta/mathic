@@ -21,6 +21,8 @@ pub fn lower_var_declaration(
     let init = expression::lower_expr(func, &stmt.expr)?;
     let local_idx = func.add_local(Some(stmt.name.clone()), Some(span.clone()), LocalKind::Temp)?;
 
+    // FUTURE: check the expression is the same type as the declaration.
+
     func.push_instruction(LValInstruct::Let {
         local_idx,
         init,

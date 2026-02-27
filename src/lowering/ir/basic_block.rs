@@ -31,7 +31,7 @@ impl BasicBlock {
 #[derive(Debug, Clone)]
 #[allow(dead_code)]
 pub enum Terminator {
-    /// Return from function (optional value)
+    /// Return from function
     Return(Option<RValInstruct>, Option<Span>),
     /// Unconditional branch
     Branch { target: BlockId, span: Option<Span> },

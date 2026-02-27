@@ -1,23 +1,23 @@
 use std::{io::Write, path::PathBuf};
 
 use melior::{
-    ir::{operation::OperationLike, Module},
+    Context,
+    ir::{Module, operation::OperationLike},
     pass::{
+        PassManager,
         conversion::{create_scf_to_control_flow, create_to_llvm},
         transform::create_canonicalizer,
-        PassManager,
     },
-    Context,
 };
 
 use std::{fs, path::Path};
 
 use crate::{
+    MathicResult,
     codegen::MathicCodeGen,
     diagnostics::{self, CodegenError},
     ffi, lowering,
     parser::MathicParser,
-    MathicResult,
 };
 
 #[derive(Default)]

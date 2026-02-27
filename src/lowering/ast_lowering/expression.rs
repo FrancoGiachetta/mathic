@@ -7,8 +7,8 @@ use crate::{
         value::{ConstExpr, NumericConst, Value},
     },
     parser::ast::{
-        expression::{BinaryOp, ExprStmt, ExprStmtKind, LogicalOp, PrimaryExpr, UnaryOp},
         Span,
+        expression::{BinaryOp, ExprStmt, ExprStmtKind, LogicalOp, PrimaryExpr, UnaryOp},
     },
 };
 
@@ -48,6 +48,8 @@ fn lower_assignment(
             })?;
     let value = lower_expr(func, expr)?;
 
+    // FUTURE: check that value is of the same type as the local.
+
     func.get_basic_block_mut(func.last_block_idx())
         .instructions
         .push(LValInstruct::Assign {
@@ -65,10 +67,15 @@ fn lower_call(
     args: &[ExprStmt],
     span: Span,
 ) -> Result<RValInstruct, LoweringError> {
+    // FUTURE: check if the function is declared or if it will be.
+
     let args: Vec<RValInstruct> = args
         .iter()
         .map(|arg| lower_expr(func, arg))
         .collect::<Result<_, _>>()?;
+
+    // FUTURE: check that the amount of args matches the expected and that
+    // every type matches the expected type.
 
     let local_idx = func.add_local(None, None, LocalKind::Temp)?;
 
@@ -97,6 +104,8 @@ fn lower_binary_op(
     let lhs = lower_expr(func, lhs)?.into();
     let rhs = lower_expr(func, rhs)?.into();
 
+    // FUTURE: check that both lhs and rhs are of the same numeric type.
+
     Ok(RValInstruct::Binary { op, lhs, rhs, span })
 }
 
@@ -110,6 +119,8 @@ fn lower_logical_op(
     let lhs = lower_expr(func, lhs)?.into();
     let rhs = lower_expr(func, rhs)?.into();
 
+    // FUTURE: check that both lhs and rhs are of type boolean.
+
     Ok(RValInstruct::Logical { op, lhs, rhs, span })
 }
 
@@ -120,6 +131,9 @@ fn lower_unary_op(
     span: Span,
 ) -> Result<RValInstruct, LoweringError> {
     let rhs = lower_expr(func, rhs)?.into();
+
+    // FUTURE: check that rhs is type of type numeric or boolean depending
+    // on op.
 
     Ok(RValInstruct::Unary { op, rhs, span })
 }
