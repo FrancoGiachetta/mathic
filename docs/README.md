@@ -1,5 +1,3 @@
-# Mathic Documentation
-
 ## Project Structure
 
 ```
@@ -82,3 +80,11 @@ flowchart TD
 - **MATHIR**: Mathic Intermediate Representation that sits between AST and MLIR.
 - **MLIR**: Multi-Level Intermediate Representation. Used as a flexible IR that preserves high-level constructs (functions, control flow) while enabling transformations.
 - **LLVM IR**: The compilation target. Low-level intermediate representation optimized by LLVM passes.
+
+## Glossary
+
+| Section | Description |
+|---------|-------------|
+| [Project Structure](#project-structure) | Tree view of the source code organization |
+| [Pipeline](#pipeline) | Visual diagram of the compilation stages |
+| Glossary | This file - overview of documentation sections |
