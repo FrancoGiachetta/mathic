@@ -3,11 +3,11 @@ use std::{fs, path::PathBuf};
 use ariadne::Source;
 use melior::{
     Context,
-    dialect::{cf, func, llvm},
+    dialect::func,
     helpers::{BuiltinBlockExt, LlvmBlockExt},
     ir::{
         Block, BlockLike, Identifier, Location, Module, Region, RegionLike,
-        attribute::{Attribute, FlatSymbolRefAttribute, StringAttribute, TypeAttribute},
+        attribute::{Attribute, StringAttribute, TypeAttribute},
         r#type::{FunctionType, IntegerType},
     },
 };
@@ -18,7 +18,6 @@ use crate::{
     error::MathicError,
     lowering::ir::{
         Ir,
-        basic_block::Terminator,
         function::{Function, LocalKind},
     },
     parser::lexer::Span,
@@ -136,6 +135,11 @@ impl<'ctx> MathicCodeGen<'ctx> {
             }
         }
 
+        // Precompile inner functions .
+        for (_, inner_func) in func.sym_table.functions.iter() {
+            self.compile_inner_function(&mut fn_ctx, &entry_block, inner_func)?;
+        }
+
         // Generate code for every basic_block. For every block, we first
         // compile its instructions. After that, the block's terminator
         // instruction gets compiled.
@@ -158,96 +162,6 @@ impl<'ctx> MathicCodeGen<'ctx> {
             )],
             location,
         ));
-
-        Ok(())
-    }
-
-    fn compile_terminator<'func>(
-        &'func self,
-        fn_ctx: &mut FunctionCtx<'ctx, 'func>,
-        block: &'func Block<'ctx>,
-        terminator: &Terminator,
-    ) -> Result<(), CodegenError>
-    where
-        'func: 'ctx,
-    {
-        match terminator {
-            Terminator::Return(rval_instruct, span) => match rval_instruct {
-                Some(rvalue) => {
-                    let val = self.compile_rvalue(fn_ctx, block, rvalue)?;
-
-                    block.append_operation(func::r#return(&[val], self.get_location(span.clone())?))
-                }
-                None => {
-                    block.append_operation(func::r#return(&[], self.get_location(span.clone())?))
-                }
-            },
-            Terminator::Branch { target, span } => block.append_operation(cf::br(
-                &fn_ctx.get_block(*target),
-                &[],
-                self.get_location(span.clone())?,
-            )),
-            Terminator::CondBranch {
-                condition,
-                true_block,
-                false_block,
-                span,
-            } => {
-                let cond_val = self.compile_rvalue(fn_ctx, block, condition)?;
-
-                block.append_operation(cf::cond_br(
-                    self.ctx,
-                    cond_val,
-                    &fn_ctx.get_block(*true_block),
-                    &fn_ctx.get_block(*false_block),
-                    &[],
-                    &[],
-                    self.get_location(span.clone())?,
-                ))
-            }
-            Terminator::Unreachable(span) => {
-                block.append_operation(llvm::unreachable(self.get_location(span.clone())?))
-            }
-            Terminator::Call {
-                callee,
-                args,
-                return_dest: _,
-                dest_block,
-                span,
-            } => {
-                let unknown_location = Location::unknown(self.ctx);
-
-                let mut args_vals = Vec::with_capacity(args.len());
-                for arg in args.iter() {
-                    args_vals.push(self.compile_rvalue(fn_ctx, block, arg)?);
-                }
-
-                let return_ptr = block.alloca1(
-                    self.ctx,
-                    unknown_location,
-                    IntegerType::new(self.ctx, 64).into(),
-                    8,
-                )?;
-
-                let return_value = block.append_op_result(func::call(
-                    self.ctx,
-                    FlatSymbolRefAttribute::new(self.ctx, &format!("mathic__{}", callee)),
-                    &args_vals,
-                    &[IntegerType::new(self.ctx, 64).into()],
-                    self.get_location(span.clone())?,
-                ))?;
-
-                block.store(self.ctx, unknown_location, return_ptr, return_value)?;
-
-                fn_ctx.define_local(return_ptr);
-
-                block.append_operation(cf::br(
-                    &fn_ctx.get_block(*dest_block),
-                    &[],
-                    self.get_location(None)?,
-                ))
-            }
-        };
 
         Ok(())
     }

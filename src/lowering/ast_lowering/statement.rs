@@ -67,7 +67,9 @@ impl Lowerer {
                     span: span.clone(),
                 });
             }
-            DeclStmt::Func(func_decl) => self.lower_function(func, func_decl, span.clone())?,
+            DeclStmt::Func(func_decl) => {
+                self.lower_inner_function(func, func_decl, span.clone())?
+            }
         }
 
         Ok(())
