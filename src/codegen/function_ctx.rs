@@ -10,7 +10,8 @@ use melior::{
 use mlir_sys::MlirValue;
 
 use crate::{
-    codegen::{MathicCodeGen, error::CodegenError},
+    codegen::MathicCodeGen,
+    diagnostics::CodegenError,
     lowering::ir::function::{Function, LocalKind},
 };
 

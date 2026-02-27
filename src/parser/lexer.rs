@@ -2,7 +2,7 @@ use std::ops::Range;
 
 use logos::{Lexer, Logos};
 
-use crate::parser::{error::LexError, token::Token};
+use crate::{diagnostics::parse::LexError, parser::token::Token};
 
 pub type LexerOutput<'a> = SpannedToken<'a>;
 pub type LexerResult<'a> = Result<Option<LexerOutput<'a>>, (LexError, Span)>;

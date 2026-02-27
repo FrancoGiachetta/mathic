@@ -5,7 +5,8 @@ use melior::{
 };
 
 use crate::{
-    codegen::{MathicCodeGen, error::CodegenError, function_ctx::FunctionCtx},
+    codegen::{MathicCodeGen, function_ctx::FunctionCtx},
+    diagnostics::CodegenError,
     lowering::ir::{basic_block::Terminator, instruction::LValInstruct},
 };
 

@@ -14,8 +14,9 @@ use std::{fs, path::Path};
 
 use crate::{
     MathicResult,
-    codegen::{MathicCodeGen, error::CodegenError},
-    error_reporter, ffi,
+    codegen::MathicCodeGen,
+    diagnostics::{self, CodegenError},
+    ffi,
     lowering::Lowerer,
     parser::MathicParser,
 };
@@ -51,7 +52,7 @@ impl MathicCompiler {
 
         match self.compile_source(&source, opt_lvl, Some(file_path.to_path_buf())) {
             Err(e) => {
-                error_reporter::format_error(file_path, &e);
+                diagnostics::format_error(file_path, &e);
                 std::process::exit(1);
             }
             module => module,

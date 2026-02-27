@@ -1,9 +1,9 @@
+use crate::diagnostics::parse::{ExpectedToken, ParseError, SyntaxError};
 use crate::parser::{
     MathicParser, ParserResult,
     ast::expression::{
         ArithOp, BinaryOp, CmpOp, ExprStmt, ExprStmtKind, LogicalOp, PrimaryExpr, UnaryOp,
     },
-    error::{ExpectedToken, ParseError, SyntaxError},
     token::Token,
 };
 

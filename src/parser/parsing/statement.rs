@@ -1,3 +1,4 @@
+use crate::diagnostics::parse::{ParseError, SyntaxError};
 use crate::parser::{
     MathicParser, ParserResult,
     ast::{
@@ -5,7 +6,6 @@ use crate::parser::{
         expression::ExprStmt,
         statement::{BlockStmt, Stmt, StmtKind},
     },
-    error::{ParseError, SyntaxError},
     token::Token,
 };
 

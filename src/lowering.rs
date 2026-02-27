@@ -1,9 +1,8 @@
 pub mod ast_lowering;
-pub mod error;
 pub mod ir;
 
 use crate::{
-    lowering::error::LoweringError,
+    diagnostics::LoweringError,
     lowering::ir::function::LocalKind,
     parser::ast::{Program, declaration::FuncDecl},
 };

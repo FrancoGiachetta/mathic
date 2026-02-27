@@ -1,14 +1,13 @@
 use std::cell::RefCell;
 
 use ast::Program;
-use error::{ExpectedToken, FoundToken, ParseError, SyntaxError};
 use lexer::{MathicLexer, Span, SpannedToken};
 use token::Token;
 
+use crate::diagnostics::parse::{ExpectedToken, FoundToken, ParseError, SyntaxError};
 use crate::parser::lexer::LexerOutput;
 
 pub mod ast;
-pub mod error;
 pub mod lexer;
 pub mod parsing;
 pub mod token;

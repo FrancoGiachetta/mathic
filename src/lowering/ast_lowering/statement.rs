@@ -1,7 +1,7 @@
 use crate::{
+    diagnostics::LoweringError,
     lowering::{
         Lowerer,
-        error::LoweringError,
         ir::{
             basic_block::{BlockId, Terminator},
             function::Function,

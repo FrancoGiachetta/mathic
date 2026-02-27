@@ -1,7 +1,7 @@
 use crate::{
+    diagnostics::LoweringError,
     lowering::{
         Lowerer,
-        error::LoweringError,
         ir::{
             function::{Function, LocalKind},
             instruction::LValInstruct,
