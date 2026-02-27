@@ -130,7 +130,7 @@ flowchart TD
 
     subgraph Lowering["⚙️ Lowering"]
         AST --> Lowerer[Lowerer]
-        Lowerer --> IR[Mathic IR]
+        Lowerer --> IR[MATHIR]
     end
 
     subgraph Backend["🔧 Backend"]
@@ -145,7 +145,7 @@ flowchart TD
     style OBJ stroke-dasharray: 5 5
 ```
 
-- **MTHIR**: Mathic Intermediate Representation that sits between AST and MLIR.
+- **MATHIR**: Mathic Intermediate Representation that sits between AST and MLIR.
 - **MLIR**: Multi-Level Intermediate Representation. Used as a flexible IR that preserves high-level constructs (functions, control flow) while enabling transformations.
 - **LLVM IR**: The compilation target. Low-level intermediate representation optimized by LLVM passes.
 

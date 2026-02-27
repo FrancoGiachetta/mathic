@@ -49,7 +49,7 @@ impl MathicCompiler {
         // Read source file
         let source = fs::read_to_string(file_path)?;
 
-        match self.compile_source(&source, opt_lvl) {
+        match self.compile_source(&source, opt_lvl, Some(file_path.to_path_buf())) {
             Err(e) => {
                 error_reporter::format_error(file_path, &e);
                 std::process::exit(1);
@@ -62,36 +62,54 @@ impl MathicCompiler {
         &'func self,
         source: &str,
         opt_lvl: OptLvl,
+        file_path: Option<PathBuf>,
     ) -> MathicResult<Module<'func>> {
+        // Source code parsing.
         let ast = {
             let parser = MathicParser::new(source);
             parser.parse()?
         };
 
-        if std::env::var("MATHIC_DBG_DUMP").is_ok() {
+        // AST lowering and semantic checks.
+        let ir = {
             let mut lowerer = Lowerer::new();
-            let ir = lowerer.lower_program(ast.clone())?;
+            lowerer.lower_program(&ast)?
+        };
 
-            println!("{}", ir);
+        if let Ok(v) = std::env::var("MATHIC_DBG_DUMP") {
+            if v == "1" {
+                let mathir_path = PathBuf::from("program.mathir");
+
+                let mut f_mathir = fs::File::create(mathir_path)?;
+
+                write!(f_mathir, "{}", ir)?;
+            } else {
+                tracing::warn!(
+                    "Incorrect value for MATHIC_DBG_DUMP: \"{}\", ignoring it",
+                    v
+                )
+            }
         }
 
         // Generate Module.
         let mut module = ffi::create_module(&self.ctx, opt_lvl)?;
 
         {
-            let codegen = MathicCodeGen::new(&self.ctx, &module);
+            let codegen = MathicCodeGen::new(&self.ctx, &module, file_path);
 
-            codegen.generate_module(ast)?;
+            codegen.generate_module(&ir)?;
         }
 
         if let Ok(v) = std::env::var("MATHIC_DBG_DUMP") {
             if v == "1" {
                 let file_path = PathBuf::from("dump-prepass.mlir");
-                let mut f = fs::File::create(file_path).unwrap();
-                write!(f, "{}", module.as_operation()).unwrap();
+
+                let mut f_prepass_program = fs::File::create(file_path)?;
+
+                write!(f_prepass_program, "{}", module.as_operation())?;
             } else {
                 tracing::warn!(
-                    "Incorrect value for MATHIC_DBG_DUMP: \"{}\", igonring it",
+                    "Incorrect value for MATHIC_DBG_DUMP: \"{}\", ignoring it",
                     v
                 )
             }

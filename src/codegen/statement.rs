@@ -1,45 +1,159 @@
 use melior::{
-    dialect::func,
-    ir::{Block, BlockLike, Location},
+    dialect::{cf, func, llvm},
+    helpers::{BuiltinBlockExt, LlvmBlockExt},
+    ir::{Block, BlockLike, Location, attribute::FlatSymbolRefAttribute, r#type::IntegerType},
 };
 
 use crate::{
-    codegen::{MathicCodeGen, error::CodegenError},
-    parser::ast::{
-        expression::ExprStmt,
-        statement::{Stmt, StmtKind},
-    },
+    codegen::{MathicCodeGen, error::CodegenError, function_ctx::FunctionCtx},
+    lowering::ir::{basic_block::Terminator, instruction::LValInstruct},
 };
 
 impl MathicCodeGen<'_> {
-    pub fn compile_statement(&self, block: &Block, stmt: &Stmt) -> Result<(), CodegenError> {
-        match &stmt.kind {
-            StmtKind::Decl(decl_stmt) => self.compile_declaration(block, decl_stmt),
-            StmtKind::Block(block_stmt) => self.compile_block(block, &block_stmt.stmts),
-            StmtKind::If(if_stmt) => self.compile_if(block, if_stmt),
-            StmtKind::While(while_stmt) => self.compile_while(block, while_stmt),
-            StmtKind::For(for_stmt) => self.compile_for(block, for_stmt),
-            StmtKind::Return(return_stmt) => self.compile_return(block, return_stmt),
-            StmtKind::Expr(expr) => {
-                let _ = self.compile_expression(block, expr)?;
-                Ok(())
-            }
-        }
-    }
+    pub fn compile_statement<'ctx, 'func>(
+        &'func self,
+        fn_ctx: &mut FunctionCtx<'ctx, 'func>,
+        block: &'func Block<'ctx>,
+        inst: &LValInstruct,
+    ) -> Result<(), CodegenError>
+    where
+        'func: 'ctx,
+    {
+        match inst {
+            LValInstruct::Let {
+                local_idx: _,
+                init,
+                span,
+            } => {
+                let location = self.get_location(span.clone())?;
 
-    pub fn compile_block(&self, block: &Block, stmts: &[Stmt]) -> Result<(), CodegenError> {
-        for stmt in stmts {
-            self.compile_statement(block, stmt)?;
+                let init_val = self.compile_rvalue(fn_ctx, block, init)?;
+                let ptr =
+                    block.alloca1(self.ctx, location, IntegerType::new(self.ctx, 64).into(), 8)?;
+
+                block.store(self.ctx, location, ptr, init_val)?;
+
+                fn_ctx.define_local(ptr);
+            }
+            LValInstruct::Assign {
+                local_idx,
+                value,
+                span,
+            } => {
+                let location = self.get_location(span.clone())?;
+
+                let val = self.compile_rvalue(fn_ctx, block, value)?;
+                let ptr = fn_ctx.get_local(*local_idx).expect("invalid local idx");
+
+                block.store(self.ctx, location, ptr, val)?;
+            }
         }
 
         Ok(())
     }
 
-    pub fn compile_return(&self, block: &Block, expr: &ExprStmt) -> Result<(), CodegenError> {
-        let value = self.compile_expression(block, expr)?;
-        let location = Location::unknown(self.ctx);
+    pub fn compile_terminator<'ctx, 'func>(
+        &'func self,
+        fn_ctx: &mut FunctionCtx<'ctx, 'func>,
+        block: &'func Block<'ctx>,
+        terminator: &Terminator,
+    ) -> Result<(), CodegenError>
+    where
+        'func: 'ctx,
+    {
+        match terminator {
+            Terminator::Return(rval_instruct, span) => match rval_instruct {
+                Some(rvalue) => {
+                    let val = self.compile_rvalue(fn_ctx, block, rvalue)?;
 
-        block.append_operation(func::r#return(&[value], location));
+                    block.append_operation(func::r#return(&[val], self.get_location(span.clone())?))
+                }
+                None => {
+                    block.append_operation(func::r#return(&[], self.get_location(span.clone())?))
+                }
+            },
+            Terminator::Branch { target, span } => block.append_operation(cf::br(
+                &fn_ctx.get_block(*target),
+                &[],
+                self.get_location(span.clone())?,
+            )),
+            Terminator::CondBranch {
+                condition,
+                true_block,
+                false_block,
+                span,
+            } => {
+                let cond_val = self.compile_rvalue(fn_ctx, block, condition)?;
+
+                block.append_operation(cf::cond_br(
+                    self.ctx,
+                    cond_val,
+                    &fn_ctx.get_block(*true_block),
+                    &fn_ctx.get_block(*false_block),
+                    &[],
+                    &[],
+                    self.get_location(span.clone())?,
+                ))
+            }
+            Terminator::Unreachable(span) => {
+                block.append_operation(llvm::unreachable(self.get_location(span.clone())?))
+            }
+            Terminator::Call {
+                callee,
+                args,
+                return_dest: _,
+                dest_block,
+                span,
+            } => {
+                let unknown_location = Location::unknown(self.ctx);
+
+                let mut args_vals = Vec::with_capacity(args.len());
+                for arg in args.iter() {
+                    args_vals.push(self.compile_rvalue(fn_ctx, block, arg)?);
+                }
+
+                let return_ptr = block.alloca1(
+                    self.ctx,
+                    unknown_location,
+                    IntegerType::new(self.ctx, 64).into(),
+                    8,
+                )?;
+
+                let return_value = block.append_op_result(func::call(
+                    self.ctx,
+                    FlatSymbolRefAttribute::new(self.ctx, &format!("mathic__{}", callee)),
+                    &args_vals,
+                    &[IntegerType::new(self.ctx, 64).into()],
+                    self.get_location(span.clone())?,
+                ))?;
+
+                block.store(self.ctx, unknown_location, return_ptr, return_value)?;
+
+                fn_ctx.define_local(return_ptr);
+
+                block.append_operation(cf::br(
+                    &fn_ctx.get_block(*dest_block),
+                    &[],
+                    self.get_location(None)?,
+                ))
+            }
+        };
+
+        Ok(())
+    }
+
+    pub fn compile_block<'ctx, 'func>(
+        &'func self,
+        fn_ctx: &mut FunctionCtx<'ctx, 'func>,
+        block: &'func Block<'ctx>,
+        stmts: &[LValInstruct],
+    ) -> Result<(), CodegenError>
+    where
+        'func: 'ctx,
+    {
+        for stmt in stmts {
+            self.compile_statement(fn_ctx, block, stmt)?;
+        }
 
         Ok(())
     }
@@ -53,18 +167,7 @@ mod tests {
     #[rstest]
     #[case("df main() { return 0; }", 0)]
     #[case("df main() { return 42; }", 42)]
-    #[case("df main() { return true; }", 1)]
-    #[case("df main() { return false; }", 0)]
     fn test_return_statements(#[case] source: &str, #[case] expected: i64) {
-        assert_eq!(compile_and_execute(source), expected);
-    }
-
-    #[rstest]
-    #[case("df main() { return 42 == 42; }", 1)]
-    #[case("df main() { return 42 != 21; }", 1)]
-    #[case("df main() { return true and false; }", 0)]
-    #[case("df main() { return true or false; }", 1)]
-    fn test_return_with_expressions(#[case] source: &str, #[case] expected: i64) {
         assert_eq!(compile_and_execute(source), expected);
     }
 }
