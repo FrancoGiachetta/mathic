@@ -2,10 +2,8 @@ use std::collections::HashMap;
 
 use super::basic_block::{BasicBlock, BlockId, write_block_ir};
 use crate::{
-    lowering::{
-        error::LoweringError,
-        ir::{basic_block::Terminator, instruction::LValInstruct},
-    },
+    diagnostics::LoweringError,
+    lowering::ir::{basic_block::Terminator, instruction::LValInstruct},
     parser::ast::Span,
 };
 

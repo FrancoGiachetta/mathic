@@ -7,11 +7,12 @@ use melior::{
 };
 
 use crate::{
-    MathicResult, codegen::error::CodegenError, error::MathicError, lowering::ir::Ir,
+    MathicResult,
+    diagnostics::{CodegenError, MathicError},
+    lowering::ir::Ir,
     parser::lexer::Span,
 };
 
-pub mod error;
 pub mod function_ctx;
 pub mod rvalue;
 pub mod statement;

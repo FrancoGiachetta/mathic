@@ -68,52 +68,49 @@ cargo --bin euler -- <path-to-file>.mth
 ```
 src/
 ├── bin/
-│   └── euler.rs          # Binary entry point
-├── codegen.rs            # MLIR Generation
-├── codegen/             
-│   ├── declaration.rs
-│   ├── error.rs
-│   ├── expression.rs
-│   ├── statement.rs
-│   └── symbol_table.rs
-├── compiler.rs           # Compiler driver
-├── error.rs              # MathicError
-├── error_reporter.rs     # Error reporting entry point
-├── error_reporter/       # Centralized error reporters
-│   ├── lowering.rs
-│   └── parser.rs
-├── executor.rs           # JIT execution
-├── ffi.rs               # MLIR/LLVM FFI bindings
-├── lowering.rs          # Lowerer entry point
-├── lowering/            # AST → IR lowering
-│   ├── ast_lowering.rs  # Lowerings entry point
-│   ├── error.rs         # Semantic Errors
-│   ├── ir.rs            # Ir struct definition
-│   ├── ir/              # IR definitions
+│   └── euler.rs           # Binary entry point
+├── codegen.rs             # MLIR Generation
+├── codegen/
+│   ├── function_ctx.rs
+│   ├── rvalue.rs
+│   └── statement.rs
+├── compiler.rs            # Compiler driver
+├── diagnostics.rs         # Error handling entry point
+├── diagnostics/           # Unified diagnostics
+│   ├── codegen.rs         # Codegen errors
+│   ├── lowering.rs        # Semantic errors
+│   └── parse.rs           # Lexical and syntactic errors
+├── executor.rs            # JIT execution
+├── ffi.rs                 # MLIR/LLVM FFI bindings
+├── lowering.rs            # Lowerer entry point
+├── lowering/              # AST → IR lowering
+│   ├── ast_lowering.rs    # Lowerings entry point
+│   ├── ir.rs              # Ir struct definition
+│   ├── ir/                # IR definitions
 │   │   ├── basic_block.rs
 │   │   ├── function.rs
 │   │   ├── instruction.rs
 │   │   └── value.rs
-│   └── ast_lowering/    # AST → IR transformation
+│   └── ast_lowering/      # AST → IR transformation
 │       ├── control_flow.rs
+│       ├── declaration.rs
 │       ├── expression.rs
 │       └── statement.rs
-├── parser.rs            # Parser entry point
-└── parser/              # Frontend: Lexing and Parsing
-    ├── ast.rs           # Program definition
-    ├── ast/             # AST nodes
+├── parser.rs             # Parser entry point
+└── parser/               # Frontend: Lexing and Parsing
+    ├── ast.rs            # Program definition
+    ├── ast/              # AST nodes
     │   ├── control_flow.rs
     │   ├── declaration.rs
     │   ├── expression.rs
     │   └── statement.rs
-    ├── error.rs         # Lexical and Syntactic errors
-    ├── lexer.rs         # Lexer definition
-    ├── parsing/         # Recursive descent parser
+    ├── lexer.rs          # Lexer definition
+    ├── parsing/          # Recursive descent parser
     │   ├── control_flow.rs
     │   ├── declaration.rs
     │   ├── expression.rs
     │   └── statement.rs
-    └── token.rs         # Token enum
+    └── token.rs          # Token enum
 ```
 
 ### Pipeline

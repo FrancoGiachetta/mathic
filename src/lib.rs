@@ -1,9 +1,8 @@
-use crate::error::MathicError;
+use crate::diagnostics::MathicError;
 
 mod codegen;
 pub mod compiler;
-pub mod error;
-pub mod error_reporter;
+pub mod diagnostics;
 pub mod executor;
 mod ffi;
 mod lowering;

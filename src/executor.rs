@@ -1,6 +1,6 @@
 use melior::{ExecutionEngine, ir::Module};
 
-use crate::{MathicResult, codegen::error::CodegenError, compiler::OptLvl};
+use crate::{MathicResult, compiler::OptLvl, diagnostics::CodegenError};
 
 /// A wrapper over melior's ExecutionEngine.
 pub struct MathicExecutor {

@@ -1,6 +1,6 @@
 use logos::Logos;
 
-use crate::parser::error::LexError;
+use crate::diagnostics::parse::LexError;
 
 #[derive(logos_display::Display, logos_display::Debug, Logos, PartialEq, Eq, Clone)]
 #[logos(error(LexError, LexError::from_lexer))]

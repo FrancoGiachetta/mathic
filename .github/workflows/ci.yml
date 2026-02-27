@@ -35,8 +35,12 @@ jobs:
     - name: Rust Cache
       uses: Swatinem/rust-cache@v2
     
+    - name: Install cargo-nextest
+      uses: cargo-bins/cargo-binstall@main
+    - run: cargo binstall cargo-nextest -y
+    
     - name: Run tests
-      run: cargo test --verbose
+      run: cargo nextest run --verbose
 
   clippy:
     name: Linting check

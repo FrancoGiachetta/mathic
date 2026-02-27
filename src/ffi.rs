@@ -32,7 +32,7 @@ use mlir_sys::{
     mlirLLVMDICompileUnitAttrGet, mlirLLVMDIFileAttrGet, mlirLLVMDIModuleAttrGet,
 };
 
-use crate::{codegen::error::CodegenError, compiler::OptLvl};
+use crate::{compiler::OptLvl, diagnostics::CodegenError};
 
 pub fn create_module<'ctx>(
     ctx: &'ctx Context,

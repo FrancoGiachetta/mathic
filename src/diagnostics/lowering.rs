@@ -1,11 +1,37 @@
 use std::path::Path;
 
-use ariadne::{Report, ReportBuilder};
+use ariadne::{Report, ReportBuilder, ReportKind};
+use thiserror::Error;
 
-use crate::error_reporter::ReportSpan;
-use crate::lowering::error::LoweringError;
+use crate::{diagnostics::ReportSpan, parser::lexer::Span};
 
-pub fn format_error<'err>(
+#[derive(Debug, Error)]
+pub enum LoweringError {
+    #[error("Undeclared variable '{name}'")]
+    UndeclaredVariable { name: String, span: Span },
+
+    #[error("Duplicate declaration of '{name}'")]
+    DuplicateDeclaration { name: String, span: Span },
+
+    #[error("Function '{name}' called with {got} arguments, expected {expected}")]
+    WrongArgumentCount {
+        name: String,
+        expected: usize,
+        got: usize,
+        span: Span,
+    },
+
+    #[error("Undefined function '{name}'")]
+    UndefinedFunction { name: String, span: Span },
+
+    #[error("Function '{name}' missing return statement")]
+    MissingReturn { name: String, span: Span },
+
+    #[error("Unsupported feature: {feature}")]
+    UnsupportedFeature { feature: String, span: Span },
+}
+
+pub fn format_lowering_error<'err>(
     file_path: &'err Path,
     error: &LoweringError,
 ) -> ReportBuilder<'err, ReportSpan> {
@@ -53,7 +79,7 @@ pub fn format_error<'err>(
         span: span.start..span.end,
     };
 
-    Report::build(ariadne::ReportKind::Error, report_span.clone())
+    Report::build(ReportKind::Error, report_span.clone())
         .with_code(code)
         .with_message("Semantic Error")
         .with_label(
