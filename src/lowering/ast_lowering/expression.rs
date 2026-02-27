@@ -1,178 +1,147 @@
 use crate::{
     diagnostics::LoweringError,
-    lowering::{
-        Lowerer,
-        ir::{
-            basic_block::Terminator,
-            function::{Function, LocalKind},
-            instruction::{LValInstruct, RValInstruct},
-            value::{ConstExpr, NumericConst, Value},
-        },
+    lowering::ir::{
+        basic_block::Terminator,
+        function::{Function, LocalKind},
+        instruction::{LValInstruct, RValInstruct},
+        value::{ConstExpr, NumericConst, Value},
     },
     parser::ast::{
-        Span,
         expression::{BinaryOp, ExprStmt, ExprStmtKind, LogicalOp, PrimaryExpr, UnaryOp},
+        Span,
     },
 };
 
-impl Lowerer {
-    pub fn lower_expr(
-        &self,
-        func: &mut Function,
-        expr: &ExprStmt,
-    ) -> Result<RValInstruct, LoweringError> {
-        match &expr.kind {
-            ExprStmtKind::Primary(val) => self.lower_primary_value(func, val, expr.span.clone()),
-            ExprStmtKind::Binary { lhs, op, rhs } => {
-                self.lower_binary_op(func, lhs, *op, rhs, expr.span.clone())
-            }
-            ExprStmtKind::Unary { op, rhs } => {
-                self.lower_unary_op(func, *op, rhs, expr.span.clone())
-            }
-            ExprStmtKind::Group(expr) => self.lower_expr(func, expr),
-            ExprStmtKind::Call { callee, args } => {
-                self.lower_call(func, callee.clone(), args, expr.span.clone())
-            }
-            ExprStmtKind::Assign {
-                name,
-                expr: assign_expr,
-            } => self.lower_assignment(func, name, assign_expr, expr.span.clone()),
-            ExprStmtKind::Logical { lhs, op, rhs } => {
-                self.lower_logical_op(func, lhs, *op, rhs, expr.span.clone())
-            }
-            ExprStmtKind::Index { .. } => todo!(),
+pub fn lower_expr(func: &mut Function, expr: &ExprStmt) -> Result<RValInstruct, LoweringError> {
+    match &expr.kind {
+        ExprStmtKind::Primary(val) => lower_primary_value(func, val, expr.span.clone()),
+        ExprStmtKind::Binary { lhs, op, rhs } => {
+            lower_binary_op(func, lhs, *op, rhs, expr.span.clone())
         }
+        ExprStmtKind::Unary { op, rhs } => lower_unary_op(func, *op, rhs, expr.span.clone()),
+        ExprStmtKind::Group(expr) => lower_expr(func, expr),
+        ExprStmtKind::Call { callee, args } => {
+            lower_call(func, callee.clone(), args, expr.span.clone())
+        }
+        ExprStmtKind::Assign {
+            name,
+            expr: assign_expr,
+        } => lower_assignment(func, name, assign_expr, expr.span.clone()),
+        ExprStmtKind::Logical { lhs, op, rhs } => {
+            lower_logical_op(func, lhs, *op, rhs, expr.span.clone())
+        }
+        ExprStmtKind::Index { .. } => todo!(),
     }
+}
 
-    fn lower_assignment(
-        &self,
-        func: &mut Function,
-        name: &str,
-        expr: &ExprStmt,
-        span: Span,
-    ) -> Result<RValInstruct, LoweringError> {
-        let local_idx =
-            func.get_local_idx_from_name(name)
-                .ok_or(LoweringError::UndeclaredVariable {
-                    name: name.to_string(),
-                    span: span.clone(),
-                })?;
-        let value = self.lower_expr(func, expr)?;
+fn lower_assignment(
+    func: &mut Function,
+    name: &str,
+    expr: &ExprStmt,
+    span: Span,
+) -> Result<RValInstruct, LoweringError> {
+    let local_idx =
+        func.get_local_idx_from_name(name)
+            .ok_or(LoweringError::UndeclaredVariable {
+                name: name.to_string(),
+                span: span.clone(),
+            })?;
+    let value = lower_expr(func, expr)?;
 
-        // FUTURE: check that value is of the same type as the local.
-
-        func.get_basic_block_mut(func.last_block_idx())
-            .instructions
-            .push(LValInstruct::Assign {
-                local_idx,
-                value,
-                span: Some(span),
-            });
-
-        Ok(RValInstruct::Use(Value::Const(ConstExpr::Void), None))
-    }
-
-    fn lower_call(
-        &self,
-        func: &mut Function,
-        callee: String,
-        args: &[ExprStmt],
-        span: Span,
-    ) -> Result<RValInstruct, LoweringError> {
-        // FUTURE: check if the function is declared or if it will be.
-
-        let args: Vec<RValInstruct> = args
-            .iter()
-            .map(|arg| self.lower_expr(func, arg))
-            .collect::<Result<_, _>>()?;
-
-        // FUTURE: check that the amount of args matches the expected and that
-        // every type matches the expected type.
-
-        let local_idx = func.add_local(None, None, LocalKind::Temp)?;
-
-        let dest_block_idx = func.last_block_idx() + 1;
-
-        func.get_basic_block_mut(func.last_block_idx()).terminator = Terminator::Call {
-            callee,
-            args,
+    func.get_basic_block_mut(func.last_block_idx())
+        .instructions
+        .push(LValInstruct::Assign {
+            local_idx,
+            value,
             span: Some(span),
-            return_dest: Value::InMemory(local_idx),
-            dest_block: dest_block_idx,
-        };
+        });
 
-        func.add_block(Terminator::Return(None, None), None);
+    Ok(RValInstruct::Use(Value::Const(ConstExpr::Void), None))
+}
 
-        Ok(RValInstruct::Use(Value::InMemory(local_idx), None))
-    }
+fn lower_call(
+    func: &mut Function,
+    callee: String,
+    args: &[ExprStmt],
+    span: Span,
+) -> Result<RValInstruct, LoweringError> {
+    let args: Vec<RValInstruct> = args
+        .iter()
+        .map(|arg| lower_expr(func, arg))
+        .collect::<Result<_, _>>()?;
 
-    fn lower_binary_op(
-        &self,
-        func: &mut Function,
-        lhs: &ExprStmt,
-        op: BinaryOp,
-        rhs: &ExprStmt,
-        span: Span,
-    ) -> Result<RValInstruct, LoweringError> {
-        let lhs = self.lower_expr(func, lhs)?.into();
-        let rhs = self.lower_expr(func, rhs)?.into();
+    let local_idx = func.add_local(None, None, LocalKind::Temp)?;
 
-        // FUTURE: check that both lhs and rhs are of the same numeric type.
+    let dest_block_idx = func.last_block_idx() + 1;
 
-        Ok(RValInstruct::Binary { op, lhs, rhs, span })
-    }
+    func.get_basic_block_mut(func.last_block_idx()).terminator = Terminator::Call {
+        callee,
+        args,
+        span: Some(span),
+        return_dest: Value::InMemory(local_idx),
+        dest_block: dest_block_idx,
+    };
 
-    fn lower_logical_op(
-        &self,
-        func: &mut Function,
-        lhs: &ExprStmt,
-        op: LogicalOp,
-        rhs: &ExprStmt,
-        span: Span,
-    ) -> Result<RValInstruct, LoweringError> {
-        let lhs = self.lower_expr(func, lhs)?.into();
-        let rhs = self.lower_expr(func, rhs)?.into();
+    func.add_block(Terminator::Return(None, None), None);
 
-        // FUTURE: check that both lhs and rhs are of type boolean.
+    Ok(RValInstruct::Use(Value::InMemory(local_idx), None))
+}
 
-        Ok(RValInstruct::Logical { op, lhs, rhs, span })
-    }
+fn lower_binary_op(
+    func: &mut Function,
+    lhs: &ExprStmt,
+    op: BinaryOp,
+    rhs: &ExprStmt,
+    span: Span,
+) -> Result<RValInstruct, LoweringError> {
+    let lhs = lower_expr(func, lhs)?.into();
+    let rhs = lower_expr(func, rhs)?.into();
 
-    fn lower_unary_op(
-        &self,
-        func: &mut Function,
-        op: UnaryOp,
-        rhs: &ExprStmt,
-        span: Span,
-    ) -> Result<RValInstruct, LoweringError> {
-        let rhs = self.lower_expr(func, rhs)?.into();
+    Ok(RValInstruct::Binary { op, lhs, rhs, span })
+}
 
-        // FUTURE: check that rhs is type of type numeric or boolean depending
-        // on op.
+fn lower_logical_op(
+    func: &mut Function,
+    lhs: &ExprStmt,
+    op: LogicalOp,
+    rhs: &ExprStmt,
+    span: Span,
+) -> Result<RValInstruct, LoweringError> {
+    let lhs = lower_expr(func, lhs)?.into();
+    let rhs = lower_expr(func, rhs)?.into();
 
-        Ok(RValInstruct::Unary { op, rhs, span })
-    }
+    Ok(RValInstruct::Logical { op, lhs, rhs, span })
+}
 
-    fn lower_primary_value(
-        &self,
-        func: &mut Function,
-        expr: &PrimaryExpr,
-        span: Span,
-    ) -> Result<RValInstruct, LoweringError> {
-        let value = match expr {
-            PrimaryExpr::Ident(name) => Value::InMemory(func.get_local_idx_from_name(name).ok_or(
-                LoweringError::UndeclaredVariable {
-                    name: name.clone(),
-                    span: span.clone(),
-                },
-            )?),
-            PrimaryExpr::Num(n) => Value::Const(ConstExpr::Numeric(NumericConst::I64(
-                n.parse::<i64>().unwrap(),
-            ))),
-            PrimaryExpr::Bool(b) => Value::Const(ConstExpr::Bool(*b)),
-            PrimaryExpr::Str(_) => todo!(),
-        };
+fn lower_unary_op(
+    func: &mut Function,
+    op: UnaryOp,
+    rhs: &ExprStmt,
+    span: Span,
+) -> Result<RValInstruct, LoweringError> {
+    let rhs = lower_expr(func, rhs)?.into();
 
-        Ok(RValInstruct::Use(value, Some(span)))
-    }
+    Ok(RValInstruct::Unary { op, rhs, span })
+}
+
+fn lower_primary_value(
+    func: &mut Function,
+    expr: &PrimaryExpr,
+    span: Span,
+) -> Result<RValInstruct, LoweringError> {
+    let value = match expr {
+        PrimaryExpr::Ident(name) => Value::InMemory(func.get_local_idx_from_name(name).ok_or(
+            LoweringError::UndeclaredVariable {
+                name: name.clone(),
+                span: span.clone(),
+            },
+        )?),
+        PrimaryExpr::Num(n) => Value::Const(ConstExpr::Numeric(NumericConst::I64(
+            n.parse::<i64>().unwrap(),
+        ))),
+        PrimaryExpr::Bool(b) => Value::Const(ConstExpr::Bool(*b)),
+        PrimaryExpr::Str(_) => todo!(),
+    };
+
+    Ok(RValInstruct::Use(value, Some(span)))
 }

@@ -3,45 +3,37 @@ pub mod ir;
 
 use crate::{
     diagnostics::LoweringError,
-    lowering::ir::function::LocalKind,
+    lowering::{ast_lowering::statement, ir::function::LocalKind},
     parser::ast::{Program, declaration::FuncDecl},
 };
 use ir::{Ir, function::Function};
 
-pub struct Lowerer;
+pub fn lower_program(program: &Program) -> Result<Ir, LoweringError> {
+    let mut ir = Ir::new();
 
-impl Lowerer {
-    pub fn new() -> Self {
-        Self
+    for func in program.funcs.iter() {
+        lower_entry_point(func, &mut ir)?;
     }
 
-    pub fn lower_program(&mut self, program: &Program) -> Result<Ir, LoweringError> {
-        let mut ir = Ir::new();
+    Ok(ir)
+}
 
-        for func in program.funcs.iter() {
-            self.lower_entry_point(func, &mut ir)?;
-        }
+fn lower_entry_point(func: &FuncDecl, ir: &mut Ir) -> Result<(), LoweringError> {
+    let mut ir_func = Function::new(func.name.clone(), func.span.clone());
 
-        Ok(ir)
+    for param in func.params.iter() {
+        ir_func.add_local(
+            Some(param.name.clone()),
+            Some(param.span.clone()),
+            LocalKind::Param,
+        )?;
     }
 
-    fn lower_entry_point(&self, func: &FuncDecl, ir: &mut Ir) -> Result<(), LoweringError> {
-        let mut ir_func = Function::new(func.name.clone(), func.span.clone());
-
-        for param in func.params.iter() {
-            ir_func.add_local(
-                Some(param.name.clone()),
-                Some(param.span.clone()),
-                LocalKind::Param,
-            )?;
-        }
-
-        for stmt in &func.body {
-            self.lower_stmt(stmt, &mut ir_func)?;
-        }
-
-        ir.add_function(ir_func);
-
-        Ok(())
+    for stmt in &func.body {
+        statement::lower_stmt(stmt, &mut ir_func)?;
     }
+
+    ir.add_function(ir_func);
+
+    Ok(())
 }

@@ -1,24 +1,23 @@
 use std::{io::Write, path::PathBuf};
 
 use melior::{
-    Context,
-    ir::{Module, operation::OperationLike},
+    ir::{operation::OperationLike, Module},
     pass::{
-        PassManager,
         conversion::{create_scf_to_control_flow, create_to_llvm},
         transform::create_canonicalizer,
+        PassManager,
     },
+    Context,
 };
 
 use std::{fs, path::Path};
 
 use crate::{
-    MathicResult,
     codegen::MathicCodeGen,
     diagnostics::{self, CodegenError},
-    ffi,
-    lowering::Lowerer,
+    ffi, lowering,
     parser::MathicParser,
+    MathicResult,
 };
 
 #[derive(Default)]
@@ -72,10 +71,7 @@ impl MathicCompiler {
         };
 
         // AST lowering and semantic checks.
-        let ir = {
-            let mut lowerer = Lowerer::new();
-            lowerer.lower_program(&ast)?
-        };
+        let ir = { lowering::lower_program(&ast)? };
 
         if let Ok(v) = std::env::var("MATHIC_DBG_DUMP") {
             if v == "1" {
