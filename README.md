@@ -49,13 +49,20 @@ cmake -G Ninja ../llvm \
    -DLLVM_ENABLE_PROJECTS="mlir" \
    -DCMAKE_BUILD_TYPE=RelWithDebInfo \
    -DLLVM_ENABLE_ASSERTIONS=On \
-   -DLLVM_USE_LINKER=mold \
    -DLLVM_BUILD_LLVM_DYLIB=On \
    -DLLVM_LINK_LLVM_DYLIB=On \
    -DMLIR_BUILD_MLIR_C_DYLIB=On \
    -DLLVM_TARGETS_TO_BUILD=host \
    -DCMAKE_INSTALL_PREFIX=/opt/llvm-21
 ```
+
+if you have mold installed, you can add this flag which will make linking much faster:
+
+```sh
+-DLLVM_USE_LINKER=mold
+```
+
+For more info about building from source, check: https://llvm.org/docs/GettingStarted.html
 
 3. **Build and Install**
 ```bash
