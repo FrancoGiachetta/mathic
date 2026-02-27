@@ -4,7 +4,6 @@
 |---------|-------------|
 | [Project Structure](#project-structure) | Tree view of the source code organization |
 | [Pipeline](#pipeline) | Visual diagram of the compilation stages |
-| Glossary | This file - overview of documentation sections |
 
 ## Project Structure
 
