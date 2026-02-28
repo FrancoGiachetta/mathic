@@ -21,7 +21,7 @@
 
 <func_decl>   := "df" <ident> "(" <params>? ")" ("->" <type>)? <block>
 <struct_decl> := "struct" <ident> "{" <params>? "}"
-<var_decl>    := "let" <ident> "=" <expr> ";"
+<var_decl>    := "let" <ident> ":" <type> "=" <expr> ";"
 <sym_decl>    := "sym" <ident> "=" <ident> ";"
 
 ==== CONTROL FLOW ====
@@ -50,6 +50,7 @@
 ==== TERMINALS ====
 
 <ident> := <alpha> (<alpha> | <digit> | "_")*
+<type> := <ident>
 <str>   := \" [^"]* \"
 <num>   := "0" | [1-9] <digit>+ ("." <digit>+)?
 
@@ -57,6 +58,6 @@
 
 <alpha>  := [a-zA-Z]
 <digit>  := [0-9]
-<params> := <ident> ("," <ident>)*
+<params> := <ident> ":" <type> ("," <ident> ":" <type>)*
 <args>   := <expr> ("," <expr>)*
 
