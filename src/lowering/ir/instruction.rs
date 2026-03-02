@@ -9,7 +9,6 @@ use crate::parser::ast::{
 
 /// IR Instructions
 #[derive(Debug, Clone)]
-#[allow(dead_code)]
 pub enum LValInstruct {
     Let {
         local_idx: usize,
@@ -24,7 +23,6 @@ pub enum LValInstruct {
 }
 
 #[derive(Debug, Clone)]
-#[allow(dead_code)]
 pub enum RValueKind {
     Use {
         value: Value,
@@ -50,7 +48,6 @@ pub enum RValueKind {
 }
 
 #[derive(Debug, Clone)]
-#[allow(dead_code)]
 pub struct RValInstruct {
     pub kind: RValueKind,
     pub ty: MathicType,

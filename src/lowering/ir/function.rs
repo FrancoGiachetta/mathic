@@ -34,7 +34,6 @@ pub struct Local {
 }
 
 #[derive(Debug, Clone, Default)]
-#[allow(dead_code)]
 pub struct SymbolTable {
     pub locals: Vec<Local>,
     pub local_indexes: HashMap<String, usize>,

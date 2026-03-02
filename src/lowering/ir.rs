@@ -17,7 +17,6 @@ pub mod types;
 pub mod value;
 
 #[derive(Debug, Default)]
-#[allow(dead_code)]
 pub struct Ir {
     pub functions: Vec<Function>,
 }
