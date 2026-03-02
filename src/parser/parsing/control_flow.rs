@@ -39,7 +39,7 @@ impl<'a> MathicParser<'a> {
     pub fn parse_for_stmt(&self) -> ParserResult<ForStmt> {
         self.next()?; // consume For.
 
-        let variable = self.consume_token(Token::Ident)?.lexeme.to_string();
+        let index_tracker = self.consume_token(Token::Ident)?.lexeme.to_string();
 
         self.consume_token(Token::In)?;
 
@@ -53,7 +53,7 @@ impl<'a> MathicParser<'a> {
         let body = self.parse_block()?;
 
         Ok(ForStmt {
-            variable,
+            index_tracker,
             start,
             end,
             body,

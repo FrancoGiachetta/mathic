@@ -5,6 +5,7 @@ use crate::{
     diagnostics::LoweringError,
     lowering::ir::{basic_block::Terminator, instruction::LValInstruct},
     parser::ast::Span,
+    types::MathicType,
 };
 
 /// A function in the IR
@@ -14,6 +15,7 @@ pub struct Function {
     pub name: String,
     pub sym_table: SymbolTable,
     pub basic_blocks: Vec<BasicBlock>,
+    pub params_types: Vec<MathicType>,
     pub span: Span,
 }
 
@@ -28,6 +30,7 @@ pub enum LocalKind {
 pub struct Local {
     pub local_idx: usize,
     pub kind: LocalKind,
+    pub ty: MathicType,
     pub debug_name: Option<String>,
 }
 
@@ -46,6 +49,7 @@ impl Function {
             name,
             sym_table: Default::default(),
             basic_blocks: vec![BasicBlock::new(0, Terminator::Return(None, None), None)],
+            params_types: Vec::with_capacity(0),
             span,
         }
     }
@@ -54,6 +58,7 @@ impl Function {
     pub fn add_local(
         &mut self,
         debug_name: Option<String>,
+        ty: MathicType,
         span: Option<Span>,
         kind: LocalKind,
     ) -> Result<usize, LoweringError> {
@@ -71,6 +76,7 @@ impl Function {
         self.sym_table.locals.push(Local {
             local_idx: idx,
             kind,
+            ty,
             debug_name: debug_name.clone(),
         });
 

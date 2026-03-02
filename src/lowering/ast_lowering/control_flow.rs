@@ -94,14 +94,18 @@ pub fn lower_while(
 
 pub fn lower_for(func: &mut Function, stmt: &ForStmt, span: Span) -> Result<(), LoweringError> {
     let ForStmt {
-        variable,
+        index_tracker,
         start,
         end,
         body,
     } = stmt;
 
-    let loop_tracker_idx =
-        func.add_local(Some(variable.clone()), Some(span.clone()), LocalKind::Temp)?;
+    let loop_tracker_idx = func.add_local(
+        Some(index_tracker.name.clone()),
+        index_tracker.ty,
+        Some(span.clone()),
+        LocalKind::Temp,
+    )?;
     let loop_breaker_condition = RValInstruct::Binary {
         op: BinaryOp::Compare(CmpOp::Lt),
         lhs: Box::new(RValInstruct::Use(Value::InMemory(loop_tracker_idx), None)),

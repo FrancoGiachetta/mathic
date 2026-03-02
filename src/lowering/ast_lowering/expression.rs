@@ -10,6 +10,7 @@ use crate::{
         Span,
         expression::{BinaryOp, ExprStmt, ExprStmtKind, LogicalOp, PrimaryExpr, UnaryOp},
     },
+    types::{MathicType, SintTy},
 };
 
 pub fn lower_expr(func: &mut Function, expr: &ExprStmt) -> Result<RValInstruct, LoweringError> {
@@ -77,7 +78,7 @@ fn lower_call(
     // FUTURE: check that the amount of args matches the expected and that
     // every type matches the expected type.
 
-    let local_idx = func.add_local(None, None, LocalKind::Temp)?;
+    let local_idx = func.add_local(None, MathicType::Sint(SintTy::I64), None, LocalKind::Temp)?;
 
     let dest_block_idx = func.last_block_idx() + 1;
 

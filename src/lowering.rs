@@ -22,8 +22,10 @@ fn lower_entry_point(func: &FuncDecl, ir: &mut Ir) -> Result<(), LoweringError> 
     let mut ir_func = Function::new(func.name.clone(), func.span.clone());
 
     for param in func.params.iter() {
+        ir_func.params_types.push(param.ty);
         ir_func.add_local(
             Some(param.name.clone()),
+            param.ty,
             Some(param.span.clone()),
             LocalKind::Param,
         )?;
