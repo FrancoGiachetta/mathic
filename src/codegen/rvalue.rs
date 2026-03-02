@@ -28,16 +28,16 @@ impl MathicCodeGen<'_> {
         'func: 'ctx,
     {
         match rvalue {
-            RValInstruct::Use(value, _) => self.compile_value_use(fn_ctx, block, value),
-            RValInstruct::Binary { op, lhs, rhs, span } => {
-                self.compile_binop(fn_ctx, block, lhs, *op, rhs, span.clone())
-            }
-            RValInstruct::Unary { op, rhs, span } => {
+            RValInstruct::Use { value, .. } => self.compile_value_use(fn_ctx, block, value),
+            RValInstruct::Binary {
+                op, lhs, rhs, span, ..
+            } => self.compile_binop(fn_ctx, block, lhs, *op, rhs, span.clone()),
+            RValInstruct::Unary { op, rhs, span, .. } => {
                 self.compile_unary(fn_ctx, block, *op, rhs, span.clone())
             }
-            RValInstruct::Logical { op, lhs, rhs, span } => {
-                self.compile_logical(fn_ctx, block, lhs, *op, rhs, span.clone())
-            }
+            RValInstruct::Logical {
+                op, lhs, rhs, span, ..
+            } => self.compile_logical(fn_ctx, block, lhs, *op, rhs, span.clone()),
         }
     }
 

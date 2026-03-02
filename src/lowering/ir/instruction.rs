@@ -1,5 +1,6 @@
 use std::fmt::{self, Display, Formatter};
 
+use super::types::MathicType;
 use super::value::Value;
 use crate::parser::ast::{
     Span,
@@ -27,27 +28,30 @@ pub enum LValInstruct {
 #[derive(Debug, Clone)]
 #[allow(dead_code)]
 pub enum RValInstruct {
-    // Use a value
-    Use(Value, Option<Span>),
-    /// Binary arithmetic operation
+    Use {
+        value: Value,
+        span: Option<Span>,
+        ty: MathicType,
+    },
     Binary {
         op: BinaryOp,
         lhs: Box<RValInstruct>,
         rhs: Box<RValInstruct>,
         span: Span,
+        ty: MathicType,
     },
-    /// Unary operation
     Unary {
         op: UnaryOp,
         rhs: Box<RValInstruct>,
         span: Span,
+        ty: MathicType,
     },
-    // Logical operation
     Logical {
         op: LogicalOp,
         lhs: Box<RValInstruct>,
         rhs: Box<RValInstruct>,
         span: Span,
+        ty: MathicType,
     },
 }
 
@@ -94,7 +98,7 @@ impl Display for LogicalOp {
 impl Display for RValInstruct {
     fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
         match self {
-            Self::Use(v, _) => write!(f, "{}", v),
+            Self::Use { value, .. } => write!(f, "{}", value),
             Self::Binary { op, lhs, rhs, .. } => write!(f, "{} {} {}", lhs, op, rhs),
             Self::Unary { op, rhs, .. } => write!(f, "{}{}", op, rhs),
             Self::Logical { op, lhs, rhs, .. } => write!(f, "{} {} {}", lhs, op, rhs),

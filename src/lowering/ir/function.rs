@@ -90,15 +90,6 @@ impl Function {
         self.sym_table.functions.insert(func.name.clone(), func);
     }
 
-    pub fn get_local_idx_from_name(&self, name: &str, span: Span) -> Result<usize, LoweringError> {
-        Ok(self.sym_table.local_indexes.get(name).copied().ok_or(
-            LoweringError::UndeclaredVariable {
-                name: name.to_string(),
-                span,
-            },
-        )?)
-    }
-
     pub fn get_local_from_name(&self, name: &str, span: Span) -> Result<Local, LoweringError> {
         let local_idx = self.sym_table.local_indexes.get(name).copied().ok_or(
             LoweringError::UndeclaredVariable {

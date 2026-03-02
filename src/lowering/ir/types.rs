@@ -1,5 +1,10 @@
 use std::fmt;
 
+use melior::{
+    Context,
+    ir::{Type, r#type::IntegerType},
+};
+
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum UintTy {
     U8,
@@ -34,6 +39,19 @@ pub enum MathicType {
 }
 
 impl MathicType {
+    pub fn get_compiled_type<'func>(&'func self, ctx: &'func Context) -> Type<'func> {
+        match self {
+            Self::Uint(_) => IntegerType::unsigned(ctx, self.bit_width() as u32).into(),
+            MathicType::Sint(_) => IntegerType::signed(ctx, self.bit_width() as u32).into(),
+            MathicType::Float(float_ty) => match float_ty {
+                FloatTy::F32 => Type::float32(ctx),
+                FloatTy::F64 => Type::float64(ctx),
+            },
+            MathicType::Bool => IntegerType::new(ctx, 1).into(),
+            MathicType::Void => Type::none(ctx),
+        }
+    }
+
     #[inline(always)]
     pub fn bit_width(&self) -> usize {
         match self {

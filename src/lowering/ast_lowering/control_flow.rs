@@ -126,18 +126,32 @@ pub fn lower_for(func: &mut Function, stmt: &ForStmt, span: Span) -> Result<(), 
     )?;
     let loop_breaker_condition = RValInstruct::Binary {
         op: BinaryOp::Compare(CmpOp::Lt),
-        lhs: Box::new(RValInstruct::Use(Value::InMemory(loop_tracker_idx), None)),
+        lhs: Box::new(RValInstruct::Use {
+            value: Value::InMemory(loop_tracker_idx),
+            span: None,
+            ty: start_ty,
+        }),
         rhs: Box::new(end_val),
         span: start.span.start..end.span.end,
+        ty: MathicType::Bool,
     };
 
     let extra_instructions = vec![LValInstruct::Assign {
         local_idx: loop_tracker_idx,
         value: RValInstruct::Binary {
             op: BinaryOp::Arithmetic(ArithOp::Add),
-            lhs: Box::new(RValInstruct::Use(Value::InMemory(loop_tracker_idx), None)),
-            rhs: Box::new(RValInstruct::Use(1i64.into(), None)),
+            lhs: Box::new(RValInstruct::Use {
+                value: Value::InMemory(loop_tracker_idx),
+                span: None,
+                ty: start_ty,
+            }),
+            rhs: Box::new(RValInstruct::Use {
+                value: 1i32.into(),
+                span: None,
+                ty: start_ty,
+            }),
             span: start.span.start..end.span.end,
+            ty: start_ty,
         },
         span: None,
     }];

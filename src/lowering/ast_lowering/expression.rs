@@ -4,7 +4,7 @@ use crate::{
         basic_block::Terminator,
         function::{Function, LocalKind},
         instruction::{LValInstruct, RValInstruct},
-        types::{MathicType, SintTy},
+        types::{FloatTy, MathicType, SintTy, UintTy},
         value::{ConstExpr, NumericConst, Value},
     },
     parser::ast::{
@@ -19,7 +19,7 @@ pub fn lower_expr(
     ty_hint: Option<MathicType>,
 ) -> Result<(RValInstruct, MathicType), LoweringError> {
     let rvalue = match &expr.kind {
-        ExprStmtKind::Primary(val) => lower_primary_value(func, val, expr.span.clone())?,
+        ExprStmtKind::Primary(val) => lower_primary_value(func, val, expr.span.clone(), ty_hint)?,
         ExprStmtKind::Binary { lhs, op, rhs } => {
             lower_binary_op(func, lhs, *op, rhs, expr.span.clone())?
         }
@@ -72,7 +72,11 @@ fn lower_assignment(
             span: Some(span),
         });
 
-    Ok(RValInstruct::Use(Value::Const(ConstExpr::Void), None))
+    Ok(RValInstruct::Use {
+        value: Value::Const(ConstExpr::Void),
+        span: None,
+        ty: MathicType::Void,
+    })
 }
 
 fn lower_call(
@@ -106,7 +110,11 @@ fn lower_call(
 
     func.add_block(Terminator::Return(None, None), None);
 
-    Ok(RValInstruct::Use(Value::InMemory(local_idx), None))
+    Ok(RValInstruct::Use {
+        value: Value::InMemory(local_idx),
+        span: None,
+        ty: MathicType::Sint(SintTy::I64),
+    })
 }
 
 fn lower_binary_op(
@@ -133,6 +141,7 @@ fn lower_binary_op(
         lhs: Box::new(lhs),
         rhs: Box::new(rhs),
         span,
+        ty: lhs_ty,
     })
 }
 
@@ -167,6 +176,7 @@ fn lower_logical_op(
         lhs: Box::new(lhs),
         rhs: Box::new(rhs),
         span,
+        ty: MathicType::Bool,
     })
 }
 
@@ -176,12 +186,13 @@ fn lower_unary_op(
     rhs: &ExprStmt,
     span: Span,
 ) -> Result<RValInstruct, LoweringError> {
-    let (rhs, _) = lower_expr(func, rhs, None)?;
+    let (rhs, rhs_ty) = lower_expr(func, rhs, None)?;
 
     Ok(RValInstruct::Unary {
         op,
         rhs: Box::new(rhs),
         span,
+        ty: rhs_ty,
     })
 }
 
@@ -189,19 +200,79 @@ fn lower_primary_value(
     func: &mut Function,
     expr: &PrimaryExpr,
     span: Span,
+    ty_hint: Option<MathicType>,
 ) -> Result<RValInstruct, LoweringError> {
-    let value = match expr {
+    let (value, ty) = match expr {
         PrimaryExpr::Ident(name) => {
-            Value::InMemory(func.get_local_idx_from_name(name, span.clone())?)
+            let local = func.get_local_from_name(name, span.clone())?;
+            (Value::InMemory(local.local_idx), local.ty)
         }
-        PrimaryExpr::Num(n) => Value::Const(ConstExpr::Numeric(NumericConst::I64(
-            n.parse::<i64>().unwrap(),
-        ))),
-        PrimaryExpr::Bool(b) => Value::Const(ConstExpr::Bool(*b)),
+        PrimaryExpr::Num(n) => match ty_hint {
+            Some(ty) => (
+                Value::Const(match ty {
+                    MathicType::Uint(uint_ty) => match uint_ty {
+                        UintTy::U8 => {
+                            ConstExpr::Numeric(NumericConst::U8(n.parse::<u8>().unwrap()))
+                        }
+                        UintTy::U16 => {
+                            ConstExpr::Numeric(NumericConst::U16(n.parse::<u16>().unwrap()))
+                        }
+                        UintTy::U32 => {
+                            ConstExpr::Numeric(NumericConst::U32(n.parse::<u32>().unwrap()))
+                        }
+                        UintTy::U64 => {
+                            ConstExpr::Numeric(NumericConst::U64(n.parse::<u64>().unwrap()))
+                        }
+                        UintTy::U128 => {
+                            ConstExpr::Numeric(NumericConst::U128(n.parse::<u128>().unwrap()))
+                        }
+                    },
+                    MathicType::Sint(uint_ty) => match uint_ty {
+                        SintTy::I8 => {
+                            ConstExpr::Numeric(NumericConst::I8(n.parse::<i8>().unwrap()))
+                        }
+                        SintTy::I16 => {
+                            ConstExpr::Numeric(NumericConst::I16(n.parse::<i16>().unwrap()))
+                        }
+                        SintTy::I32 => {
+                            ConstExpr::Numeric(NumericConst::I32(n.parse::<i32>().unwrap()))
+                        }
+                        SintTy::I64 => {
+                            ConstExpr::Numeric(NumericConst::I64(n.parse::<i64>().unwrap()))
+                        }
+                        SintTy::I128 => {
+                            ConstExpr::Numeric(NumericConst::I128(n.parse::<i128>().unwrap()))
+                        }
+                    },
+                    MathicType::Float(float_ty) => match float_ty {
+                        FloatTy::F32 => {
+                            ConstExpr::Numeric(NumericConst::F32(n.parse::<f32>().unwrap()))
+                        }
+                        FloatTy::F64 => {
+                            ConstExpr::Numeric(NumericConst::F64(n.parse::<f64>().unwrap()))
+                        }
+                    },
+                    MathicType::Bool => unreachable!(),
+                    MathicType::Void => unreachable!(),
+                }),
+                ty,
+            ),
+            None => (
+                Value::Const(ConstExpr::Numeric(NumericConst::I32(
+                    n.parse::<i32>().unwrap(),
+                ))),
+                MathicType::Sint(SintTy::I32),
+            ),
+        },
+        PrimaryExpr::Bool(b) => (Value::Const(ConstExpr::Bool(*b)), MathicType::Bool),
         PrimaryExpr::Str(_) => todo!(),
     };
 
-    Ok(RValInstruct::Use(value, Some(span)))
+    Ok(RValInstruct::Use {
+        value,
+        span: Some(span),
+        ty,
+    })
 }
 
 fn lower_expression_type(
