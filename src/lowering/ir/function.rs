@@ -110,17 +110,6 @@ impl Function {
         Ok(self.sym_table.locals[local_idx].clone())
     }
 
-    pub fn get_local_ty(&self, name: &str, span: Span) -> Result<MathicType, LoweringError> {
-        let local_idx = self.sym_table.local_indexes.get(name).copied().ok_or(
-            LoweringError::UndeclaredVariable {
-                name: name.to_string(),
-                span,
-            },
-        )?;
-
-        Ok(self.sym_table.locals[local_idx].ty)
-    }
-
     #[allow(dead_code)]
     pub fn get_function(&self, name: &str) -> Option<&Function> {
         self.sym_table.functions.get(name)

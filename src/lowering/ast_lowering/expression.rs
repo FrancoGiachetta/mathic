@@ -78,15 +78,16 @@ fn lower_assignment(
 fn lower_call(
     func: &mut Function,
     callee: String,
-    args: &[ExprStmt],
+    func_args: &[ExprStmt],
     span: Span,
 ) -> Result<RValInstruct, LoweringError> {
-    // FUTURE: check if the function is declared or if it will be.
+    let mut arg_values: Vec<RValInstruct> = Vec::new();
 
-    let args: Vec<(RValInstruct, MathicType)> = args
-        .iter()
-        .map(|arg| lower_expr(func, arg, None))
-        .collect::<Result<_, _>>()?;
+    for (_, arg) in func_args.iter().enumerate() {
+        let (arg_val, _) = lower_expr(func, arg, None)?;
+
+        arg_values.push(arg_val);
+    }
 
     // FUTURE: check that the amount of args matches the expected and that
     // every type matches the expected type.
@@ -97,7 +98,7 @@ fn lower_call(
 
     func.get_basic_block_mut(func.last_block_idx()).terminator = Terminator::Call {
         callee,
-        args,
+        args: arg_values,
         span: Some(span),
         return_dest: Value::InMemory(local_idx),
         dest_block: dest_block_idx,
