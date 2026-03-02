@@ -29,8 +29,12 @@ impl MathicCodeGen<'_> {
                 let location = self.get_location(span.clone())?;
 
                 let init_val = self.compile_rvalue(fn_ctx, block, init)?;
-                let ptr =
-                    block.alloca1(self.ctx, location, IntegerType::new(self.ctx, 64).into(), 8)?;
+                let ptr = block.alloca1(
+                    self.ctx,
+                    location,
+                    init.ty.get_compiled_type(self.ctx),
+                    init.ty.align(),
+                )?;
 
                 block.store(self.ctx, location, ptr, init_val)?;
 

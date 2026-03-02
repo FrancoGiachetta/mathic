@@ -11,13 +11,11 @@ use crate::parser::ast::{
 #[derive(Debug, Clone)]
 #[allow(dead_code)]
 pub enum LValInstruct {
-    /// Variable declaration with initial value
     Let {
         local_idx: usize,
         init: RValInstruct,
         span: Option<Span>,
     },
-    /// Variable assignment (mutation)
     Assign {
         local_idx: usize,
         value: RValInstruct,
@@ -27,32 +25,35 @@ pub enum LValInstruct {
 
 #[derive(Debug, Clone)]
 #[allow(dead_code)]
-pub enum RValInstruct {
+pub enum RValueKind {
     Use {
         value: Value,
         span: Option<Span>,
-        ty: MathicType,
     },
     Binary {
         op: BinaryOp,
         lhs: Box<RValInstruct>,
         rhs: Box<RValInstruct>,
         span: Span,
-        ty: MathicType,
     },
     Unary {
         op: UnaryOp,
         rhs: Box<RValInstruct>,
         span: Span,
-        ty: MathicType,
     },
     Logical {
         op: LogicalOp,
         lhs: Box<RValInstruct>,
         rhs: Box<RValInstruct>,
         span: Span,
-        ty: MathicType,
     },
+}
+
+#[derive(Debug, Clone)]
+#[allow(dead_code)]
+pub struct RValInstruct {
+    pub kind: RValueKind,
+    pub ty: MathicType,
 }
 
 impl Display for BinaryOp {
@@ -95,7 +96,7 @@ impl Display for LogicalOp {
     }
 }
 
-impl Display for RValInstruct {
+impl Display for RValueKind {
     fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
         match self {
             Self::Use { value, .. } => write!(f, "{}", value),
@@ -103,6 +104,12 @@ impl Display for RValInstruct {
             Self::Unary { op, rhs, .. } => write!(f, "{}{}", op, rhs),
             Self::Logical { op, lhs, rhs, .. } => write!(f, "{} {} {}", lhs, op, rhs),
         }
+    }
+}
+
+impl Display for RValInstruct {
+    fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
+        write!(f, "{}", self.kind)
     }
 }
 

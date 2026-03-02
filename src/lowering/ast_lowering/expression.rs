@@ -3,7 +3,7 @@ use crate::{
     lowering::ir::{
         basic_block::Terminator,
         function::{Function, LocalKind},
-        instruction::{LValInstruct, RValInstruct},
+        instruction::{LValInstruct, RValInstruct, RValueKind},
         types::{FloatTy, MathicType, SintTy, UintTy},
         value::{ConstExpr, NumericConst, Value},
     },
@@ -72,9 +72,11 @@ fn lower_assignment(
             span: Some(span),
         });
 
-    Ok(RValInstruct::Use {
-        value: Value::Const(ConstExpr::Void),
-        span: None,
+    Ok(RValInstruct {
+        kind: RValueKind::Use {
+            value: Value::Const(ConstExpr::Void),
+            span: None,
+        },
         ty: MathicType::Void,
     })
 }
@@ -110,9 +112,11 @@ fn lower_call(
 
     func.add_block(Terminator::Return(None, None), None);
 
-    Ok(RValInstruct::Use {
-        value: Value::InMemory(local_idx),
-        span: None,
+    Ok(RValInstruct {
+        kind: RValueKind::Use {
+            value: Value::InMemory(local_idx),
+            span: None,
+        },
         ty: MathicType::Sint(SintTy::I64),
     })
 }
@@ -136,11 +140,13 @@ fn lower_binary_op(
         });
     }
 
-    Ok(RValInstruct::Binary {
-        op,
-        lhs: Box::new(lhs),
-        rhs: Box::new(rhs),
-        span,
+    Ok(RValInstruct {
+        kind: RValueKind::Binary {
+            op,
+            lhs: Box::new(lhs),
+            rhs: Box::new(rhs),
+            span,
+        },
         ty: lhs_ty,
     })
 }
@@ -171,11 +177,13 @@ fn lower_logical_op(
         });
     }
 
-    Ok(RValInstruct::Logical {
-        op,
-        lhs: Box::new(lhs),
-        rhs: Box::new(rhs),
-        span,
+    Ok(RValInstruct {
+        kind: RValueKind::Logical {
+            op,
+            lhs: Box::new(lhs),
+            rhs: Box::new(rhs),
+            span,
+        },
         ty: MathicType::Bool,
     })
 }
@@ -188,10 +196,12 @@ fn lower_unary_op(
 ) -> Result<RValInstruct, LoweringError> {
     let (rhs, rhs_ty) = lower_expr(func, rhs, None)?;
 
-    Ok(RValInstruct::Unary {
-        op,
-        rhs: Box::new(rhs),
-        span,
+    Ok(RValInstruct {
+        kind: RValueKind::Unary {
+            op,
+            rhs: Box::new(rhs),
+            span,
+        },
         ty: rhs_ty,
     })
 }
@@ -268,9 +278,11 @@ fn lower_primary_value(
         PrimaryExpr::Str(_) => todo!(),
     };
 
-    Ok(RValInstruct::Use {
-        value,
-        span: Some(span),
+    Ok(RValInstruct {
+        kind: RValueKind::Use {
+            value,
+            span: Some(span),
+        },
         ty,
     })
 }

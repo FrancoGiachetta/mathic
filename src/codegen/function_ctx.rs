@@ -56,19 +56,14 @@ impl MathicCodeGen<'_> {
         let location = self.get_location(None)?;
         let i64_ty = IntegerType::new(self.ctx, 64).into();
 
-        let function_params = inner_func
-            .sym_table
-            .locals
-            .iter()
-            .filter(|l| l.kind == LocalKind::Param)
-            .collect::<Vec<_>>();
+        let mut params_types = Vec::with_capacity(inner_func.params_types.len());
+        let mut block_params = Vec::with_capacity(inner_func.params_types.len());
 
-        let mut params_types = Vec::with_capacity(function_params.len());
-        let mut block_params = Vec::with_capacity(function_params.len());
+        for param_ty in inner_func.params_types.iter() {
+            let mlir_ty = param_ty.get_compiled_type(self.ctx);
 
-        for _ in function_params.iter() {
-            params_types.push(i64_ty);
-            block_params.push((i64_ty, location));
+            params_types.push(mlir_ty);
+            block_params.push((mlir_ty, location));
         }
 
         let region = Region::new();
@@ -91,16 +86,15 @@ impl MathicCodeGen<'_> {
         }
 
         let mut inner_fn_ctx = FunctionCtx::new(&mlir_blocks);
+        let function_params = inner_func
+            .sym_table
+            .locals
+            .iter()
+            .filter(|l| l.kind == LocalKind::Param);
 
         {
             // Allocate space for params and make them visible to the function
-            for (i, _) in inner_func
-                .sym_table
-                .locals
-                .iter()
-                .filter(|l| l.kind == LocalKind::Param)
-                .enumerate()
-            {
+            for (i, _) in function_params.enumerate() {
                 let value = entry_block.arg(i)?;
                 let ptr = entry_block.alloca1(self.ctx, location, params_types[i], 8)?;
 
@@ -110,7 +104,7 @@ impl MathicCodeGen<'_> {
             }
         }
 
-        // Precompile inner functions .
+        // Precompile inner functions.
         for (_, inner_func) in inner_func.sym_table.functions.iter() {
             self.compile_function(
                 inner_func,

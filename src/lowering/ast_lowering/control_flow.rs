@@ -5,7 +5,7 @@ use crate::{
         ir::{
             basic_block::Terminator,
             function::{Function, LocalKind},
-            instruction::{LValInstruct, RValInstruct},
+            instruction::{LValInstruct, RValInstruct, RValueKind},
             types::MathicType,
             value::Value,
         },
@@ -124,33 +124,43 @@ pub fn lower_for(func: &mut Function, stmt: &ForStmt, span: Span) -> Result<(), 
         Some(span.clone()),
         LocalKind::Temp,
     )?;
-    let loop_breaker_condition = RValInstruct::Binary {
-        op: BinaryOp::Compare(CmpOp::Lt),
-        lhs: Box::new(RValInstruct::Use {
-            value: Value::InMemory(loop_tracker_idx),
-            span: None,
-            ty: start_ty,
-        }),
-        rhs: Box::new(end_val),
-        span: start.span.start..end.span.end,
+    let loop_breaker_condition = RValInstruct {
+        kind: RValueKind::Binary {
+            op: BinaryOp::Compare(CmpOp::Lt),
+            lhs: Box::new(RValInstruct {
+                kind: RValueKind::Use {
+                    value: Value::InMemory(loop_tracker_idx),
+                    span: None,
+                },
+                ty: start_ty,
+            }),
+            rhs: Box::new(end_val),
+            span: start.span.start..end.span.end,
+        },
         ty: MathicType::Bool,
     };
 
     let extra_instructions = vec![LValInstruct::Assign {
         local_idx: loop_tracker_idx,
-        value: RValInstruct::Binary {
-            op: BinaryOp::Arithmetic(ArithOp::Add),
-            lhs: Box::new(RValInstruct::Use {
-                value: Value::InMemory(loop_tracker_idx),
-                span: None,
-                ty: start_ty,
-            }),
-            rhs: Box::new(RValInstruct::Use {
-                value: 1i32.into(),
-                span: None,
-                ty: start_ty,
-            }),
-            span: start.span.start..end.span.end,
+        value: RValInstruct {
+            kind: RValueKind::Binary {
+                op: BinaryOp::Arithmetic(ArithOp::Add),
+                lhs: Box::new(RValInstruct {
+                    kind: RValueKind::Use {
+                        value: Value::InMemory(loop_tracker_idx),
+                        span: None,
+                    },
+                    ty: start_ty,
+                }),
+                rhs: Box::new(RValInstruct {
+                    kind: RValueKind::Use {
+                        value: 1i32.into(),
+                        span: None,
+                    },
+                    ty: start_ty,
+                }),
+                span: start.span.start..end.span.end,
+            },
             ty: start_ty,
         },
         span: None,
