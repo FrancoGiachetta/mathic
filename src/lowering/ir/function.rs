@@ -3,9 +3,8 @@ use std::collections::HashMap;
 use super::basic_block::{BasicBlock, BlockId, write_block_ir};
 use crate::{
     diagnostics::LoweringError,
-    lowering::ir::{basic_block::Terminator, instruction::LValInstruct},
+    lowering::ir::{basic_block::Terminator, instruction::LValInstruct, types::MathicType},
     parser::ast::Span,
-    types::MathicType,
 };
 
 /// A function in the IR
@@ -91,8 +90,35 @@ impl Function {
         self.sym_table.functions.insert(func.name.clone(), func);
     }
 
-    pub fn get_local_idx_from_name(&self, name: &str) -> Option<usize> {
-        self.sym_table.local_indexes.get(name).copied()
+    pub fn get_local_idx_from_name(&self, name: &str, span: Span) -> Result<usize, LoweringError> {
+        Ok(self.sym_table.local_indexes.get(name).copied().ok_or(
+            LoweringError::UndeclaredVariable {
+                name: name.to_string(),
+                span,
+            },
+        )?)
+    }
+
+    pub fn get_local_from_name(&self, name: &str, span: Span) -> Result<Local, LoweringError> {
+        let local_idx = self.sym_table.local_indexes.get(name).copied().ok_or(
+            LoweringError::UndeclaredVariable {
+                name: name.to_string(),
+                span,
+            },
+        )?;
+
+        Ok(self.sym_table.locals[local_idx].clone())
+    }
+
+    pub fn get_local_ty(&self, name: &str, span: Span) -> Result<MathicType, LoweringError> {
+        let local_idx = self.sym_table.local_indexes.get(name).copied().ok_or(
+            LoweringError::UndeclaredVariable {
+                name: name.to_string(),
+                span,
+            },
+        )?;
+
+        Ok(self.sym_table.locals[local_idx].ty)
     }
 
     #[allow(dead_code)]

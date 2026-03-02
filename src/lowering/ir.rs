@@ -13,6 +13,7 @@ use function::{Function, write_function_ir};
 pub mod basic_block;
 pub mod function;
 pub mod instruction;
+pub mod types;
 pub mod value;
 
 #[derive(Debug, Default)]

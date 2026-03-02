@@ -1,12 +1,14 @@
-use crate::parser::{
-    MathicParser, ParserResult,
-    ast::{
-        declaration::{FuncDecl, Param, VarDecl},
-        statement::BlockStmt,
+use crate::{
+    lowering::ir::types::{FloatTy, MathicType, SintTy, UintTy},
+    parser::{
+        MathicParser, ParserResult,
+        ast::{
+            declaration::{FuncDecl, Param, VarDecl},
+            statement::BlockStmt,
+        },
+        token::Token,
     },
-    token::Token,
 };
-use crate::types::{FloatTy, MathicType, SintTy, UintTy};
 
 impl<'a> MathicParser<'a> {
     pub fn parse_type(&self) -> ParserResult<MathicType> {

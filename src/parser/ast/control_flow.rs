@@ -1,7 +1,4 @@
-use crate::{
-    parser::ast::{Span, expression::ExprStmt, statement::BlockStmt},
-    types::MathicType,
-};
+use crate::parser::ast::{expression::ExprStmt, statement::BlockStmt};
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct IfStmt {
@@ -18,15 +15,8 @@ pub struct WhileStmt {
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct ForStmt {
-    pub index_tracker: IndexTracker,
+    pub variable: String,
     pub start: ExprStmt,
     pub end: ExprStmt,
     pub body: BlockStmt,
-}
-
-#[derive(Debug, Clone, PartialEq, Eq)]
-pub struct IndexTracker {
-    pub name: String,
-    pub ty: MathicType,
-    pub span: Span,
 }

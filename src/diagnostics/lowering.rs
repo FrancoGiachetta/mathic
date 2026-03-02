@@ -3,7 +3,7 @@ use std::path::Path;
 use ariadne::{Report, ReportBuilder, ReportKind};
 use thiserror::Error;
 
-use crate::{diagnostics::ReportSpan, parser::lexer::Span};
+use crate::{diagnostics::ReportSpan, lowering::ir::types::MathicType, parser::lexer::Span};
 
 #[derive(Debug, Error)]
 pub enum LoweringError {
@@ -29,6 +29,13 @@ pub enum LoweringError {
 
     #[error("Unsupported feature: {feature}")]
     UnsupportedFeature { feature: String, span: Span },
+
+    #[error("Mismatched type: expected {expected}, found {found}")]
+    MismatchedType {
+        expected: MathicType,
+        found: MathicType,
+        span: Span,
+    },
 }
 
 pub fn format_lowering_error<'err>(
@@ -71,6 +78,9 @@ pub fn format_lowering_error<'err>(
         ),
         LoweringError::UnsupportedFeature { span, feature } => {
             ("S006", format!("{} is not yet implemented", feature), span)
+        }
+        LoweringError::MismatchedType { span, .. } => {
+            ("S007", "types must match".to_string(), span)
         }
     };
 

@@ -6,6 +6,7 @@ use crate::{
             basic_block::Terminator,
             function::{Function, LocalKind},
             instruction::{LValInstruct, RValInstruct},
+            types::MathicType,
             value::Value,
         },
     },
@@ -24,9 +25,15 @@ pub fn lower_if(func: &mut Function, stmt: &IfStmt) -> Result<(), LoweringError>
         else_block,
     } = stmt;
 
-    let condition = expression::lower_expr(func, condition)?;
+    let (condition_val, condition_ty) = expression::lower_expr(func, condition, None)?;
 
-    // FUTURE: check if the condition is of type boolean.
+    if !condition_ty.is_bool() {
+        return Err(LoweringError::MismatchedType {
+            expected: MathicType::Bool,
+            found: condition_ty,
+            span: condition.span.clone(),
+        });
+    }
 
     // Hold the index of the current block to create the condition branch later.
     let trigger_block_idx = func.last_block_idx();
@@ -71,7 +78,7 @@ pub fn lower_if(func: &mut Function, stmt: &IfStmt) -> Result<(), LoweringError>
     };
 
     func.get_basic_block_mut(trigger_block_idx).terminator = Terminator::CondBranch {
-        condition,
+        condition: condition_val,
         true_block,
         false_block,
         span: None,
@@ -87,29 +94,40 @@ pub fn lower_while(
 ) -> Result<(), LoweringError> {
     let WhileStmt { condition, body } = stmt;
 
-    let loop_breaker_condition = expression::lower_expr(func, condition)?;
+    let (loop_breaker_condition, condition_ty) = expression::lower_expr(func, condition, None)?;
+
+    if !condition_ty.is_bool() {
+        return Err(LoweringError::MismatchedType {
+            expected: MathicType::Bool,
+            found: condition_ty,
+            span: condition.span.clone(),
+        });
+    }
 
     lower_loop(func, body, loop_breaker_condition, Vec::with_capacity(0))
 }
 
 pub fn lower_for(func: &mut Function, stmt: &ForStmt, span: Span) -> Result<(), LoweringError> {
     let ForStmt {
-        index_tracker,
+        variable,
         start,
         end,
         body,
     } = stmt;
 
+    let (start_val, start_ty) = expression::lower_expr(func, start, None)?;
+    let (end_val, _) = expression::lower_expr(func, end, None)?;
+
     let loop_tracker_idx = func.add_local(
-        Some(index_tracker.name.clone()),
-        index_tracker.ty,
+        Some(variable.clone()),
+        start_ty,
         Some(span.clone()),
         LocalKind::Temp,
     )?;
     let loop_breaker_condition = RValInstruct::Binary {
         op: BinaryOp::Compare(CmpOp::Lt),
         lhs: Box::new(RValInstruct::Use(Value::InMemory(loop_tracker_idx), None)),
-        rhs: Box::new(expression::lower_expr(func, end)?),
+        rhs: Box::new(end_val),
         span: start.span.start..end.span.end,
     };
 
@@ -124,10 +142,9 @@ pub fn lower_for(func: &mut Function, stmt: &ForStmt, span: Span) -> Result<(), 
         span: None,
     }];
 
-    let init = expression::lower_expr(func, start)?;
     func.push_instruction(LValInstruct::Let {
         local_idx: loop_tracker_idx,
-        init,
+        init: start_val,
         span: None,
     });
 

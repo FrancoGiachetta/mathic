@@ -19,7 +19,7 @@ pub fn lower_stmt(stmt: &Stmt, func: &mut Function) -> Result<(), LoweringError>
     match &stmt.kind {
         StmtKind::Decl(decl) => lower_declaration(func, decl, &stmt.span)?,
         StmtKind::Return(expr) => {
-            let value = lower_expr(func, expr)?;
+            let (value, _) = lower_expr(func, expr, None)?;
             func.get_basic_block_mut(func.last_block_idx()).terminator =
                 Terminator::Return(Some(value), Some(stmt.span.clone()));
         }
@@ -41,7 +41,7 @@ pub fn lower_stmt(stmt: &Stmt, func: &mut Function) -> Result<(), LoweringError>
             )?;
         }
         StmtKind::Expr(expr) => {
-            let _ = lower_expr(func, expr)?;
+            let _ = lower_expr(func, expr, None)?;
         }
         StmtKind::If(if_stmt) => lower_if(func, if_stmt)?,
         StmtKind::While(while_stmt) => lower_while(func, while_stmt, stmt.span.clone())?,

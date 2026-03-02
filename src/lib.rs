@@ -7,7 +7,6 @@ pub mod executor;
 mod ffi;
 mod lowering;
 mod parser;
-mod types;
 
 #[cfg(test)]
 mod test_utils;

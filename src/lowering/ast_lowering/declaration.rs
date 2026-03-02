@@ -18,12 +18,28 @@ pub fn lower_var_declaration(
     stmt: &VarDecl,
     span: Span,
 ) -> Result<(), LoweringError> {
-    let VarDecl { name, expr, ty } = stmt;
+    let VarDecl {
+        name,
+        expr,
+        ty: var_ty,
+    } = stmt;
 
-    let init = expression::lower_expr(func, expr)?;
-    let local_idx = func.add_local(Some(name.clone()), *ty, Some(span.clone()), LocalKind::Temp)?;
+    let (init, expr_ty) = expression::lower_expr(func, expr, Some(*var_ty))?;
 
-    // FUTURE: check the expression is the same type as the declaration.
+    if expr_ty != *var_ty {
+        return Err(LoweringError::MismatchedType {
+            expected: *var_ty,
+            found: expr_ty,
+            span,
+        });
+    }
+
+    let local_idx = func.add_local(
+        Some(name.clone()),
+        *var_ty,
+        Some(span.clone()),
+        LocalKind::Temp,
+    )?;
 
     func.push_instruction(LValInstruct::Let {
         local_idx,
