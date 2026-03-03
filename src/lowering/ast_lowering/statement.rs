@@ -4,10 +4,10 @@ use crate::{
         basic_block::{BlockId, Terminator},
         function::Function,
     },
-    parser::ast::{
+    parser::{
         Span,
-        declaration::DeclStmt,
-        statement::{BlockStmt, Stmt, StmtKind},
+        ast::declaration::DeclStmt,
+        ast::statement::{BlockStmt, Stmt, StmtKind},
     },
 };
 
@@ -25,12 +25,12 @@ pub fn lower_stmt(stmt: &Stmt, func: &mut Function) -> Result<(), LoweringError>
                 return Err(LoweringError::MismatchedReturnType {
                     expected: func.return_ty,
                     found: value_ty,
-                    span: stmt.span.clone(),
+                    span: stmt.span,
                 });
             }
 
             func.get_basic_block_mut(func.last_block_idx()).terminator =
-                Terminator::Return(Some(value), Some(stmt.span.clone()));
+                Terminator::Return(Some(value), Some(stmt.span));
         }
         StmtKind::Block(block_stmt) => {
             let curr_block_idx = func.last_block_idx();
@@ -53,8 +53,8 @@ pub fn lower_stmt(stmt: &Stmt, func: &mut Function) -> Result<(), LoweringError>
             let _ = lower_expr(func, expr, None)?;
         }
         StmtKind::If(if_stmt) => lower_if(func, if_stmt)?,
-        StmtKind::While(while_stmt) => lower_while(func, while_stmt, stmt.span.clone())?,
-        StmtKind::For(for_stmt) => lower_for(func, for_stmt, stmt.span.clone())?,
+        StmtKind::While(while_stmt) => lower_while(func, while_stmt, stmt.span)?,
+        StmtKind::For(for_stmt) => lower_for(func, for_stmt, stmt.span)?,
     }
 
     Ok(())
@@ -67,15 +67,15 @@ fn lower_declaration(
 ) -> Result<(), LoweringError> {
     match stmt {
         DeclStmt::Var(var_decl) => {
-            lower_var_declaration(func, var_decl, span.clone())?;
+            lower_var_declaration(func, var_decl, *span)?;
         }
         DeclStmt::Struct(_struct_decl) => {
             return Err(LoweringError::UnsupportedFeature {
                 feature: "struct declarations".to_string(),
-                span: span.clone(),
+                span: *span,
             });
         }
-        DeclStmt::Func(func_decl) => lower_inner_function(func, func_decl, span.clone())?,
+        DeclStmt::Func(func_decl) => lower_inner_function(func, func_decl, *span)?,
     }
 
     Ok(())
@@ -88,7 +88,7 @@ pub fn lower_block(
 ) -> Result<BlockId, LoweringError> {
     let old_sym_table = func.sym_table.clone();
 
-    let block_id = func.add_block(terminator, Some(block.span.clone()));
+    let block_id = func.add_block(terminator, Some(block.span));
 
     for s in block.stmts.iter() {
         lower_stmt(s, func)?;

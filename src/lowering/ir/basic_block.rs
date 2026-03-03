@@ -3,7 +3,7 @@ use std::fmt::{self, Display, Formatter};
 use super::instruction::LValInstruct;
 use super::value::Value;
 use crate::lowering::ir::instruction::RValInstruct;
-use crate::parser::ast::Span;
+use crate::parser::Span;
 
 pub type BlockId = usize;
 

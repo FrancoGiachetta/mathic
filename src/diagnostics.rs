@@ -1,4 +1,4 @@
-use std::{fs, ops::Range, path::Path};
+use std::{fs, path::Path};
 
 use ariadne::FnCache;
 use thiserror::Error;
@@ -11,7 +11,10 @@ pub use codegen::CodegenError;
 pub use lowering::LoweringError;
 pub use parse::{LexError, ParseError, SyntaxError};
 
-use crate::diagnostics::{lowering::format_lowering_error, parse::format_parse_error};
+use crate::{
+    diagnostics::{lowering::format_lowering_error, parse::format_parse_error},
+    parser::Span,
+};
 
 #[derive(Debug, Error)]
 pub enum MathicError {
@@ -28,7 +31,7 @@ pub enum MathicError {
 #[derive(Clone)]
 pub struct ReportSpan {
     pub path: String,
-    pub span: Range<usize>,
+    pub span: Span,
 }
 
 impl ariadne::Span for ReportSpan {

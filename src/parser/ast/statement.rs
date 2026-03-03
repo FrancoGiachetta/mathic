@@ -1,8 +1,8 @@
-use crate::parser::ast::{
+use crate::parser::{
     Span,
-    control_flow::{ForStmt, IfStmt, WhileStmt},
-    declaration::DeclStmt,
-    expression::ExprStmt,
+    ast::control_flow::{ForStmt, IfStmt, WhileStmt},
+    ast::declaration::DeclStmt,
+    ast::expression::ExprStmt,
 };
 
 #[derive(Debug, Clone, PartialEq, Eq)]

@@ -4,7 +4,7 @@ use super::basic_block::{BasicBlock, BlockId, write_block_ir};
 use crate::{
     diagnostics::LoweringError,
     lowering::ir::{basic_block::Terminator, instruction::LValInstruct, types::MathicType},
-    parser::ast::{Span, declaration::Param},
+    parser::{Span, ast::declaration::Param},
 };
 
 /// A function in the IR

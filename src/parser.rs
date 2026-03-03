@@ -1,7 +1,8 @@
-use std::cell::RefCell;
+use std::cell::{Cell, RefCell};
+use std::ops::Range;
 
 use ast::Program;
-use lexer::{MathicLexer, Span, SpannedToken};
+use lexer::{MathicLexer, SpannedToken};
 use token::Token;
 
 use crate::diagnostics::parse::{ExpectedToken, FoundToken, ParseError, SyntaxError};
@@ -14,9 +15,37 @@ pub mod token;
 
 pub type ParserResult<T> = Result<T, ParseError>;
 
+#[derive(Clone, Copy, PartialEq, Eq, Debug)]
+pub struct Span {
+    pub start: usize,
+    pub end: usize,
+}
+
+impl Span {
+    pub fn from_merged_spans(span_1: Span, span_2: Span) -> Self {
+        Self {
+            start: span_1.start.min(span_2.start),
+            end: span_1.end.max(span_2.end),
+        }
+    }
+
+    pub fn as_range(&self) -> Range<usize> {
+        self.start..self.end
+    }
+}
+
+impl From<Range<usize>> for Span {
+    fn from(value: Range<usize>) -> Self {
+        Self {
+            start: value.start,
+            end: value.end,
+        }
+    }
+}
+
 pub struct MathicParser<'a> {
     lexer: RefCell<MathicLexer<'a>>,
-    current_span: RefCell<Span>,
+    current_span: Cell<Span>,
     _panic_mode: bool,
 }
 
@@ -24,7 +53,7 @@ impl<'a> MathicParser<'a> {
     pub fn new(source: &'a str) -> Self {
         Self {
             lexer: RefCell::new(MathicLexer::new(source)),
-            current_span: RefCell::new(0..0),
+            current_span: Cell::new(Span::from(0..0)),
             _panic_mode: false,
         }
     }
@@ -69,7 +98,7 @@ impl<'a> MathicParser<'a> {
             .next()
             .map_err(|(e, span)| ParseError::Lexical(e, span))?
             .inspect(|t| {
-                self.current_span.replace(t.span.clone());
+                self.current_span.replace(t.span);
             })
             .ok_or(ParseError::Syntax(SyntaxError::UnexpectedEnd {
                 span: self.current_span(),
@@ -88,14 +117,7 @@ impl<'a> MathicParser<'a> {
     ///
     /// This is convenient when returning errors which depend on the code.
     fn current_span(&self) -> Span {
-        let span = self.current_span.borrow();
-
-        span.start..span.end
-    }
-
-    /// Merges two spans into one that covers both.
-    fn merge_spans(&self, start: &Span, end: &Span) -> Span {
-        start.start.min(end.start)..start.end.max(end.end)
+        self.current_span.get()
     }
 
     /// Consumes the next token.

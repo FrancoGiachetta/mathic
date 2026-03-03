@@ -10,7 +10,7 @@ use crate::{
     MathicResult,
     diagnostics::{CodegenError, MathicError},
     lowering::ir::Ir,
-    parser::lexer::Span,
+    parser::Span,
 };
 
 pub mod function_ctx;

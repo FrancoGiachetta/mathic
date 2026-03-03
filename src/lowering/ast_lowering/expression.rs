@@ -7,9 +7,9 @@ use crate::{
         types::{FloatTy, MathicType, SintTy, UintTy},
         value::{ConstExpr, NumericConst, Value},
     },
-    parser::ast::{
+    parser::{
         Span,
-        expression::{BinaryOp, ExprStmt, ExprStmtKind, LogicalOp, PrimaryExpr, UnaryOp},
+        ast::expression::{BinaryOp, ExprStmt, ExprStmtKind, LogicalOp, PrimaryExpr, UnaryOp},
     },
 };
 
@@ -19,32 +19,24 @@ pub fn lower_expr(
     ty_hint: Option<MathicType>,
 ) -> Result<(RValInstruct, MathicType), LoweringError> {
     let rvalue = match &expr.kind {
-        ExprStmtKind::Primary(val) => lower_primary_value(func, val, expr.span.clone(), ty_hint)?,
-        ExprStmtKind::Binary { lhs, op, rhs } => {
-            lower_binary_op(func, lhs, *op, rhs, expr.span.clone())?
-        }
-        ExprStmtKind::Unary { op, rhs } => {
-            lower_unary_op(func, *op, rhs, expr.span.clone(), ty_hint)?
-        }
+        ExprStmtKind::Primary(val) => lower_primary_value(func, val, expr.span, ty_hint)?,
+        ExprStmtKind::Binary { lhs, op, rhs } => lower_binary_op(func, lhs, *op, rhs, expr.span)?,
+        ExprStmtKind::Unary { op, rhs } => lower_unary_op(func, *op, rhs, expr.span, ty_hint)?,
         ExprStmtKind::Group(expr) => {
             return lower_expr(func, expr, ty_hint);
         }
-        ExprStmtKind::Call { callee, args } => {
-            lower_call(func, callee.clone(), args, expr.span.clone())?
-        }
+        ExprStmtKind::Call { callee, args } => lower_call(func, callee.clone(), args, expr.span)?,
         ExprStmtKind::Assign {
             name,
             expr: assign_expr,
-        } => lower_assignment(func, name, assign_expr, expr.span.clone())?,
-        ExprStmtKind::Logical { lhs, op, rhs } => {
-            lower_logical_op(func, lhs, *op, rhs, expr.span.clone())?
-        }
+        } => lower_assignment(func, name, assign_expr, expr.span)?,
+        ExprStmtKind::Logical { lhs, op, rhs } => lower_logical_op(func, lhs, *op, rhs, expr.span)?,
         ExprStmtKind::Index { .. } => todo!(),
     };
 
     Ok((
         rvalue,
-        lower_expression_type(func, &expr.kind, ty_hint, expr.span.clone())?,
+        lower_expression_type(func, &expr.kind, ty_hint, expr.span)?,
     ))
 }
 
@@ -54,7 +46,7 @@ fn lower_assignment(
     expr: &ExprStmt,
     span: Span,
 ) -> Result<RValInstruct, LoweringError> {
-    let local = func.get_local_from_name(name, span.clone())?;
+    let local = func.get_local_from_name(name, span)?;
     let (value, ty) = lower_expr(func, expr, Some(local.ty))?;
 
     // The new value should be of the same type as the local's.
@@ -221,7 +213,7 @@ fn lower_primary_value(
 ) -> Result<RValInstruct, LoweringError> {
     let (value, ty) = match expr {
         PrimaryExpr::Ident(name) => {
-            let local = func.get_local_from_name(name, span.clone())?;
+            let local = func.get_local_from_name(name, span)?;
             (Value::InMemory(local.local_idx), local.ty)
         }
         PrimaryExpr::Num(n) => match ty_hint {
@@ -302,7 +294,7 @@ fn lower_expression_type(
 ) -> Result<MathicType, LoweringError> {
     Ok(match expr {
         ExprStmtKind::Primary(primary_expr) => match primary_expr {
-            PrimaryExpr::Ident(name) => func.get_local_from_name(name, span.clone())?.ty,
+            PrimaryExpr::Ident(name) => func.get_local_from_name(name, span)?.ty,
             PrimaryExpr::Num(_) => match ty_hint {
                 Some(ty) => ty,
                 None => MathicType::Sint(SintTy::I32),
@@ -312,7 +304,7 @@ fn lower_expression_type(
         },
         ExprStmtKind::Binary { lhs, op, .. } => match op {
             BinaryOp::Compare(_) => MathicType::Bool,
-            BinaryOp::Arithmetic(_) => lower_expression_type(func, &lhs.kind, None, span.clone())?,
+            BinaryOp::Arithmetic(_) => lower_expression_type(func, &lhs.kind, None, span)?,
         },
         ExprStmtKind::Call { callee: _, .. } => MathicType::Sint(SintTy::I64),
         ExprStmtKind::Group(expr_stmt) => lower_expression_type(func, &expr_stmt.kind, None, span)?,

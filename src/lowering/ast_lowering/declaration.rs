@@ -7,9 +7,9 @@ use crate::{
             instruction::LValInstruct,
         },
     },
-    parser::ast::{
+    parser::{
         Span,
-        declaration::{FuncDecl, VarDecl},
+        ast::declaration::{FuncDecl, VarDecl},
     },
 };
 
@@ -34,12 +34,7 @@ pub fn lower_var_declaration(
         });
     }
 
-    let local_idx = func.add_local(
-        Some(name.clone()),
-        *var_ty,
-        Some(span.clone()),
-        LocalKind::Temp,
-    )?;
+    let local_idx = func.add_local(Some(name.clone()), *var_ty, Some(span), LocalKind::Temp)?;
 
     func.push_instruction(LValInstruct::Let {
         local_idx,

@@ -26,7 +26,7 @@ impl MathicCodeGen<'_> {
                 init,
                 span,
             } => {
-                let location = self.get_location(span.clone())?;
+                let location = self.get_location(*span)?;
 
                 let init_val = self.compile_rvalue(fn_ctx, block, init)?;
                 let ptr = block.alloca1(
@@ -45,7 +45,7 @@ impl MathicCodeGen<'_> {
                 value,
                 span,
             } => {
-                let location = self.get_location(span.clone())?;
+                let location = self.get_location(*span)?;
 
                 let val = self.compile_rvalue(fn_ctx, block, value)?;
                 let (ptr, _) = fn_ctx.get_local(*local_idx).expect("invalid local idx");
@@ -71,16 +71,14 @@ impl MathicCodeGen<'_> {
                 Some(rvalue) => {
                     let val = self.compile_rvalue(fn_ctx, block, rvalue)?;
 
-                    block.append_operation(func::r#return(&[val], self.get_location(span.clone())?))
+                    block.append_operation(func::r#return(&[val], self.get_location(*span)?))
                 }
-                None => {
-                    block.append_operation(func::r#return(&[], self.get_location(span.clone())?))
-                }
+                None => block.append_operation(func::r#return(&[], self.get_location(*span)?)),
             },
             Terminator::Branch { target, span } => block.append_operation(cf::br(
                 &fn_ctx.get_block(*target),
                 &[],
-                self.get_location(span.clone())?,
+                self.get_location(*span)?,
             )),
             Terminator::CondBranch {
                 condition,
@@ -97,11 +95,11 @@ impl MathicCodeGen<'_> {
                     &fn_ctx.get_block(*false_block),
                     &[],
                     &[],
-                    self.get_location(span.clone())?,
+                    self.get_location(*span)?,
                 ))
             }
             Terminator::Unreachable(span) => {
-                block.append_operation(llvm::unreachable(self.get_location(span.clone())?))
+                block.append_operation(llvm::unreachable(self.get_location(*span)?))
             }
             Terminator::Call {
                 callee,
@@ -129,7 +127,7 @@ impl MathicCodeGen<'_> {
                     FlatSymbolRefAttribute::new(self.ctx, &format!("mathic__{}", callee)),
                     &args_vals,
                     &[IntegerType::new(self.ctx, 64).into()],
-                    self.get_location(span.clone())?,
+                    self.get_location(*span)?,
                 ))?;
 
                 block.store(self.ctx, unknown_location, return_ptr, return_value)?;

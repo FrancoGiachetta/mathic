@@ -10,11 +10,13 @@ use crate::{
             value::Value,
         },
     },
-    parser::ast::{
+    parser::{
         Span,
-        control_flow::{ForStmt, IfStmt, WhileStmt},
-        expression::{ArithOp, BinaryOp, CmpOp},
-        statement::BlockStmt,
+        ast::{
+            control_flow::{ForStmt, IfStmt, WhileStmt},
+            expression::{ArithOp, BinaryOp, CmpOp},
+            statement::BlockStmt,
+        },
     },
 };
 
@@ -31,7 +33,7 @@ pub fn lower_if(func: &mut Function, stmt: &IfStmt) -> Result<(), LoweringError>
         return Err(LoweringError::MismatchedType {
             expected: MathicType::Bool,
             found: condition_ty,
-            span: condition.span.clone(),
+            span: condition.span,
         });
     }
 
@@ -100,7 +102,7 @@ pub fn lower_while(
         return Err(LoweringError::MismatchedType {
             expected: MathicType::Bool,
             found: condition_ty,
-            span: condition.span.clone(),
+            span: condition.span,
         });
     }
 
@@ -121,7 +123,7 @@ pub fn lower_for(func: &mut Function, stmt: &ForStmt, span: Span) -> Result<(), 
     let loop_tracker_idx = func.add_local(
         Some(variable.clone()),
         start_ty,
-        Some(span.clone()),
+        Some(span),
         LocalKind::Temp,
     )?;
     let loop_breaker_condition = RValInstruct {
@@ -135,7 +137,7 @@ pub fn lower_for(func: &mut Function, stmt: &ForStmt, span: Span) -> Result<(), 
                 ty: start_ty,
             }),
             rhs: Box::new(end_val),
-            span: start.span.start..end.span.end,
+            span: Span::from(start.span.start..end.span.end),
         },
         ty: MathicType::Bool,
     };
@@ -159,7 +161,7 @@ pub fn lower_for(func: &mut Function, stmt: &ForStmt, span: Span) -> Result<(), 
                     },
                     ty: start_ty,
                 }),
-                span: start.span.start..end.span.end,
+                span: Span::from(start.span.start..end.span.end),
             },
             ty: start_ty,
         },

@@ -1,4 +1,4 @@
-use crate::parser::{ast::Span, token::Token};
+use crate::parser::{Span, token::Token};
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct ExprStmt {
