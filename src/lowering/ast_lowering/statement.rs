@@ -4,10 +4,10 @@ use crate::{
         basic_block::{BlockId, Terminator},
         function::Function,
     },
-    parser::ast::{
+    parser::{
         Span,
-        declaration::DeclStmt,
-        statement::{BlockStmt, Stmt, StmtKind},
+        ast::declaration::DeclStmt,
+        ast::statement::{BlockStmt, Stmt, StmtKind},
     },
 };
 

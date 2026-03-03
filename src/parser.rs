@@ -1,4 +1,4 @@
-use std::cell::RefCell;
+use std::cell::{Cell, RefCell};
 use std::ops::Range;
 
 use ast::Program;
@@ -22,7 +22,14 @@ pub struct Span {
 }
 
 impl Span {
-    fn into_range(&self) -> Range<usize> {
+    pub fn from_merged_spans(span_1: Span, span_2: Span) -> Self {
+        Self {
+            start: span_1.start.min(span_2.start),
+            end: span_1.end.max(span_2.end),
+        }
+    }
+
+    pub fn into_range(&self) -> Range<usize> {
         self.start..self.end
     }
 }
@@ -38,7 +45,7 @@ impl From<Range<usize>> for Span {
 
 pub struct MathicParser<'a> {
     lexer: RefCell<MathicLexer<'a>>,
-    current_span: RefCell<Span>,
+    current_span: Cell<Span>,
     _panic_mode: bool,
 }
 
@@ -46,7 +53,7 @@ impl<'a> MathicParser<'a> {
     pub fn new(source: &'a str) -> Self {
         Self {
             lexer: RefCell::new(MathicLexer::new(source)),
-            current_span: RefCell::new(Span::from(0..0)),
+            current_span: Cell::new(Span::from(0..0)),
             _panic_mode: false,
         }
     }
@@ -110,12 +117,7 @@ impl<'a> MathicParser<'a> {
     ///
     /// This is convenient when returning errors which depend on the code.
     fn current_span(&self) -> Span {
-        *self.current_span.borrow()
-    }
-
-    /// Merges two spans into one that covers both.
-    fn merge_spans(&self, start: &Span, end: &Span) -> Span {
-        Span::from(start.start.min(end.start)..start.end.max(end.end))
+        self.current_span.get()
     }
 
     /// Consumes the next token.

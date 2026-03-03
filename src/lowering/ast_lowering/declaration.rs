@@ -7,9 +7,9 @@ use crate::{
             instruction::LValInstruct,
         },
     },
-    parser::ast::{
+    parser::{
         Span,
-        declaration::{FuncDecl, VarDecl},
+        ast::declaration::{FuncDecl, VarDecl},
     },
 };
 

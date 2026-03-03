@@ -10,11 +10,13 @@ use crate::{
             value::Value,
         },
     },
-    parser::ast::{
+    parser::{
         Span,
-        control_flow::{ForStmt, IfStmt, WhileStmt},
-        expression::{ArithOp, BinaryOp, CmpOp},
-        statement::BlockStmt,
+        ast::{
+            control_flow::{ForStmt, IfStmt, WhileStmt},
+            expression::{ArithOp, BinaryOp, CmpOp},
+            statement::BlockStmt,
+        },
     },
 };
 

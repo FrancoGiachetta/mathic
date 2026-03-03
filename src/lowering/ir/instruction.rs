@@ -2,9 +2,9 @@ use std::fmt::{self, Display, Formatter};
 
 use super::types::MathicType;
 use super::value::Value;
-use crate::parser::ast::{
+use crate::parser::{
     Span,
-    expression::{ArithOp, BinaryOp, CmpOp, LogicalOp, UnaryOp},
+    ast::expression::{ArithOp, BinaryOp, CmpOp, LogicalOp, UnaryOp},
 };
 
 /// IR Instructions

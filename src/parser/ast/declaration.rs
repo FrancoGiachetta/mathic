@@ -1,6 +1,6 @@
 use crate::{
     lowering::ir::types::MathicType,
-    parser::ast::{Span, expression::ExprStmt, statement::Stmt},
+    parser::{Span, ast::expression::ExprStmt, ast::statement::Stmt},
 };
 
 #[derive(Debug, Clone, PartialEq, Eq)]

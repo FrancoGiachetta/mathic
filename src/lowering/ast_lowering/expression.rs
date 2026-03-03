@@ -7,9 +7,9 @@ use crate::{
         types::{FloatTy, MathicType, SintTy, UintTy},
         value::{ConstExpr, NumericConst, Value},
     },
-    parser::ast::{
+    parser::{
         Span,
-        expression::{BinaryOp, ExprStmt, ExprStmtKind, LogicalOp, PrimaryExpr, UnaryOp},
+        ast::expression::{BinaryOp, ExprStmt, ExprStmtKind, LogicalOp, PrimaryExpr, UnaryOp},
     },
 };
 

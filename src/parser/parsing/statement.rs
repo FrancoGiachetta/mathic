@@ -1,6 +1,6 @@
 use crate::diagnostics::parse::{ParseError, SyntaxError};
 use crate::parser::{
-    MathicParser, ParserResult,
+    MathicParser, ParserResult, Span,
     ast::{
         declaration::DeclStmt,
         expression::ExprStmt,
@@ -23,27 +23,27 @@ impl<'a> MathicParser<'a> {
             Token::Df => {
                 let func = self.parse_func()?;
 
-                let span = self.merge_spans(&start_span, &self.current_span());
+                let span = Span::from_merged_spans(start_span, self.current_span());
                 (StmtKind::Decl(DeclStmt::Func(func)), span)
             }
             Token::If => {
                 let if_stmt = self.parse_if_stmt()?;
-                let span = self.merge_spans(&start_span, &self.current_span());
+                let span = Span::from_merged_spans(start_span, self.current_span());
                 (StmtKind::If(if_stmt), span)
             }
             Token::While => {
                 let while_stmt = self.parse_while_stmt()?;
-                let span = self.merge_spans(&start_span, &self.current_span());
+                let span = Span::from_merged_spans(start_span, self.current_span());
                 (StmtKind::While(while_stmt), span)
             }
             Token::For => {
                 let for_stmt = self.parse_for_stmt()?;
-                let span = self.merge_spans(&start_span, &self.current_span());
+                let span = Span::from_merged_spans(start_span, self.current_span());
                 (StmtKind::For(for_stmt), span)
             }
             Token::Let => {
                 let var = self.parse_var_decl()?;
-                let span = self.merge_spans(&start_span, &var.expr.span);
+                let span = Span::from_merged_spans(start_span, var.expr.span);
                 (StmtKind::Decl(DeclStmt::Var(var)), span)
             }
             Token::Struct | Token::Sym => {
@@ -51,13 +51,13 @@ impl<'a> MathicParser<'a> {
             }
             Token::Return => {
                 let expr = self.parse_return()?;
-                let span = self.merge_spans(&start_span, &expr.span);
+                let span = Span::from_merged_spans(start_span, expr.span);
                 (StmtKind::Return(expr), span)
             }
             Token::LBrace => {
                 let block = self.parse_block()?;
                 let span = if let Some(last) = block.stmts.last() {
-                    self.merge_spans(&start_span, &last.span)
+                    Span::from_merged_spans(start_span, last.span)
                 } else {
                     start_span
                 };
@@ -85,7 +85,7 @@ impl<'a> MathicParser<'a> {
 
         Ok(BlockStmt {
             stmts,
-            span: self.merge_spans(&start_span.span, &end_span.span),
+            span: Span::from_merged_spans(start_span.span, end_span.span),
         })
     }
 
@@ -96,7 +96,7 @@ impl<'a> MathicParser<'a> {
 
         self.consume_token(Token::Semicolon)?;
 
-        let span = self.merge_spans(&return_token.span, &self.current_span());
+        let span = Span::from_merged_spans(return_token.span, self.current_span());
 
         Ok(ExprStmt {
             kind: value.kind,
@@ -109,7 +109,7 @@ impl<'a> MathicParser<'a> {
 
         self.consume_token(Token::Semicolon)?;
 
-        let span = self.merge_spans(&expr.span, &self.current_span());
+        let span = Span::from_merged_spans(expr.span, self.current_span());
 
         Ok(Stmt {
             kind: StmtKind::Expr(expr),

@@ -1,6 +1,6 @@
 use crate::diagnostics::parse::{ExpectedToken, ParseError, SyntaxError};
 use crate::parser::{
-    MathicParser, ParserResult,
+    MathicParser, ParserResult, Span,
     ast::expression::{
         ArithOp, BinaryOp, CmpOp, ExprStmt, ExprStmtKind, LogicalOp, PrimaryExpr, UnaryOp,
     },
@@ -29,7 +29,7 @@ impl<'a> MathicParser<'a> {
             };
 
             let rhs = self.parse_logic_or()?;
-            let span = self.merge_spans(&lhs.span, &rhs.span);
+            let span = Span::from_merged_spans(lhs.span, rhs.span);
 
             return Ok(ExprStmt {
                 kind: ExprStmtKind::Assign {
@@ -48,7 +48,7 @@ impl<'a> MathicParser<'a> {
 
         while let Some(op) = self.match_token(Token::Or)? {
             let right = self.parse_logic_and()?;
-            let span = self.merge_spans(&left.span, &right.span);
+            let span = Span::from_merged_spans(left.span, right.span);
 
             left = ExprStmt {
                 kind: ExprStmtKind::Logical {
@@ -76,7 +76,7 @@ impl<'a> MathicParser<'a> {
 
         while let Some(op) = self.match_token(Token::And)? {
             let right = self.parse_equality()?;
-            let span = self.merge_spans(&left.span, &right.span);
+            let span = Span::from_merged_spans(left.span, right.span);
 
             left = ExprStmt {
                 kind: ExprStmtKind::Logical {
@@ -104,7 +104,7 @@ impl<'a> MathicParser<'a> {
 
         while let Some(op) = self.match_any_token(&[Token::EqEq, Token::BangEq])? {
             let rhs = self.parse_inequality()?;
-            let span = self.merge_spans(&expr.span, &rhs.span);
+            let span = Span::from_merged_spans(expr.span, rhs.span);
 
             expr = ExprStmt {
                 kind: ExprStmtKind::Binary {
@@ -135,7 +135,7 @@ impl<'a> MathicParser<'a> {
             self.match_any_token(&[Token::Greater, Token::EqLess, Token::Less, Token::EqGreater])?
         {
             let rhs = self.parse_term()?;
-            let span = self.merge_spans(&expr.span, &rhs.span);
+            let span = Span::from_merged_spans(expr.span, rhs.span);
 
             expr = ExprStmt {
                 kind: ExprStmtKind::Binary {
@@ -168,7 +168,7 @@ impl<'a> MathicParser<'a> {
 
         while let Some(op) = self.match_any_token(&[Token::Plus, Token::Minus])? {
             let rhs = self.parse_factor()?;
-            let span = self.merge_spans(&expr.span, &rhs.span);
+            let span = Span::from_merged_spans(expr.span, rhs.span);
 
             expr = ExprStmt {
                 kind: ExprStmtKind::Binary {
@@ -197,7 +197,7 @@ impl<'a> MathicParser<'a> {
 
         while let Some(op) = self.match_any_token(&[Token::Star, Token::Slash])? {
             let rhs = self.parse_unary()?;
-            let span = self.merge_spans(&expr.span, &rhs.span);
+            let span = Span::from_merged_spans(expr.span, rhs.span);
 
             expr = ExprStmt {
                 kind: ExprStmtKind::Binary {
@@ -224,7 +224,7 @@ impl<'a> MathicParser<'a> {
     fn parse_unary(&self) -> ParserResult<ExprStmt> {
         if let Some(op) = self.match_any_token(&[Token::Bang, Token::Minus])? {
             let rhs = self.parse_unary()?;
-            let span = self.merge_spans(&op.span, &rhs.span);
+            let span = Span::from_merged_spans(op.span, rhs.span);
 
             return Ok(ExprStmt {
                 kind: ExprStmtKind::Unary {
@@ -271,7 +271,7 @@ impl<'a> MathicParser<'a> {
 
             self.consume_token(Token::RParen)?;
 
-            let span = self.merge_spans(&expr.span, &self.current_span());
+            let span = Span::from_merged_spans(expr.span, self.current_span());
 
             if let ExprStmtKind::Primary(PrimaryExpr::Ident(callee)) = expr.kind {
                 expr = ExprStmt {
@@ -301,7 +301,7 @@ impl<'a> MathicParser<'a> {
             Token::LParen => {
                 let expr = self.parse_expr()?;
                 let close_paren = self.consume_token(Token::RParen)?;
-                let span = self.merge_spans(&span, &close_paren.span);
+                let span = Span::from_merged_spans(span, close_paren.span);
 
                 return Ok(ExprStmt {
                     kind: ExprStmtKind::Group(Box::new(expr)),

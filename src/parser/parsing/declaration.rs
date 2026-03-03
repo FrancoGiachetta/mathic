@@ -1,7 +1,7 @@
 use crate::{
     lowering::ir::types::{FloatTy, MathicType, SintTy, UintTy},
     parser::{
-        MathicParser, ParserResult,
+        MathicParser, ParserResult, Span,
         ast::{
             declaration::{FuncDecl, Param, VarDecl},
             statement::BlockStmt,
@@ -60,7 +60,7 @@ impl<'a> MathicParser<'a> {
 
         let BlockStmt { stmts, .. } = self.parse_block()?;
 
-        let span = self.merge_spans(&start_span, &self.current_span());
+        let span = Span::from_merged_spans(start_span, self.current_span());
 
         Ok(FuncDecl {
             name,
