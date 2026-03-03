@@ -5,7 +5,7 @@ use melior::{
         Attribute, Block, BlockLike, BlockRef, Identifier, Region, RegionLike, Type, TypeLike,
         Value, ValueLike,
         attribute::{StringAttribute, TypeAttribute},
-        r#type::{FunctionType, IntegerType},
+        r#type::FunctionType,
     },
 };
 use mlir_sys::{MlirType, MlirValue};
@@ -55,12 +55,12 @@ impl MathicCodeGen<'_> {
         'func: 'ctx,
     {
         let location = self.get_location(None)?;
-        let i64_ty = IntegerType::new(self.ctx, 64).into();
 
-        let mut params_types = Vec::with_capacity(inner_func.params_types.len());
-        let mut block_params = Vec::with_capacity(inner_func.params_types.len());
+        let return_ty = inner_func.return_ty.get_compiled_type(self.ctx);
+        let mut params_types = Vec::with_capacity(inner_func.params_tys.len());
+        let mut block_params = Vec::with_capacity(inner_func.params_tys.len());
 
-        for param_ty in inner_func.params_types.iter() {
+        for param_ty in inner_func.params_tys.iter() {
             let mlir_ty = param_ty.get_compiled_type(self.ctx);
 
             params_types.push(mlir_ty);
@@ -102,7 +102,7 @@ impl MathicCodeGen<'_> {
                 entry_block.store(self.ctx, location, ptr, value)?;
 
                 inner_fn_ctx
-                    .define_local(ptr, inner_func.params_types[i].get_compiled_type(self.ctx));
+                    .define_local(ptr, inner_func.params_tys[i].get_compiled_type(self.ctx));
             }
         }
 
@@ -130,7 +130,7 @@ impl MathicCodeGen<'_> {
         self.module.body().append_operation(func::func(
             self.ctx,
             StringAttribute::new(self.ctx, &format!("mathic__{}", inner_func.name)),
-            TypeAttribute::new(FunctionType::new(self.ctx, &params_types, &[i64_ty]).into()),
+            TypeAttribute::new(FunctionType::new(self.ctx, &params_types, &[return_ty]).into()),
             region,
             attributes,
             location,

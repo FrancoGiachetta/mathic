@@ -19,7 +19,16 @@ pub fn lower_stmt(stmt: &Stmt, func: &mut Function) -> Result<(), LoweringError>
     match &stmt.kind {
         StmtKind::Decl(decl) => lower_declaration(func, decl, &stmt.span)?,
         StmtKind::Return(expr) => {
-            let (value, _) = lower_expr(func, expr, None)?;
+            let (value, value_ty) = lower_expr(func, expr, Some(func.return_ty))?;
+
+            if value_ty != func.return_ty {
+                return Err(LoweringError::MismatchedReturnType {
+                    expected: func.return_ty,
+                    found: value_ty,
+                    span: stmt.span.clone(),
+                });
+            }
+
             func.get_basic_block_mut(func.last_block_idx()).terminator =
                 Terminator::Return(Some(value), Some(stmt.span.clone()));
         }

@@ -28,7 +28,6 @@ impl<'a> MathicParser<'a> {
             "f32" => MathicType::Float(FloatTy::F32),
             "f64" => MathicType::Float(FloatTy::F64),
             "bool" => MathicType::Bool,
-            "void" => MathicType::Void,
             _ => todo!("user-defined types not yet supported: {}", ident.lexeme),
         };
 
@@ -53,7 +52,11 @@ impl<'a> MathicParser<'a> {
 
         self.consume_token(Token::RParen)?;
 
-        // Return type parsing should be here.
+        let return_ty = if self.check_next(Token::Ident)? {
+            self.parse_type()?
+        } else {
+            MathicType::Void
+        };
 
         let BlockStmt { stmts, .. } = self.parse_block()?;
 
@@ -63,6 +66,7 @@ impl<'a> MathicParser<'a> {
             name,
             params,
             body: stmts,
+            return_ty,
             span,
         })
     }

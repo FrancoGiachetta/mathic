@@ -30,6 +30,7 @@ pub struct FuncDecl {
     pub params: Vec<Param>,
     pub body: Vec<Stmt>,
     pub span: Span,
+    pub return_ty: MathicType,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]

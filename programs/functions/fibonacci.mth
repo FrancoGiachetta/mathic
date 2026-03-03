@@ -1,4 +1,4 @@
-df fib(n: i64) {
+df fib(n: i64) i64 {
     if n <= 1 {
         return n;
     }
@@ -6,6 +6,6 @@ df fib(n: i64) {
     return fib(n - 1) + fib(n - 2);
 }
 
-df main() {
+df main() i64 {
     return fib(10);
 }

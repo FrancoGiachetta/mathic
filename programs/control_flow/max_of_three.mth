@@ -1,4 +1,4 @@
-df main() {
+df main() i64 {
     let a: i64 = 5;
     let b: i64 = 10;
     let c: i64 = 3;

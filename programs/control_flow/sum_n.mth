@@ -1,4 +1,4 @@
-df main() {
+df main() i64 {
     let n: i64 = 10;
     let sum: i64 = 0;
     let i: i64 = 1;

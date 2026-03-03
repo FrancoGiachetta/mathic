@@ -24,14 +24,18 @@ pub enum LoweringError {
     #[error("Undefined function '{name}'")]
     UndefinedFunction { name: String, span: Span },
 
-    #[error("Function '{name}' missing return statement")]
-    MissingReturn { name: String, span: Span },
-
     #[error("Unsupported feature: {feature}")]
     UnsupportedFeature { feature: String, span: Span },
 
     #[error("Mismatched type: expected {expected}, found {found}")]
     MismatchedType {
+        expected: MathicType,
+        found: MathicType,
+        span: Span,
+    },
+
+    #[error("Mismatched return type: expected {expected}, found {found}")]
+    MismatchedReturnType {
         expected: MathicType,
         found: MathicType,
         span: Span,
@@ -71,17 +75,24 @@ pub fn format_lowering_error<'err>(
             "declare the function before calling it".to_string(),
             span,
         ),
-        LoweringError::MissingReturn { span, .. } => (
-            "S005",
-            "add a return statement to the function".to_string(),
-            span,
-        ),
         LoweringError::UnsupportedFeature { span, feature } => {
             ("S006", format!("{} is not yet implemented", feature), span)
         }
         LoweringError::MismatchedType { span, .. } => {
             ("S007", "types must match".to_string(), span)
         }
+        LoweringError::MismatchedReturnType {
+            expected,
+            found,
+            span,
+        } => (
+            "S008",
+            format!(
+                "function expects return type '{}', found '{}'",
+                expected, found
+            ),
+            span,
+        ),
     };
 
     let report_span = ReportSpan {

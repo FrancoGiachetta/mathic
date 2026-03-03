@@ -4,7 +4,7 @@ use super::basic_block::{BasicBlock, BlockId, write_block_ir};
 use crate::{
     diagnostics::LoweringError,
     lowering::ir::{basic_block::Terminator, instruction::LValInstruct, types::MathicType},
-    parser::ast::Span,
+    parser::ast::{Span, declaration::Param},
 };
 
 /// A function in the IR
@@ -14,7 +14,8 @@ pub struct Function {
     pub name: String,
     pub sym_table: SymbolTable,
     pub basic_blocks: Vec<BasicBlock>,
-    pub params_types: Vec<MathicType>,
+    pub params_tys: Vec<MathicType>,
+    pub return_ty: MathicType,
     pub span: Span,
 }
 
@@ -42,14 +43,32 @@ pub struct SymbolTable {
 
 impl Function {
     /// Create a new function
-    pub fn new(name: String, span: Span) -> Self {
-        Self {
+    pub fn new(name: String, params: &[Param], return_ty: MathicType, span: Span) -> Self {
+        let mut func = Self {
             name,
             sym_table: Default::default(),
             basic_blocks: vec![BasicBlock::new(0, Terminator::Return(None, None), None)],
-            params_types: Vec::with_capacity(0),
+            params_tys: Vec::with_capacity(params.len()),
+            return_ty,
             span,
+        };
+
+        for (param_idx, param) in params.iter().enumerate() {
+            func.params_tys.push(param.ty);
+
+            func.sym_table.locals.push(Local {
+                local_idx: param_idx,
+                kind: LocalKind::Param,
+                ty: param.ty,
+                debug_name: Some(param.name.clone()),
+            });
+
+            func.sym_table
+                .local_indexes
+                .insert(param.name.clone(), param_idx);
         }
+
+        func
     }
 
     /// Adds a user-defined local.

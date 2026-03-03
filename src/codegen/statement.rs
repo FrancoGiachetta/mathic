@@ -170,8 +170,8 @@ mod tests {
     use rstest::*;
 
     #[rstest]
-    #[case("df main() { return 0; }", 0)]
-    #[case("df main() { return 42; }", 42)]
+    #[case("df main() i64 { return 0; }", 0)]
+    #[case("df main() i64 { return 42; }", 42)]
     fn test_return_statements(#[case] source: &str, #[case] expected: i64) {
         assert_eq!(compile_and_execute(source), expected);
     }

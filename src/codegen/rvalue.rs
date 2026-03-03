@@ -272,10 +272,10 @@ mod tests {
     use rstest::*;
 
     #[rstest]
-    #[case("df main() { return 2 + 3 * 4; }", 14)]
-    #[case("df main() { return (2 + 3) * 4; }", 20)]
-    #[case("df main() { return 10 - 2 * 3; }", 4)]
-    #[case("df main() { return (10 - 2) * 3; }", 24)]
+    #[case("df main() i32 { return 2 + 3 * 4; }", 14)]
+    #[case("df main() i32 { return (2 + 3) * 4; }", 20)]
+    #[case("df main() i32 { return 10 - 2 * 3; }", 4)]
+    #[case("df main() i32 { return (10 - 2) * 3; }", 24)]
     fn test_arithmetic_precedence(#[case] source: &str, #[case] expected: i64) {
         assert_eq!(compile_and_execute(source), expected);
     }

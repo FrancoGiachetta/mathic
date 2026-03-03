@@ -55,19 +55,17 @@ pub fn lower_inner_function(
     stmt: &FuncDecl,
     span: Span,
 ) -> Result<(), LoweringError> {
-    let mut inner_func = Function::new(stmt.name.clone(), span);
+    let FuncDecl {
+        name,
+        params,
+        body,
+        return_ty,
+        ..
+    } = stmt;
 
-    for param in stmt.params.iter() {
-        inner_func.params_types.push(param.ty);
-        inner_func.add_local(
-            Some(param.name.clone()),
-            param.ty,
-            Some(param.span.clone()),
-            LocalKind::Param,
-        )?;
-    }
+    let mut inner_func = Function::new(name.clone(), params, *return_ty, span);
 
-    for stmt in stmt.body.iter() {
+    for stmt in body.iter() {
         statement::lower_stmt(stmt, &mut inner_func)?;
     }
 
