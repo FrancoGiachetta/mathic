@@ -23,6 +23,7 @@ pub enum LValInstruct {
 }
 
 #[derive(Debug, Clone)]
+#[allow(dead_code)]
 pub enum RValueKind {
     Use {
         value: Value,

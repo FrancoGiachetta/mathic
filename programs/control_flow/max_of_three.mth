@@ -1,13 +1,15 @@
 df main() {
-    let a = 5;
-    let b = 10;
-    let c = 3;
-    let max = a;
+    let a: i64 = 5;
+    let b: i64 = 10;
+    let c: i64 = 3;
+    let max: i64 = a;
+
     if (b > max) {
         max = b;
     }
     if (c > max) {
         max = c;
     }
+
     return max;
 }

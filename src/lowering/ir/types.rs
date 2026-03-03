@@ -41,8 +41,7 @@ pub enum MathicType {
 impl MathicType {
     pub fn get_compiled_type<'func>(&'func self, ctx: &'func Context) -> Type<'func> {
         match self {
-            Self::Uint(_) => IntegerType::unsigned(ctx, self.bit_width() as u32).into(),
-            MathicType::Sint(_) => IntegerType::signed(ctx, self.bit_width() as u32).into(),
+            Self::Uint(_) | Self::Sint(_) => IntegerType::new(ctx, self.bit_width() as u32).into(),
             MathicType::Float(float_ty) => match float_ty {
                 FloatTy::F32 => Type::float32(ctx),
                 FloatTy::F64 => Type::float64(ctx),

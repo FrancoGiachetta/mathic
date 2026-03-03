@@ -187,9 +187,10 @@ impl MathicCodeGen<'_> {
 
         Ok(match value {
             IRValue::InMemory(local_idx) => {
-                let local_ptr = fn_ctx.get_local(*local_idx).expect("Invalid local idx");
+                let (local_ptr, local_ty) =
+                    fn_ctx.get_local(*local_idx).expect("Invalid local idx");
 
-                block.load(self.ctx, location, local_ptr, local_ptr.r#type())?
+                block.load(self.ctx, location, local_ptr, local_ty)?
             }
             IRValue::Const(const_expr) => match const_expr {
                 crate::lowering::ir::value::ConstExpr::Numeric(num_const) => match num_const {
@@ -197,61 +198,61 @@ impl MathicCodeGen<'_> {
                         self.ctx,
                         location,
                         val,
-                        IntegerType::signed(self.ctx, 8).into(),
+                        IntegerType::new(self.ctx, 8).into(),
                     )?,
                     NumericConst::I16(val) => block.const_int_from_type(
                         self.ctx,
                         location,
                         val,
-                        IntegerType::signed(self.ctx, 16).into(),
+                        IntegerType::new(self.ctx, 16).into(),
                     )?,
                     NumericConst::I32(val) => block.const_int_from_type(
                         self.ctx,
                         location,
                         val,
-                        IntegerType::signed(self.ctx, 32).into(),
+                        IntegerType::new(self.ctx, 32).into(),
                     )?,
                     NumericConst::I64(val) => block.const_int_from_type(
                         self.ctx,
                         location,
                         val,
-                        IntegerType::signed(self.ctx, 64).into(),
+                        IntegerType::new(self.ctx, 64).into(),
                     )?,
                     NumericConst::I128(val) => block.const_int_from_type(
                         self.ctx,
                         location,
                         val,
-                        IntegerType::signed(self.ctx, 128).into(),
+                        IntegerType::new(self.ctx, 128).into(),
                     )?,
                     NumericConst::U8(val) => block.const_int_from_type(
                         self.ctx,
                         location,
                         val,
-                        IntegerType::unsigned(self.ctx, 8).into(),
+                        IntegerType::new(self.ctx, 8).into(),
                     )?,
                     NumericConst::U16(val) => block.const_int_from_type(
                         self.ctx,
                         location,
                         val,
-                        IntegerType::unsigned(self.ctx, 16).into(),
+                        IntegerType::new(self.ctx, 16).into(),
                     )?,
                     NumericConst::U32(val) => block.const_int_from_type(
                         self.ctx,
                         location,
                         val,
-                        IntegerType::unsigned(self.ctx, 32).into(),
+                        IntegerType::new(self.ctx, 32).into(),
                     )?,
                     NumericConst::U64(val) => block.const_int_from_type(
                         self.ctx,
                         location,
                         val,
-                        IntegerType::unsigned(self.ctx, 64).into(),
+                        IntegerType::new(self.ctx, 64).into(),
                     )?,
                     NumericConst::U128(val) => block.const_int_from_type(
                         self.ctx,
                         location,
                         val,
-                        IntegerType::unsigned(self.ctx, 128).into(),
+                        IntegerType::new(self.ctx, 128).into(),
                     )?,
                     NumericConst::F32(_) => todo!(),
                     NumericConst::F64(_) => todo!(),

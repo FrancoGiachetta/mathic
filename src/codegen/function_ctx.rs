@@ -2,12 +2,13 @@ use melior::{
     dialect::func,
     helpers::{BuiltinBlockExt, LlvmBlockExt},
     ir::{
-        Attribute, Block, BlockLike, BlockRef, Identifier, Region, RegionLike, Value, ValueLike,
+        Attribute, Block, BlockLike, BlockRef, Identifier, Region, RegionLike, Type, TypeLike,
+        Value, ValueLike,
         attribute::{StringAttribute, TypeAttribute},
         r#type::{FunctionType, IntegerType},
     },
 };
-use mlir_sys::MlirValue;
+use mlir_sys::{MlirType, MlirValue};
 
 use crate::{
     codegen::MathicCodeGen,
@@ -16,7 +17,7 @@ use crate::{
 };
 
 pub struct FunctionCtx<'ctx, 'this> {
-    locals: Vec<MlirValue>,
+    locals: Vec<(MlirValue, MlirType)>,
     mlir_blocks: &'this [BlockRef<'ctx, 'this>],
 }
 
@@ -28,15 +29,15 @@ impl<'ctx, 'this> FunctionCtx<'ctx, 'this> {
         }
     }
 
-    pub fn define_local(&mut self, value: Value) {
-        self.locals.push(value.to_raw());
+    pub fn define_local(&mut self, value: Value, ty: Type) {
+        self.locals.push((value.to_raw(), ty.to_raw()));
     }
 
-    pub fn get_local(&self, idx: usize) -> Option<Value<'ctx, '_>> {
+    pub fn get_local(&self, idx: usize) -> Option<(Value<'ctx, '_>, Type<'ctx>)> {
         self.locals
             .get(idx)
             .copied()
-            .map(|v| unsafe { Value::from_raw(v) })
+            .map(|(v, t)| unsafe { (Value::from_raw(v), Type::from_raw(t)) })
     }
 
     pub fn get_block(&self, idx: usize) -> BlockRef<'_, '_> {
@@ -100,7 +101,8 @@ impl MathicCodeGen<'_> {
 
                 entry_block.store(self.ctx, location, ptr, value)?;
 
-                inner_fn_ctx.define_local(ptr);
+                inner_fn_ctx
+                    .define_local(ptr, inner_func.params_types[i].get_compiled_type(self.ctx));
             }
         }
 

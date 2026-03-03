@@ -23,7 +23,9 @@ pub fn lower_expr(
         ExprStmtKind::Binary { lhs, op, rhs } => {
             lower_binary_op(func, lhs, *op, rhs, expr.span.clone())?
         }
-        ExprStmtKind::Unary { op, rhs } => lower_unary_op(func, *op, rhs, expr.span.clone())?,
+        ExprStmtKind::Unary { op, rhs } => {
+            lower_unary_op(func, *op, rhs, expr.span.clone(), ty_hint)?
+        }
         ExprStmtKind::Group(expr) => {
             return lower_expr(func, expr, ty_hint);
         }
@@ -90,7 +92,7 @@ fn lower_call(
     let mut arg_values: Vec<RValInstruct> = Vec::new();
 
     for (_, arg) in func_args.iter().enumerate() {
-        let (arg_val, _) = lower_expr(func, arg, None)?;
+        let (arg_val, _) = lower_expr(func, arg, Some(MathicType::Sint(SintTy::I64)))?;
 
         arg_values.push(arg_val);
     }
@@ -129,7 +131,7 @@ fn lower_binary_op(
     span: Span,
 ) -> Result<RValInstruct, LoweringError> {
     let (lhs, lhs_ty) = lower_expr(func, lhs, None)?;
-    let (rhs, rhs_ty) = lower_expr(func, rhs, None)?;
+    let (rhs, rhs_ty) = lower_expr(func, rhs, Some(lhs_ty))?;
 
     // Operands' types must match.
     if lhs_ty != rhs_ty {
@@ -139,6 +141,10 @@ fn lower_binary_op(
             span,
         });
     }
+    let inst_ty = match op {
+        BinaryOp::Compare(_) => MathicType::Bool,
+        BinaryOp::Arithmetic(_) => lhs_ty,
+    };
 
     Ok(RValInstruct {
         kind: RValueKind::Binary {
@@ -147,7 +153,7 @@ fn lower_binary_op(
             rhs: Box::new(rhs),
             span,
         },
-        ty: lhs_ty,
+        ty: inst_ty,
     })
 }
 
@@ -159,20 +165,20 @@ fn lower_logical_op(
     span: Span,
 ) -> Result<RValInstruct, LoweringError> {
     let (lhs, lhs_ty) = lower_expr(func, lhs, None)?;
-    let (rhs, rhs_ty) = lower_expr(func, rhs, None)?;
+    let (rhs, rhs_ty) = lower_expr(func, rhs, Some(lhs_ty))?;
 
     // Operands' types must be boolean.
-    if lhs_ty.is_bool() {
+    if !lhs_ty.is_bool() {
         return Err(LoweringError::MismatchedType {
-            expected: lhs_ty,
-            found: MathicType::Bool,
+            expected: MathicType::Bool,
+            found: lhs_ty,
             span,
         });
     }
-    if rhs_ty.is_bool() {
+    if !rhs_ty.is_bool() {
         return Err(LoweringError::MismatchedType {
-            expected: rhs_ty,
-            found: MathicType::Bool,
+            expected: MathicType::Bool,
+            found: rhs_ty,
             span,
         });
     }
@@ -193,8 +199,9 @@ fn lower_unary_op(
     op: UnaryOp,
     rhs: &ExprStmt,
     span: Span,
+    ty_hint: Option<MathicType>,
 ) -> Result<RValInstruct, LoweringError> {
-    let (rhs, rhs_ty) = lower_expr(func, rhs, None)?;
+    let (rhs, rhs_ty) = lower_expr(func, rhs, ty_hint)?;
 
     Ok(RValInstruct {
         kind: RValueKind::Unary {
@@ -303,10 +310,11 @@ fn lower_expression_type(
             PrimaryExpr::Str(_) => todo!(),
             PrimaryExpr::Bool(_) => MathicType::Bool,
         },
-        ExprStmtKind::Binary { lhs, .. } => {
-            lower_expression_type(func, &lhs.kind, None, span.clone())?
-        }
-        ExprStmtKind::Call { callee: _, .. } => todo!(),
+        ExprStmtKind::Binary { lhs, op, .. } => match op {
+            BinaryOp::Compare(_) => MathicType::Bool,
+            BinaryOp::Arithmetic(_) => lower_expression_type(func, &lhs.kind, None, span.clone())?,
+        },
+        ExprStmtKind::Call { callee: _, .. } => MathicType::Sint(SintTy::I64),
         ExprStmtKind::Group(expr_stmt) => lower_expression_type(func, &expr_stmt.kind, None, span)?,
         ExprStmtKind::Index { .. } => todo!(),
         ExprStmtKind::Logical { .. } => MathicType::Bool,

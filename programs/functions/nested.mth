@@ -1,5 +1,5 @@
 df main() {
-    df inner(a, b) {
+    df inner(a: i64, b: i64) {
         return a * b;
     }
     let result = inner(3, 4);
