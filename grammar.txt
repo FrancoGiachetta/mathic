@@ -19,15 +19,16 @@
                | <var_decl>
                | <sym_decl>
 
-<func_decl>   := "df" <ident> "(" <params>? ")" ("->" <type>)? <block>
+<func_decl>   := "df" <ident> "(" <params>? ")" <type>? <block>
 <struct_decl> := "struct" <ident> "{" <params>? "}"
-<var_decl>    := "let" <ident> "=" <expr> ";"
+<var_decl>    := "let" <ident> ":" <type> "=" <expr> ";"
 <sym_decl>    := "sym" <ident> "=" <ident> ";"
 
 ==== CONTROL FLOW ====
 
 <for_stmt>    := "for" <ident> "in" <expr> ".." <expr> <block>
-               | "for" <ident> "in" <expr> <block><while_stmt>  := "while" <expr> <block>
+               | "for" <ident> "in" <expr> <block>
+<while_stmt>  := "while" <expr> <block>
 <if_stmt>     := "if" <expr> <block> ("else" <block>)?
 <return_stmt> := "return" <expr> ";"
 <block>       := "{" <statement>* "}"
@@ -50,6 +51,7 @@
 ==== TERMINALS ====
 
 <ident> := <alpha> (<alpha> | <digit> | "_")*
+<type> := <ident>
 <str>   := \" [^"]* \"
 <num>   := "0" | [1-9] <digit>+ ("." <digit>+)?
 
@@ -57,6 +59,6 @@
 
 <alpha>  := [a-zA-Z]
 <digit>  := [0-9]
-<params> := <ident> ("," <ident>)*
+<params> := <ident> ":" <type> ("," <ident> ":" <type>)*
 <args>   := <expr> ("," <expr>)*
 

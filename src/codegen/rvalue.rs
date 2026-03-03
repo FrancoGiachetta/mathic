@@ -8,7 +8,7 @@ use crate::{
     codegen::{MathicCodeGen, function_ctx::FunctionCtx},
     diagnostics::CodegenError,
     lowering::ir::{
-        instruction::RValInstruct,
+        instruction::{RValInstruct, RValueKind},
         value::{NumericConst, Value as IRValue},
     },
     parser::ast::{
@@ -27,17 +27,17 @@ impl MathicCodeGen<'_> {
     where
         'func: 'ctx,
     {
-        match rvalue {
-            RValInstruct::Use(value, _) => self.compile_value_use(fn_ctx, block, value),
-            RValInstruct::Binary { op, lhs, rhs, span } => {
-                self.compile_binop(fn_ctx, block, lhs, *op, rhs, span.clone())
-            }
-            RValInstruct::Unary { op, rhs, span } => {
+        match &rvalue.kind {
+            RValueKind::Use { value, .. } => self.compile_value_use(fn_ctx, block, value),
+            RValueKind::Binary {
+                op, lhs, rhs, span, ..
+            } => self.compile_binop(fn_ctx, block, lhs, *op, rhs, span.clone()),
+            RValueKind::Unary { op, rhs, span, .. } => {
                 self.compile_unary(fn_ctx, block, *op, rhs, span.clone())
             }
-            RValInstruct::Logical { op, lhs, rhs, span } => {
-                self.compile_logical(fn_ctx, block, lhs, *op, rhs, span.clone())
-            }
+            RValueKind::Logical {
+                op, lhs, rhs, span, ..
+            } => self.compile_logical(fn_ctx, block, lhs, *op, rhs, span.clone()),
         }
     }
 
@@ -85,23 +85,20 @@ impl MathicCodeGen<'_> {
             BinaryOp::Compare(cmp) => match cmp {
                 CmpOp::Eq => block.cmpi(self.ctx, CmpiPredicate::Eq, lhs_val, rhs_val, location)?,
                 CmpOp::Ne => block.cmpi(self.ctx, CmpiPredicate::Ne, lhs_val, rhs_val, location)?,
-                CmpOp::Lt => {
-                    block.cmpi(
-                        self.ctx,
-                        // For now only positive numbers.
-                        if false {
-                            CmpiPredicate::Slt
-                        } else {
-                            CmpiPredicate::Ult
-                        },
-                        lhs_val,
-                        rhs_val,
-                        location,
-                    )?
-                }
+                CmpOp::Lt => block.cmpi(
+                    self.ctx,
+                    if lhs.ty.is_signed() {
+                        CmpiPredicate::Slt
+                    } else {
+                        CmpiPredicate::Ult
+                    },
+                    lhs_val,
+                    rhs_val,
+                    location,
+                )?,
                 CmpOp::Le => block.cmpi(
                     self.ctx,
-                    if false {
+                    if lhs.ty.is_signed() {
                         CmpiPredicate::Sle
                     } else {
                         CmpiPredicate::Ule
@@ -112,7 +109,7 @@ impl MathicCodeGen<'_> {
                 )?,
                 CmpOp::Gt => block.cmpi(
                     self.ctx,
-                    if false {
+                    if lhs.ty.is_signed() {
                         CmpiPredicate::Sgt
                     } else {
                         CmpiPredicate::Ugt
@@ -123,7 +120,7 @@ impl MathicCodeGen<'_> {
                 )?,
                 CmpOp::Ge => block.cmpi(
                     self.ctx,
-                    if false {
+                    if lhs.ty.is_signed() {
                         CmpiPredicate::Sge
                     } else {
                         CmpiPredicate::Uge
@@ -138,7 +135,7 @@ impl MathicCodeGen<'_> {
                 ArithOp::Sub => block.subi(lhs_val, rhs_val, location)?,
                 ArithOp::Mul => block.muli(lhs_val, rhs_val, location)?,
                 ArithOp::Div => {
-                    if true {
+                    if lhs.ty.is_signed() {
                         block.divsi(lhs_val, rhs_val, location)?
                     } else {
                         block.divui(lhs_val, rhs_val, location)?
@@ -190,14 +187,10 @@ impl MathicCodeGen<'_> {
 
         Ok(match value {
             IRValue::InMemory(local_idx) => {
-                let local_ptr = fn_ctx.get_local(*local_idx).expect("Invalid local idx");
+                let (local_ptr, local_ty) =
+                    fn_ctx.get_local(*local_idx).expect("Invalid local idx");
 
-                block.load(
-                    self.ctx,
-                    location,
-                    local_ptr,
-                    IntegerType::new(self.ctx, 64).into(),
-                )?
+                block.load(self.ctx, location, local_ptr, local_ty)?
             }
             IRValue::Const(const_expr) => match const_expr {
                 crate::lowering::ir::value::ConstExpr::Numeric(num_const) => match num_const {
@@ -279,10 +272,10 @@ mod tests {
     use rstest::*;
 
     #[rstest]
-    #[case("df main() { return 2 + 3 * 4; }", 14)]
-    #[case("df main() { return (2 + 3) * 4; }", 20)]
-    #[case("df main() { return 10 - 2 * 3; }", 4)]
-    #[case("df main() { return (10 - 2) * 3; }", 24)]
+    #[case("df main() i32 { return 2 + 3 * 4; }", 14)]
+    #[case("df main() i32 { return (2 + 3) * 4; }", 20)]
+    #[case("df main() i32 { return 10 - 2 * 3; }", 4)]
+    #[case("df main() i32 { return (10 - 2) * 3; }", 24)]
     fn test_arithmetic_precedence(#[case] source: &str, #[case] expected: i64) {
         assert_eq!(compile_and_execute(source), expected);
     }

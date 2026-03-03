@@ -5,7 +5,8 @@ use crate::{
         ir::{
             basic_block::Terminator,
             function::{Function, LocalKind},
-            instruction::{LValInstruct, RValInstruct},
+            instruction::{LValInstruct, RValInstruct, RValueKind},
+            types::MathicType,
             value::Value,
         },
     },
@@ -24,9 +25,15 @@ pub fn lower_if(func: &mut Function, stmt: &IfStmt) -> Result<(), LoweringError>
         else_block,
     } = stmt;
 
-    let condition = expression::lower_expr(func, condition)?;
+    let (condition_val, condition_ty) = expression::lower_expr(func, condition, None)?;
 
-    // FUTURE: check if the condition is of type boolean.
+    if !condition_ty.is_bool() {
+        return Err(LoweringError::MismatchedType {
+            expected: MathicType::Bool,
+            found: condition_ty,
+            span: condition.span.clone(),
+        });
+    }
 
     // Hold the index of the current block to create the condition branch later.
     let trigger_block_idx = func.last_block_idx();
@@ -71,7 +78,7 @@ pub fn lower_if(func: &mut Function, stmt: &IfStmt) -> Result<(), LoweringError>
     };
 
     func.get_basic_block_mut(trigger_block_idx).terminator = Terminator::CondBranch {
-        condition,
+        condition: condition_val,
         true_block,
         false_block,
         span: None,
@@ -87,7 +94,15 @@ pub fn lower_while(
 ) -> Result<(), LoweringError> {
     let WhileStmt { condition, body } = stmt;
 
-    let loop_breaker_condition = expression::lower_expr(func, condition)?;
+    let (loop_breaker_condition, condition_ty) = expression::lower_expr(func, condition, None)?;
+
+    if !condition_ty.is_bool() {
+        return Err(LoweringError::MismatchedType {
+            expected: MathicType::Bool,
+            found: condition_ty,
+            span: condition.span.clone(),
+        });
+    }
 
     lower_loop(func, body, loop_breaker_condition, Vec::with_capacity(0))
 }
@@ -100,30 +115,60 @@ pub fn lower_for(func: &mut Function, stmt: &ForStmt, span: Span) -> Result<(), 
         body,
     } = stmt;
 
-    let loop_tracker_idx =
-        func.add_local(Some(variable.clone()), Some(span.clone()), LocalKind::Temp)?;
-    let loop_breaker_condition = RValInstruct::Binary {
-        op: BinaryOp::Compare(CmpOp::Lt),
-        lhs: Box::new(RValInstruct::Use(Value::InMemory(loop_tracker_idx), None)),
-        rhs: Box::new(expression::lower_expr(func, end)?),
-        span: start.span.start..end.span.end,
+    let (start_val, start_ty) = expression::lower_expr(func, start, None)?;
+    let (end_val, _) = expression::lower_expr(func, end, None)?;
+
+    let loop_tracker_idx = func.add_local(
+        Some(variable.clone()),
+        start_ty,
+        Some(span.clone()),
+        LocalKind::Temp,
+    )?;
+    let loop_breaker_condition = RValInstruct {
+        kind: RValueKind::Binary {
+            op: BinaryOp::Compare(CmpOp::Lt),
+            lhs: Box::new(RValInstruct {
+                kind: RValueKind::Use {
+                    value: Value::InMemory(loop_tracker_idx),
+                    span: None,
+                },
+                ty: start_ty,
+            }),
+            rhs: Box::new(end_val),
+            span: start.span.start..end.span.end,
+        },
+        ty: MathicType::Bool,
     };
 
     let extra_instructions = vec![LValInstruct::Assign {
         local_idx: loop_tracker_idx,
-        value: RValInstruct::Binary {
-            op: BinaryOp::Arithmetic(ArithOp::Add),
-            lhs: Box::new(RValInstruct::Use(Value::InMemory(loop_tracker_idx), None)),
-            rhs: Box::new(RValInstruct::Use(1i64.into(), None)),
-            span: start.span.start..end.span.end,
+        value: RValInstruct {
+            kind: RValueKind::Binary {
+                op: BinaryOp::Arithmetic(ArithOp::Add),
+                lhs: Box::new(RValInstruct {
+                    kind: RValueKind::Use {
+                        value: Value::InMemory(loop_tracker_idx),
+                        span: None,
+                    },
+                    ty: start_ty,
+                }),
+                rhs: Box::new(RValInstruct {
+                    kind: RValueKind::Use {
+                        value: 1i32.into(),
+                        span: None,
+                    },
+                    ty: start_ty,
+                }),
+                span: start.span.start..end.span.end,
+            },
+            ty: start_ty,
         },
         span: None,
     }];
 
-    let init = expression::lower_expr(func, start)?;
     func.push_instruction(LValInstruct::Let {
         local_idx: loop_tracker_idx,
-        init,
+        init: start_val,
         span: None,
     });
 

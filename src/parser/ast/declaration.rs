@@ -1,4 +1,7 @@
-use crate::parser::ast::{Span, expression::ExprStmt, statement::Stmt};
+use crate::{
+    lowering::ir::types::MathicType,
+    parser::ast::{Span, expression::ExprStmt, statement::Stmt},
+};
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 #[allow(dead_code)]
@@ -12,6 +15,7 @@ pub enum DeclStmt {
 pub struct VarDecl {
     pub name: String,
     pub expr: ExprStmt,
+    pub ty: MathicType,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -26,10 +30,12 @@ pub struct FuncDecl {
     pub params: Vec<Param>,
     pub body: Vec<Stmt>,
     pub span: Span,
+    pub return_ty: MathicType,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Param {
     pub name: String,
     pub span: Span,
+    pub ty: MathicType,
 }

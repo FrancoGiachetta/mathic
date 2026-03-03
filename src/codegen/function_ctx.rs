@@ -2,12 +2,13 @@ use melior::{
     dialect::func,
     helpers::{BuiltinBlockExt, LlvmBlockExt},
     ir::{
-        Attribute, Block, BlockLike, BlockRef, Identifier, Region, RegionLike, Value, ValueLike,
+        Attribute, Block, BlockLike, BlockRef, Identifier, Region, RegionLike, Type, TypeLike,
+        Value, ValueLike,
         attribute::{StringAttribute, TypeAttribute},
-        r#type::{FunctionType, IntegerType},
+        r#type::FunctionType,
     },
 };
-use mlir_sys::MlirValue;
+use mlir_sys::{MlirType, MlirValue};
 
 use crate::{
     codegen::MathicCodeGen,
@@ -16,7 +17,7 @@ use crate::{
 };
 
 pub struct FunctionCtx<'ctx, 'this> {
-    locals: Vec<MlirValue>,
+    locals: Vec<(MlirValue, MlirType)>,
     mlir_blocks: &'this [BlockRef<'ctx, 'this>],
 }
 
@@ -28,15 +29,15 @@ impl<'ctx, 'this> FunctionCtx<'ctx, 'this> {
         }
     }
 
-    pub fn define_local(&mut self, value: Value) {
-        self.locals.push(value.to_raw());
+    pub fn define_local(&mut self, value: Value, ty: Type) {
+        self.locals.push((value.to_raw(), ty.to_raw()));
     }
 
-    pub fn get_local(&self, idx: usize) -> Option<Value<'ctx, '_>> {
+    pub fn get_local(&self, idx: usize) -> Option<(Value<'ctx, '_>, Type<'ctx>)> {
         self.locals
             .get(idx)
             .copied()
-            .map(|v| unsafe { Value::from_raw(v) })
+            .map(|(v, t)| unsafe { (Value::from_raw(v), Type::from_raw(t)) })
     }
 
     pub fn get_block(&self, idx: usize) -> BlockRef<'_, '_> {
@@ -54,21 +55,16 @@ impl MathicCodeGen<'_> {
         'func: 'ctx,
     {
         let location = self.get_location(None)?;
-        let i64_ty = IntegerType::new(self.ctx, 64).into();
 
-        let function_params = inner_func
-            .sym_table
-            .locals
-            .iter()
-            .filter(|l| l.kind == LocalKind::Param)
-            .collect::<Vec<_>>();
+        let return_ty = inner_func.return_ty.get_compiled_type(self.ctx);
+        let mut params_types = Vec::with_capacity(inner_func.params_tys.len());
+        let mut block_params = Vec::with_capacity(inner_func.params_tys.len());
 
-        let mut params_types = Vec::with_capacity(function_params.len());
-        let mut block_params = Vec::with_capacity(function_params.len());
+        for param_ty in inner_func.params_tys.iter() {
+            let mlir_ty = param_ty.get_compiled_type(self.ctx);
 
-        for _ in function_params.iter() {
-            params_types.push(i64_ty);
-            block_params.push((i64_ty, location));
+            params_types.push(mlir_ty);
+            block_params.push((mlir_ty, location));
         }
 
         let region = Region::new();
@@ -91,26 +87,26 @@ impl MathicCodeGen<'_> {
         }
 
         let mut inner_fn_ctx = FunctionCtx::new(&mlir_blocks);
+        let function_params = inner_func
+            .sym_table
+            .locals
+            .iter()
+            .filter(|l| l.kind == LocalKind::Param);
 
         {
             // Allocate space for params and make them visible to the function
-            for (i, _) in inner_func
-                .sym_table
-                .locals
-                .iter()
-                .filter(|l| l.kind == LocalKind::Param)
-                .enumerate()
-            {
+            for (i, _) in function_params.enumerate() {
                 let value = entry_block.arg(i)?;
                 let ptr = entry_block.alloca1(self.ctx, location, params_types[i], 8)?;
 
                 entry_block.store(self.ctx, location, ptr, value)?;
 
-                inner_fn_ctx.define_local(ptr);
+                inner_fn_ctx
+                    .define_local(ptr, inner_func.params_tys[i].get_compiled_type(self.ctx));
             }
         }
 
-        // Precompile inner functions .
+        // Precompile inner functions.
         for (_, inner_func) in inner_func.sym_table.functions.iter() {
             self.compile_function(
                 inner_func,
@@ -134,7 +130,7 @@ impl MathicCodeGen<'_> {
         self.module.body().append_operation(func::func(
             self.ctx,
             StringAttribute::new(self.ctx, &format!("mathic__{}", inner_func.name)),
-            TypeAttribute::new(FunctionType::new(self.ctx, &params_types, &[i64_ty]).into()),
+            TypeAttribute::new(FunctionType::new(self.ctx, &params_types, &[return_ty]).into()),
             region,
             attributes,
             location,

@@ -1,6 +1,7 @@
-df main() {
-    let a = 10;
-    let b = 20;
+df main() i64 {
+    let a: i64 = 10;
+    let b: i64 = 20;
+
     if (a > b) {
         return a;
     } else {

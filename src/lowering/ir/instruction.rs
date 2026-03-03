@@ -1,5 +1,6 @@
 use std::fmt::{self, Display, Formatter};
 
+use super::types::MathicType;
 use super::value::Value;
 use crate::parser::ast::{
     Span,
@@ -8,15 +9,12 @@ use crate::parser::ast::{
 
 /// IR Instructions
 #[derive(Debug, Clone)]
-#[allow(dead_code)]
 pub enum LValInstruct {
-    /// Variable declaration with initial value
     Let {
         local_idx: usize,
         init: RValInstruct,
         span: Option<Span>,
     },
-    /// Variable assignment (mutation)
     Assign {
         local_idx: usize,
         value: RValInstruct,
@@ -26,29 +24,34 @@ pub enum LValInstruct {
 
 #[derive(Debug, Clone)]
 #[allow(dead_code)]
-pub enum RValInstruct {
-    // Use a value
-    Use(Value, Option<Span>),
-    /// Binary arithmetic operation
+pub enum RValueKind {
+    Use {
+        value: Value,
+        span: Option<Span>,
+    },
     Binary {
         op: BinaryOp,
         lhs: Box<RValInstruct>,
         rhs: Box<RValInstruct>,
         span: Span,
     },
-    /// Unary operation
     Unary {
         op: UnaryOp,
         rhs: Box<RValInstruct>,
         span: Span,
     },
-    // Logical operation
     Logical {
         op: LogicalOp,
         lhs: Box<RValInstruct>,
         rhs: Box<RValInstruct>,
         span: Span,
     },
+}
+
+#[derive(Debug, Clone)]
+pub struct RValInstruct {
+    pub kind: RValueKind,
+    pub ty: MathicType,
 }
 
 impl Display for BinaryOp {
@@ -91,14 +94,20 @@ impl Display for LogicalOp {
     }
 }
 
-impl Display for RValInstruct {
+impl Display for RValueKind {
     fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
         match self {
-            Self::Use(v, _) => write!(f, "{}", v),
+            Self::Use { value, .. } => write!(f, "{}", value),
             Self::Binary { op, lhs, rhs, .. } => write!(f, "{} {} {}", lhs, op, rhs),
             Self::Unary { op, rhs, .. } => write!(f, "{}{}", op, rhs),
             Self::Logical { op, lhs, rhs, .. } => write!(f, "{} {} {}", lhs, op, rhs),
         }
+    }
+}
+
+impl Display for RValInstruct {
+    fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
+        write!(f, "{}", self.kind)
     }
 }
 

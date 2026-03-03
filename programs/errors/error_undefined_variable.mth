@@ -1,5 +1,6 @@
 df main() {
-    let x = 10;
-    let y = x + z;
+    let x: i64 = 10;
+    let y: i64 = x + z;
+
     return y;
 }

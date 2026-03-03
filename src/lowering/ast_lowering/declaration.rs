@@ -18,10 +18,28 @@ pub fn lower_var_declaration(
     stmt: &VarDecl,
     span: Span,
 ) -> Result<(), LoweringError> {
-    let init = expression::lower_expr(func, &stmt.expr)?;
-    let local_idx = func.add_local(Some(stmt.name.clone()), Some(span.clone()), LocalKind::Temp)?;
+    let VarDecl {
+        name,
+        expr,
+        ty: var_ty,
+    } = stmt;
 
-    // FUTURE: check the expression is the same type as the declaration.
+    let (init, expr_ty) = expression::lower_expr(func, expr, Some(*var_ty))?;
+
+    if expr_ty != *var_ty {
+        return Err(LoweringError::MismatchedType {
+            expected: *var_ty,
+            found: expr_ty,
+            span,
+        });
+    }
+
+    let local_idx = func.add_local(
+        Some(name.clone()),
+        *var_ty,
+        Some(span.clone()),
+        LocalKind::Temp,
+    )?;
 
     func.push_instruction(LValInstruct::Let {
         local_idx,
@@ -37,17 +55,17 @@ pub fn lower_inner_function(
     stmt: &FuncDecl,
     span: Span,
 ) -> Result<(), LoweringError> {
-    let mut inner_func = Function::new(stmt.name.clone(), span);
+    let FuncDecl {
+        name,
+        params,
+        body,
+        return_ty,
+        ..
+    } = stmt;
 
-    for param in stmt.params.iter() {
-        inner_func.add_local(
-            Some(param.name.clone()),
-            Some(param.span.clone()),
-            LocalKind::Param,
-        )?;
-    }
+    let mut inner_func = Function::new(name.clone(), params, *return_ty, span);
 
-    for stmt in stmt.body.iter() {
+    for stmt in body.iter() {
         statement::lower_stmt(stmt, &mut inner_func)?;
     }
 

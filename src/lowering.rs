@@ -3,7 +3,7 @@ pub mod ir;
 
 use crate::{
     diagnostics::LoweringError,
-    lowering::{ast_lowering::statement, ir::function::LocalKind},
+    lowering::ast_lowering::statement,
     parser::ast::{Program, declaration::FuncDecl},
 };
 use ir::{Ir, function::Function};
@@ -19,17 +19,17 @@ pub fn lower_program(program: &Program) -> Result<Ir, LoweringError> {
 }
 
 fn lower_entry_point(func: &FuncDecl, ir: &mut Ir) -> Result<(), LoweringError> {
-    let mut ir_func = Function::new(func.name.clone(), func.span.clone());
+    let FuncDecl {
+        name,
+        params,
+        body,
+        span,
+        return_ty,
+    } = func;
 
-    for param in func.params.iter() {
-        ir_func.add_local(
-            Some(param.name.clone()),
-            Some(param.span.clone()),
-            LocalKind::Param,
-        )?;
-    }
+    let mut ir_func = Function::new(name.clone(), params, *return_ty, span.clone());
 
-    for stmt in &func.body {
+    for stmt in body {
         statement::lower_stmt(stmt, &mut ir_func)?;
     }
 

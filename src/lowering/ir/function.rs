@@ -3,8 +3,8 @@ use std::collections::HashMap;
 use super::basic_block::{BasicBlock, BlockId, write_block_ir};
 use crate::{
     diagnostics::LoweringError,
-    lowering::ir::{basic_block::Terminator, instruction::LValInstruct},
-    parser::ast::Span,
+    lowering::ir::{basic_block::Terminator, instruction::LValInstruct, types::MathicType},
+    parser::ast::{Span, declaration::Param},
 };
 
 /// A function in the IR
@@ -14,6 +14,8 @@ pub struct Function {
     pub name: String,
     pub sym_table: SymbolTable,
     pub basic_blocks: Vec<BasicBlock>,
+    pub params_tys: Vec<MathicType>,
+    pub return_ty: MathicType,
     pub span: Span,
 }
 
@@ -28,11 +30,11 @@ pub enum LocalKind {
 pub struct Local {
     pub local_idx: usize,
     pub kind: LocalKind,
+    pub ty: MathicType,
     pub debug_name: Option<String>,
 }
 
 #[derive(Debug, Clone, Default)]
-#[allow(dead_code)]
 pub struct SymbolTable {
     pub locals: Vec<Local>,
     pub local_indexes: HashMap<String, usize>,
@@ -41,19 +43,39 @@ pub struct SymbolTable {
 
 impl Function {
     /// Create a new function
-    pub fn new(name: String, span: Span) -> Self {
-        Self {
+    pub fn new(name: String, params: &[Param], return_ty: MathicType, span: Span) -> Self {
+        let mut func = Self {
             name,
             sym_table: Default::default(),
             basic_blocks: vec![BasicBlock::new(0, Terminator::Return(None, None), None)],
+            params_tys: Vec::with_capacity(params.len()),
+            return_ty,
             span,
+        };
+
+        for (param_idx, param) in params.iter().enumerate() {
+            func.params_tys.push(param.ty);
+
+            func.sym_table.locals.push(Local {
+                local_idx: param_idx,
+                kind: LocalKind::Param,
+                ty: param.ty,
+                debug_name: Some(param.name.clone()),
+            });
+
+            func.sym_table
+                .local_indexes
+                .insert(param.name.clone(), param_idx);
         }
+
+        func
     }
 
     /// Adds a user-defined local.
     pub fn add_local(
         &mut self,
         debug_name: Option<String>,
+        ty: MathicType,
         span: Option<Span>,
         kind: LocalKind,
     ) -> Result<usize, LoweringError> {
@@ -71,6 +93,7 @@ impl Function {
         self.sym_table.locals.push(Local {
             local_idx: idx,
             kind,
+            ty,
             debug_name: debug_name.clone(),
         });
 
@@ -85,8 +108,15 @@ impl Function {
         self.sym_table.functions.insert(func.name.clone(), func);
     }
 
-    pub fn get_local_idx_from_name(&self, name: &str) -> Option<usize> {
-        self.sym_table.local_indexes.get(name).copied()
+    pub fn get_local_from_name(&self, name: &str, span: Span) -> Result<Local, LoweringError> {
+        let local_idx = self.sym_table.local_indexes.get(name).copied().ok_or(
+            LoweringError::UndeclaredVariable {
+                name: name.to_string(),
+                span,
+            },
+        )?;
+
+        Ok(self.sym_table.locals[local_idx].clone())
     }
 
     #[allow(dead_code)]

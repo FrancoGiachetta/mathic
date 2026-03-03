@@ -3,7 +3,8 @@ use crate::{
     lowering::ir::{
         basic_block::Terminator,
         function::{Function, LocalKind},
-        instruction::{LValInstruct, RValInstruct},
+        instruction::{LValInstruct, RValInstruct, RValueKind},
+        types::{FloatTy, MathicType, SintTy, UintTy},
         value::{ConstExpr, NumericConst, Value},
     },
     parser::ast::{
@@ -12,26 +13,39 @@ use crate::{
     },
 };
 
-pub fn lower_expr(func: &mut Function, expr: &ExprStmt) -> Result<RValInstruct, LoweringError> {
-    match &expr.kind {
-        ExprStmtKind::Primary(val) => lower_primary_value(func, val, expr.span.clone()),
+pub fn lower_expr(
+    func: &mut Function,
+    expr: &ExprStmt,
+    ty_hint: Option<MathicType>,
+) -> Result<(RValInstruct, MathicType), LoweringError> {
+    let rvalue = match &expr.kind {
+        ExprStmtKind::Primary(val) => lower_primary_value(func, val, expr.span.clone(), ty_hint)?,
         ExprStmtKind::Binary { lhs, op, rhs } => {
-            lower_binary_op(func, lhs, *op, rhs, expr.span.clone())
+            lower_binary_op(func, lhs, *op, rhs, expr.span.clone())?
         }
-        ExprStmtKind::Unary { op, rhs } => lower_unary_op(func, *op, rhs, expr.span.clone()),
-        ExprStmtKind::Group(expr) => lower_expr(func, expr),
+        ExprStmtKind::Unary { op, rhs } => {
+            lower_unary_op(func, *op, rhs, expr.span.clone(), ty_hint)?
+        }
+        ExprStmtKind::Group(expr) => {
+            return lower_expr(func, expr, ty_hint);
+        }
         ExprStmtKind::Call { callee, args } => {
-            lower_call(func, callee.clone(), args, expr.span.clone())
+            lower_call(func, callee.clone(), args, expr.span.clone())?
         }
         ExprStmtKind::Assign {
             name,
             expr: assign_expr,
-        } => lower_assignment(func, name, assign_expr, expr.span.clone()),
+        } => lower_assignment(func, name, assign_expr, expr.span.clone())?,
         ExprStmtKind::Logical { lhs, op, rhs } => {
-            lower_logical_op(func, lhs, *op, rhs, expr.span.clone())
+            lower_logical_op(func, lhs, *op, rhs, expr.span.clone())?
         }
         ExprStmtKind::Index { .. } => todo!(),
-    }
+    };
+
+    Ok((
+        rvalue,
+        lower_expression_type(func, &expr.kind, ty_hint, expr.span.clone())?,
+    ))
 }
 
 fn lower_assignment(
@@ -40,50 +54,59 @@ fn lower_assignment(
     expr: &ExprStmt,
     span: Span,
 ) -> Result<RValInstruct, LoweringError> {
-    let local_idx =
-        func.get_local_idx_from_name(name)
-            .ok_or(LoweringError::UndeclaredVariable {
-                name: name.to_string(),
-                span: span.clone(),
-            })?;
-    let value = lower_expr(func, expr)?;
+    let local = func.get_local_from_name(name, span.clone())?;
+    let (value, ty) = lower_expr(func, expr, Some(local.ty))?;
 
-    // FUTURE: check that value is of the same type as the local.
+    // The new value should be of the same type as the local's.
+    if local.ty != ty {
+        return Err(LoweringError::MismatchedType {
+            expected: local.ty,
+            found: ty,
+            span,
+        });
+    }
 
     func.get_basic_block_mut(func.last_block_idx())
         .instructions
         .push(LValInstruct::Assign {
-            local_idx,
+            local_idx: local.local_idx,
             value,
             span: Some(span),
         });
 
-    Ok(RValInstruct::Use(Value::Const(ConstExpr::Void), None))
+    Ok(RValInstruct {
+        kind: RValueKind::Use {
+            value: Value::Const(ConstExpr::Void),
+            span: None,
+        },
+        ty: MathicType::Void,
+    })
 }
 
 fn lower_call(
     func: &mut Function,
     callee: String,
-    args: &[ExprStmt],
+    func_args: &[ExprStmt],
     span: Span,
 ) -> Result<RValInstruct, LoweringError> {
-    // FUTURE: check if the function is declared or if it will be.
+    let mut arg_values: Vec<RValInstruct> = Vec::new();
 
-    let args: Vec<RValInstruct> = args
-        .iter()
-        .map(|arg| lower_expr(func, arg))
-        .collect::<Result<_, _>>()?;
+    for arg in func_args.iter() {
+        let (arg_val, _) = lower_expr(func, arg, Some(MathicType::Sint(SintTy::I64)))?;
+
+        arg_values.push(arg_val);
+    }
 
     // FUTURE: check that the amount of args matches the expected and that
     // every type matches the expected type.
 
-    let local_idx = func.add_local(None, None, LocalKind::Temp)?;
+    let local_idx = func.add_local(None, MathicType::Sint(SintTy::I64), None, LocalKind::Temp)?;
 
     let dest_block_idx = func.last_block_idx() + 1;
 
     func.get_basic_block_mut(func.last_block_idx()).terminator = Terminator::Call {
         callee,
-        args,
+        args: arg_values,
         span: Some(span),
         return_dest: Value::InMemory(local_idx),
         dest_block: dest_block_idx,
@@ -91,7 +114,13 @@ fn lower_call(
 
     func.add_block(Terminator::Return(None, None), None);
 
-    Ok(RValInstruct::Use(Value::InMemory(local_idx), None))
+    Ok(RValInstruct {
+        kind: RValueKind::Use {
+            value: Value::InMemory(local_idx),
+            span: None,
+        },
+        ty: MathicType::Sint(SintTy::I64),
+    })
 }
 
 fn lower_binary_op(
@@ -101,12 +130,31 @@ fn lower_binary_op(
     rhs: &ExprStmt,
     span: Span,
 ) -> Result<RValInstruct, LoweringError> {
-    let lhs = lower_expr(func, lhs)?.into();
-    let rhs = lower_expr(func, rhs)?.into();
+    let (lhs, lhs_ty) = lower_expr(func, lhs, None)?;
+    let (rhs, rhs_ty) = lower_expr(func, rhs, Some(lhs_ty))?;
 
-    // FUTURE: check that both lhs and rhs are of the same numeric type.
+    // Operands' types must match.
+    if lhs_ty != rhs_ty {
+        return Err(LoweringError::MismatchedType {
+            expected: lhs_ty,
+            found: rhs_ty,
+            span,
+        });
+    }
+    let inst_ty = match op {
+        BinaryOp::Compare(_) => MathicType::Bool,
+        BinaryOp::Arithmetic(_) => lhs_ty,
+    };
 
-    Ok(RValInstruct::Binary { op, lhs, rhs, span })
+    Ok(RValInstruct {
+        kind: RValueKind::Binary {
+            op,
+            lhs: Box::new(lhs),
+            rhs: Box::new(rhs),
+            span,
+        },
+        ty: inst_ty,
+    })
 }
 
 fn lower_logical_op(
@@ -116,12 +164,34 @@ fn lower_logical_op(
     rhs: &ExprStmt,
     span: Span,
 ) -> Result<RValInstruct, LoweringError> {
-    let lhs = lower_expr(func, lhs)?.into();
-    let rhs = lower_expr(func, rhs)?.into();
+    let (lhs, lhs_ty) = lower_expr(func, lhs, None)?;
+    let (rhs, rhs_ty) = lower_expr(func, rhs, Some(lhs_ty))?;
 
-    // FUTURE: check that both lhs and rhs are of type boolean.
+    // Operands' types must be boolean.
+    if !lhs_ty.is_bool() {
+        return Err(LoweringError::MismatchedType {
+            expected: MathicType::Bool,
+            found: lhs_ty,
+            span,
+        });
+    }
+    if !rhs_ty.is_bool() {
+        return Err(LoweringError::MismatchedType {
+            expected: MathicType::Bool,
+            found: rhs_ty,
+            span,
+        });
+    }
 
-    Ok(RValInstruct::Logical { op, lhs, rhs, span })
+    Ok(RValInstruct {
+        kind: RValueKind::Logical {
+            op,
+            lhs: Box::new(lhs),
+            rhs: Box::new(rhs),
+            span,
+        },
+        ty: MathicType::Bool,
+    })
 }
 
 fn lower_unary_op(
@@ -129,33 +199,126 @@ fn lower_unary_op(
     op: UnaryOp,
     rhs: &ExprStmt,
     span: Span,
+    ty_hint: Option<MathicType>,
 ) -> Result<RValInstruct, LoweringError> {
-    let rhs = lower_expr(func, rhs)?.into();
+    let (rhs, rhs_ty) = lower_expr(func, rhs, ty_hint)?;
 
-    // FUTURE: check that rhs is type of type numeric or boolean depending
-    // on op.
-
-    Ok(RValInstruct::Unary { op, rhs, span })
+    Ok(RValInstruct {
+        kind: RValueKind::Unary {
+            op,
+            rhs: Box::new(rhs),
+            span,
+        },
+        ty: rhs_ty,
+    })
 }
 
 fn lower_primary_value(
     func: &mut Function,
     expr: &PrimaryExpr,
     span: Span,
+    ty_hint: Option<MathicType>,
 ) -> Result<RValInstruct, LoweringError> {
-    let value = match expr {
-        PrimaryExpr::Ident(name) => Value::InMemory(func.get_local_idx_from_name(name).ok_or(
-            LoweringError::UndeclaredVariable {
-                name: name.clone(),
-                span: span.clone(),
-            },
-        )?),
-        PrimaryExpr::Num(n) => Value::Const(ConstExpr::Numeric(NumericConst::I64(
-            n.parse::<i64>().unwrap(),
-        ))),
-        PrimaryExpr::Bool(b) => Value::Const(ConstExpr::Bool(*b)),
+    let (value, ty) = match expr {
+        PrimaryExpr::Ident(name) => {
+            let local = func.get_local_from_name(name, span.clone())?;
+            (Value::InMemory(local.local_idx), local.ty)
+        }
+        PrimaryExpr::Num(n) => match ty_hint {
+            Some(ty) => (
+                Value::Const(match ty {
+                    MathicType::Uint(uint_ty) => match uint_ty {
+                        UintTy::U8 => {
+                            ConstExpr::Numeric(NumericConst::U8(n.parse::<u8>().unwrap()))
+                        }
+                        UintTy::U16 => {
+                            ConstExpr::Numeric(NumericConst::U16(n.parse::<u16>().unwrap()))
+                        }
+                        UintTy::U32 => {
+                            ConstExpr::Numeric(NumericConst::U32(n.parse::<u32>().unwrap()))
+                        }
+                        UintTy::U64 => {
+                            ConstExpr::Numeric(NumericConst::U64(n.parse::<u64>().unwrap()))
+                        }
+                        UintTy::U128 => {
+                            ConstExpr::Numeric(NumericConst::U128(n.parse::<u128>().unwrap()))
+                        }
+                    },
+                    MathicType::Sint(uint_ty) => match uint_ty {
+                        SintTy::I8 => {
+                            ConstExpr::Numeric(NumericConst::I8(n.parse::<i8>().unwrap()))
+                        }
+                        SintTy::I16 => {
+                            ConstExpr::Numeric(NumericConst::I16(n.parse::<i16>().unwrap()))
+                        }
+                        SintTy::I32 => {
+                            ConstExpr::Numeric(NumericConst::I32(n.parse::<i32>().unwrap()))
+                        }
+                        SintTy::I64 => {
+                            ConstExpr::Numeric(NumericConst::I64(n.parse::<i64>().unwrap()))
+                        }
+                        SintTy::I128 => {
+                            ConstExpr::Numeric(NumericConst::I128(n.parse::<i128>().unwrap()))
+                        }
+                    },
+                    MathicType::Float(float_ty) => match float_ty {
+                        FloatTy::F32 => {
+                            ConstExpr::Numeric(NumericConst::F32(n.parse::<f32>().unwrap()))
+                        }
+                        FloatTy::F64 => {
+                            ConstExpr::Numeric(NumericConst::F64(n.parse::<f64>().unwrap()))
+                        }
+                    },
+                    MathicType::Bool => unreachable!(),
+                    MathicType::Void => unreachable!(),
+                }),
+                ty,
+            ),
+            None => (
+                Value::Const(ConstExpr::Numeric(NumericConst::I32(
+                    n.parse::<i32>().unwrap(),
+                ))),
+                MathicType::Sint(SintTy::I32),
+            ),
+        },
+        PrimaryExpr::Bool(b) => (Value::Const(ConstExpr::Bool(*b)), MathicType::Bool),
         PrimaryExpr::Str(_) => todo!(),
     };
 
-    Ok(RValInstruct::Use(value, Some(span)))
+    Ok(RValInstruct {
+        kind: RValueKind::Use {
+            value,
+            span: Some(span),
+        },
+        ty,
+    })
+}
+
+fn lower_expression_type(
+    func: &Function,
+    expr: &ExprStmtKind,
+    ty_hint: Option<MathicType>,
+    span: Span,
+) -> Result<MathicType, LoweringError> {
+    Ok(match expr {
+        ExprStmtKind::Primary(primary_expr) => match primary_expr {
+            PrimaryExpr::Ident(name) => func.get_local_from_name(name, span.clone())?.ty,
+            PrimaryExpr::Num(_) => match ty_hint {
+                Some(ty) => ty,
+                None => MathicType::Sint(SintTy::I32),
+            },
+            PrimaryExpr::Str(_) => todo!(),
+            PrimaryExpr::Bool(_) => MathicType::Bool,
+        },
+        ExprStmtKind::Binary { lhs, op, .. } => match op {
+            BinaryOp::Compare(_) => MathicType::Bool,
+            BinaryOp::Arithmetic(_) => lower_expression_type(func, &lhs.kind, None, span.clone())?,
+        },
+        ExprStmtKind::Call { callee: _, .. } => MathicType::Sint(SintTy::I64),
+        ExprStmtKind::Group(expr_stmt) => lower_expression_type(func, &expr_stmt.kind, None, span)?,
+        ExprStmtKind::Index { .. } => todo!(),
+        ExprStmtKind::Logical { .. } => MathicType::Bool,
+        ExprStmtKind::Unary { rhs, .. } => lower_expression_type(func, &rhs.kind, None, span)?,
+        ExprStmtKind::Assign { expr, .. } => lower_expression_type(func, &expr.kind, None, span)?,
+    })
 }

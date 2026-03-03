@@ -29,12 +29,16 @@ impl MathicCodeGen<'_> {
                 let location = self.get_location(span.clone())?;
 
                 let init_val = self.compile_rvalue(fn_ctx, block, init)?;
-                let ptr =
-                    block.alloca1(self.ctx, location, IntegerType::new(self.ctx, 64).into(), 8)?;
+                let ptr = block.alloca1(
+                    self.ctx,
+                    location,
+                    init.ty.get_compiled_type(self.ctx),
+                    init.ty.align(),
+                )?;
 
                 block.store(self.ctx, location, ptr, init_val)?;
 
-                fn_ctx.define_local(ptr);
+                fn_ctx.define_local(ptr, init.ty.get_compiled_type(self.ctx));
             }
             LValInstruct::Assign {
                 local_idx,
@@ -44,7 +48,7 @@ impl MathicCodeGen<'_> {
                 let location = self.get_location(span.clone())?;
 
                 let val = self.compile_rvalue(fn_ctx, block, value)?;
-                let ptr = fn_ctx.get_local(*local_idx).expect("invalid local idx");
+                let (ptr, _) = fn_ctx.get_local(*local_idx).expect("invalid local idx");
 
                 block.store(self.ctx, location, ptr, val)?;
             }
@@ -130,7 +134,7 @@ impl MathicCodeGen<'_> {
 
                 block.store(self.ctx, unknown_location, return_ptr, return_value)?;
 
-                fn_ctx.define_local(return_ptr);
+                fn_ctx.define_local(return_ptr, IntegerType::new(self.ctx, 64).into());
 
                 block.append_operation(cf::br(
                     &fn_ctx.get_block(*dest_block),
@@ -166,8 +170,8 @@ mod tests {
     use rstest::*;
 
     #[rstest]
-    #[case("df main() { return 0; }", 0)]
-    #[case("df main() { return 42; }", 42)]
+    #[case("df main() i64 { return 0; }", 0)]
+    #[case("df main() i64 { return 42; }", 42)]
     fn test_return_statements(#[case] source: &str, #[case] expected: i64) {
         assert_eq!(compile_and_execute(source), expected);
     }

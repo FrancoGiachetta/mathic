@@ -1,7 +1,7 @@
-df main() {
-    df inner(a, b) {
+df main() i64 {
+    df inner(a: i64, b: i64) i64 {
         return a * b;
     }
-    let result = inner(3, 4);
+    let result: i64 = inner(3, 4);
     return result;
 }

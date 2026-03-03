@@ -1,13 +1,39 @@
-use crate::parser::{
-    MathicParser, ParserResult,
-    ast::{
-        declaration::{FuncDecl, Param, VarDecl},
-        statement::BlockStmt,
+use crate::{
+    lowering::ir::types::{FloatTy, MathicType, SintTy, UintTy},
+    parser::{
+        MathicParser, ParserResult,
+        ast::{
+            declaration::{FuncDecl, Param, VarDecl},
+            statement::BlockStmt,
+        },
+        token::Token,
     },
-    token::Token,
 };
 
 impl<'a> MathicParser<'a> {
+    pub fn parse_type(&self) -> ParserResult<MathicType> {
+        let ident = self.consume_token(Token::Ident)?;
+
+        let ty = match ident.lexeme {
+            "i8" => MathicType::Sint(SintTy::I8),
+            "i16" => MathicType::Sint(SintTy::I16),
+            "i32" => MathicType::Sint(SintTy::I32),
+            "i64" => MathicType::Sint(SintTy::I64),
+            "i128" => MathicType::Sint(SintTy::I128),
+            "u8" => MathicType::Uint(UintTy::U8),
+            "u16" => MathicType::Uint(UintTy::U16),
+            "u32" => MathicType::Uint(UintTy::U32),
+            "u64" => MathicType::Uint(UintTy::U64),
+            "u128" => MathicType::Uint(UintTy::U128),
+            "f32" => MathicType::Float(FloatTy::F32),
+            "f64" => MathicType::Float(FloatTy::F64),
+            "bool" => MathicType::Bool,
+            _ => todo!("user-defined types not yet supported: {}", ident.lexeme),
+        };
+
+        Ok(ty)
+    }
+
     pub fn parse_func(&self) -> ParserResult<FuncDecl> {
         let start_span = self.next()?.span; // Consume Df.
 
@@ -26,7 +52,11 @@ impl<'a> MathicParser<'a> {
 
         self.consume_token(Token::RParen)?;
 
-        // Return type parsing should be here.
+        let return_ty = if self.check_next(Token::Ident)? {
+            self.parse_type()?
+        } else {
+            MathicType::Void
+        };
 
         let BlockStmt { stmts, .. } = self.parse_block()?;
 
@@ -36,6 +66,7 @@ impl<'a> MathicParser<'a> {
             name,
             params,
             body: stmts,
+            return_ty,
             span,
         })
     }
@@ -46,30 +77,38 @@ impl<'a> MathicParser<'a> {
         let ident = self.consume_token(Token::Ident)?;
         let name = ident.lexeme.to_string();
 
+        self.consume_token(Token::Colon)?;
+        let ty = self.parse_type()?;
+
         self.consume_token(Token::Eq)?;
 
         let expr = self.parse_expr()?;
 
         self.consume_token(Token::Semicolon)?;
 
-        Ok(VarDecl { name, expr })
+        Ok(VarDecl { name, ty, expr })
     }
 
     fn parse_params(&self) -> ParserResult<Vec<Param>> {
         let identifier = self.consume_token(Token::Ident)?;
+        self.consume_token(Token::Colon)?;
+        let ty = self.parse_type()?;
+
         let mut params = vec![Param {
             name: identifier.lexeme.to_string(),
             span: identifier.span,
+            ty,
         }];
 
         while self.match_token(Token::Comma)?.is_some() {
             let identifier = self.consume_token(Token::Ident)?;
-
-            // Param's type parsing should be here.
+            self.consume_token(Token::Colon)?;
+            let ty = self.parse_type()?;
 
             params.push(Param {
                 name: identifier.lexeme.to_string(),
                 span: identifier.span,
+                ty,
             });
         }
 
