@@ -29,7 +29,7 @@ impl Span {
         }
     }
 
-    pub fn into_range(&self) -> Range<usize> {
+    pub fn as_range(&self) -> Range<usize> {
         self.start..self.end
     }
 }

@@ -38,7 +38,7 @@ impl<'src> MathicLexer<'src> {
             Some(res) => match res {
                 Ok(token) => Ok(Some(SpannedToken {
                     token,
-                    lexeme: &self.source[span.into_range()],
+                    lexeme: &self.source[span.as_range()],
                     span,
                 })),
                 Err(e) => Err((e, span)),
