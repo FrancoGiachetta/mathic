@@ -8,10 +8,7 @@ use thiserror::Error;
 
 use crate::{
     diagnostics::ReportSpan,
-    parser::{
-        lexer::{Span, SpannedToken},
-        token::Token,
-    },
+    parser::{Span, lexer::SpannedToken, token::Token},
 };
 
 #[derive(Debug, Clone, PartialEq, Eq, Default)]
@@ -137,34 +134,31 @@ pub fn format_parse_error<'err>(
                 LexError::UnterminatedComment => ("L004", "unterminated comment".to_string()),
                 LexError::InvalidNumber(n) => ("L005", format!("invalid number: {}", n)),
             };
-            (code, msg, span.clone(), "Lexical Error".to_string())
+            (code, msg, *span, "Lexical Error".to_string())
         }
         ParseError::Syntax(syntax_error) => match syntax_error {
             SyntaxError::UnexpectedToken { found, expected } => (
                 "E001",
                 format!("expected {}, found '{}'", expected, found.lexeme),
-                found.span.clone(),
+                found.span,
                 expected.help().to_string(),
             ),
             SyntaxError::UnexpectedEnd { span } => (
                 "E002",
                 "found an unexpected end of file".to_string(),
-                span.clone(),
+                *span,
                 String::new(),
             ),
             SyntaxError::MissingToken { expected, span } => (
                 "E003",
                 format!("expected '{}'", expected),
-                span.clone(),
+                *span,
                 format!("add '{}' here to complete the syntax", expected),
             ),
         },
     };
 
-    let report_span = ReportSpan {
-        path,
-        span: span.start..span.end,
-    };
+    let report_span = ReportSpan { path, span };
 
     Report::build(ReportKind::Error, report_span.clone())
         .with_code(code)

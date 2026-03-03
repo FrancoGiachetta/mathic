@@ -291,7 +291,7 @@ impl<'a> MathicParser<'a> {
 
     fn parse_primary_expr(&self) -> ParserResult<ExprStmt> {
         let lookahead = self.next()?;
-        let span = lookahead.span.clone();
+        let span = lookahead.span;
 
         let kind = match lookahead.token {
             Token::Num => ExprStmtKind::Primary(PrimaryExpr::Num(lookahead.lexeme.to_string())),

@@ -3,7 +3,7 @@ use std::path::Path;
 use ariadne::{Report, ReportBuilder, ReportKind};
 use thiserror::Error;
 
-use crate::{diagnostics::ReportSpan, lowering::ir::types::MathicType, parser::lexer::Span};
+use crate::{diagnostics::ReportSpan, lowering::ir::types::MathicType, parser::Span};
 
 #[derive(Debug, Error)]
 pub enum LoweringError {
@@ -95,10 +95,7 @@ pub fn format_lowering_error<'err>(
         ),
     };
 
-    let report_span = ReportSpan {
-        path,
-        span: span.start..span.end,
-    };
+    let report_span = ReportSpan { path, span: *span };
 
     Report::build(ReportKind::Error, report_span.clone())
         .with_code(code)

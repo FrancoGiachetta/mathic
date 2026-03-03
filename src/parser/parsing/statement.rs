@@ -57,9 +57,9 @@ impl<'a> MathicParser<'a> {
             Token::LBrace => {
                 let block = self.parse_block()?;
                 let span = if let Some(last) = block.stmts.last() {
-                    self.merge_spans(&start_span, &last.span.clone())
+                    self.merge_spans(&start_span, &last.span)
                 } else {
-                    start_span.clone()
+                    start_span
                 };
                 (StmtKind::Block(block), span)
             }

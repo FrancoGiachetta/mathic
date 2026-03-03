@@ -11,9 +11,9 @@ use crate::{
         instruction::{RValInstruct, RValueKind},
         value::{NumericConst, Value as IRValue},
     },
-    parser::ast::{
+    parser::{
         Span,
-        expression::{ArithOp, BinaryOp, CmpOp, LogicalOp, UnaryOp},
+        ast::expression::{ArithOp, BinaryOp, CmpOp, LogicalOp, UnaryOp},
     },
 };
 
@@ -31,13 +31,13 @@ impl MathicCodeGen<'_> {
             RValueKind::Use { value, .. } => self.compile_value_use(fn_ctx, block, value),
             RValueKind::Binary {
                 op, lhs, rhs, span, ..
-            } => self.compile_binop(fn_ctx, block, lhs, *op, rhs, span.clone()),
+            } => self.compile_binop(fn_ctx, block, lhs, *op, rhs, *span),
             RValueKind::Unary { op, rhs, span, .. } => {
-                self.compile_unary(fn_ctx, block, *op, rhs, span.clone())
+                self.compile_unary(fn_ctx, block, *op, rhs, *span)
             }
             RValueKind::Logical {
                 op, lhs, rhs, span, ..
-            } => self.compile_logical(fn_ctx, block, lhs, *op, rhs, span.clone()),
+            } => self.compile_logical(fn_ctx, block, lhs, *op, rhs, *span),
         }
     }
 

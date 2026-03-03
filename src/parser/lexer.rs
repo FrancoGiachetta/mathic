@@ -1,14 +1,14 @@
-use std::ops::Range;
-
 use logos::{Lexer, Logos};
 
-use crate::{diagnostics::parse::LexError, parser::token::Token};
+use crate::{
+    diagnostics::parse::LexError,
+    parser::{Span, token::Token},
+};
 
 pub type LexerOutput<'a> = SpannedToken<'a>;
 pub type LexerResult<'a> = Result<Option<LexerOutput<'a>>, (LexError, Span)>;
-pub type Span = Range<usize>;
 
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct SpannedToken<'a> {
     pub token: Token,
     pub lexeme: &'a str,
@@ -32,13 +32,13 @@ impl<'src> MathicLexer<'src> {
 
     fn read_next(&mut self) -> LexerResult<'src> {
         let res = self.inner.next();
-        let span = self.inner.span();
+        let span = Span::from(self.inner.span());
 
         match res {
             Some(res) => match res {
                 Ok(token) => Ok(Some(SpannedToken {
                     token,
-                    lexeme: &self.source[span.clone()],
+                    lexeme: &self.source[span.into_range()],
                     span,
                 })),
                 Err(e) => Err((e, span)),
@@ -62,6 +62,6 @@ impl<'src> MathicLexer<'src> {
             self.lookahead = self.read_next()?;
         }
 
-        Ok(self.lookahead.clone())
+        Ok(self.lookahead)
     }
 }

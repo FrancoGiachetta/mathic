@@ -27,7 +27,7 @@ fn lower_entry_point(func: &FuncDecl, ir: &mut Ir) -> Result<(), LoweringError> 
         return_ty,
     } = func;
 
-    let mut ir_func = Function::new(name.clone(), params, *return_ty, span.clone());
+    let mut ir_func = Function::new(name.clone(), params, *return_ty, *span);
 
     for stmt in body {
         statement::lower_stmt(stmt, &mut ir_func)?;
