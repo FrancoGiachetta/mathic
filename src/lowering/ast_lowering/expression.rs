@@ -91,7 +91,7 @@ fn lower_call(
 ) -> Result<RValInstruct, LoweringError> {
     let mut arg_values: Vec<RValInstruct> = Vec::new();
 
-    for (_, arg) in func_args.iter().enumerate() {
+    for arg in func_args.iter() {
         let (arg_val, _) = lower_expr(func, arg, Some(MathicType::Sint(SintTy::I64)))?;
 
         arg_values.push(arg_val);
