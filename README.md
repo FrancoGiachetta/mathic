@@ -24,9 +24,9 @@ brew install llvm@21
 After installation, set the environment variables:
 
 ```sh
-export LLVM_SYS_211_PREFIX=$(brew --prefix)/opt/llvm@21
-export MLIR_SYS_210_PREFIX=$(brew --prefix)/opt/llvm@21
-export TABLEGEN_210_PREFIX=$(brew --prefix)/opt/llvm@21
+export LLVM_SYS_211_PREFIX=$(brew --prefix llvm@21)
+export MLIR_SYS_210_PREFIX=$(brew --prefix llvm@21)
+export TABLEGEN_210_PREFIX=$(brew --prefix llvm@21)
 ```
 
 #### Building from Source
