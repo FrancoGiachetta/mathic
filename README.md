@@ -89,9 +89,7 @@ cargo --bin euler -- <path-to-file>.mth
 
 ## 📖 Current Status
 
-> ⚠️ **Note**: This project is in early development. Features are being added incrementally.
-
----
+ ⚠️ This project is in early development. Features are being added incrementally.
 
 For more details, see the [docs](./docs/README.md).
 
