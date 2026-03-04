@@ -4,7 +4,7 @@ use crate::{
         ast_lowering::{expression, statement},
         ir::{
             basic_block::Terminator,
-            function::{Function, LocalKind},
+            function::{FunctionBuilder, LocalKind},
             instruction::{LValInstruct, RValInstruct, RValueKind},
             types::MathicType,
             value::Value,
@@ -20,7 +20,7 @@ use crate::{
     },
 };
 
-pub fn lower_if(func: &mut Function, stmt: &IfStmt) -> Result<(), LoweringError> {
+pub fn lower_if(func: &mut FunctionBuilder, stmt: &IfStmt) -> Result<(), LoweringError> {
     let IfStmt {
         condition,
         then_block,
@@ -90,7 +90,7 @@ pub fn lower_if(func: &mut Function, stmt: &IfStmt) -> Result<(), LoweringError>
 }
 
 pub fn lower_while(
-    func: &mut Function,
+    func: &mut FunctionBuilder,
     stmt: &WhileStmt,
     _span: Span,
 ) -> Result<(), LoweringError> {
@@ -109,7 +109,11 @@ pub fn lower_while(
     lower_loop(func, body, loop_breaker_condition, Vec::with_capacity(0))
 }
 
-pub fn lower_for(func: &mut Function, stmt: &ForStmt, span: Span) -> Result<(), LoweringError> {
+pub fn lower_for(
+    func: &mut FunctionBuilder,
+    stmt: &ForStmt,
+    span: Span,
+) -> Result<(), LoweringError> {
     let ForStmt {
         variable,
         start,
@@ -190,7 +194,7 @@ pub fn lower_for(func: &mut Function, stmt: &ForStmt, span: Span) -> Result<(), 
 /// `extra_instructions`: set of instructions to execute at the and of every
 /// iteration.
 fn lower_loop(
-    func: &mut Function,
+    func: &mut FunctionBuilder,
     loop_body: &BlockStmt,
     condition: RValInstruct,
     extra_instructions: Vec<LValInstruct>,

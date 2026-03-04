@@ -2,7 +2,7 @@ use crate::{
     diagnostics::LoweringError,
     lowering::ir::{
         basic_block::Terminator,
-        function::{Function, LocalKind},
+        function::{FunctionBuilder, LocalKind},
         instruction::{LValInstruct, RValInstruct, RValueKind},
         types::{FloatTy, MathicType, SintTy, UintTy},
         value::{ConstExpr, NumericConst, Value},
@@ -14,7 +14,7 @@ use crate::{
 };
 
 pub fn lower_expr(
-    func: &mut Function,
+    func: &mut FunctionBuilder,
     expr: &ExprStmt,
     ty_hint: Option<MathicType>,
 ) -> Result<(RValInstruct, MathicType), LoweringError> {
@@ -41,7 +41,7 @@ pub fn lower_expr(
 }
 
 fn lower_assignment(
-    func: &mut Function,
+    func: &mut FunctionBuilder,
     name: &str,
     expr: &ExprStmt,
     span: Span,
@@ -76,7 +76,7 @@ fn lower_assignment(
 }
 
 fn lower_call(
-    func: &mut Function,
+    func: &mut FunctionBuilder,
     callee: String,
     func_args: &[ExprStmt],
     span: Span,
@@ -116,7 +116,7 @@ fn lower_call(
 }
 
 fn lower_binary_op(
-    func: &mut Function,
+    func: &mut FunctionBuilder,
     lhs: &ExprStmt,
     op: BinaryOp,
     rhs: &ExprStmt,
@@ -150,7 +150,7 @@ fn lower_binary_op(
 }
 
 fn lower_logical_op(
-    func: &mut Function,
+    func: &mut FunctionBuilder,
     lhs: &ExprStmt,
     op: LogicalOp,
     rhs: &ExprStmt,
@@ -187,7 +187,7 @@ fn lower_logical_op(
 }
 
 fn lower_unary_op(
-    func: &mut Function,
+    func: &mut FunctionBuilder,
     op: UnaryOp,
     rhs: &ExprStmt,
     span: Span,
@@ -206,7 +206,7 @@ fn lower_unary_op(
 }
 
 fn lower_primary_value(
-    func: &mut Function,
+    func: &mut FunctionBuilder,
     expr: &PrimaryExpr,
     span: Span,
     ty_hint: Option<MathicType>,
@@ -287,7 +287,7 @@ fn lower_primary_value(
 }
 
 fn lower_expression_type(
-    func: &Function,
+    func: &FunctionBuilder,
     expr: &ExprStmtKind,
     ty_hint: Option<MathicType>,
     span: Span,

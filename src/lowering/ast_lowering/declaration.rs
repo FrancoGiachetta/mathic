@@ -3,7 +3,7 @@ use crate::{
     lowering::{
         ast_lowering::{expression, statement},
         ir::{
-            function::{Function, LocalKind},
+            function::{FunctionBuilder, LocalKind},
             instruction::LValInstruct,
         },
     },
@@ -14,7 +14,7 @@ use crate::{
 };
 
 pub fn lower_var_declaration(
-    func: &mut Function,
+    func: &mut FunctionBuilder,
     stmt: &VarDecl,
     span: Span,
 ) -> Result<(), LoweringError> {
@@ -46,7 +46,7 @@ pub fn lower_var_declaration(
 }
 
 pub fn lower_inner_function(
-    func: &mut Function,
+    func: &mut FunctionBuilder,
     stmt: &FuncDecl,
     span: Span,
 ) -> Result<(), LoweringError> {
@@ -58,11 +58,14 @@ pub fn lower_inner_function(
         ..
     } = stmt;
 
-    let mut inner_func = Function::new(name.clone(), params, *return_ty, span);
+    let mut inner_func =
+        FunctionBuilder::new(name.clone(), params, *return_ty, func.ir_builder, span);
 
     for stmt in body.iter() {
-        statement::lower_stmt(stmt, &mut inner_func)?;
+        statement::lower_stmt(&mut inner_func, stmt)?;
     }
+
+    let inner_func = inner_func.build();
 
     func.add_function(inner_func);
 
