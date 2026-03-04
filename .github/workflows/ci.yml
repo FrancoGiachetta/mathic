@@ -94,3 +94,31 @@ jobs:
     - name: Check for unused dependencies
       run: cargo machete
 
+  coverage:
+    name: Coverage
+    runs-on: ubuntu-24.04
+    steps:
+    - uses: actions/checkout@v4
+    
+    - name: Install LLVM Dependencies
+      uses: ./.github/actions/install-llvm-deps
+    
+    - name: Install Rust
+      uses: dtolnay/rust-toolchain@1.93.0
+    
+    - name: Rust Cache
+      uses: Swatinem/rust-cache@v2
+    
+    - name: Install cargo-llvm-cov
+      uses: cargo-bins/cargo-binstall@main
+    - run: cargo binstall cargo-llvm-cov -y
+    
+    - name: Generate coverage report
+      run: cargo llvm-cov --workspace --lcov --output-path lcov.info
+    
+    - name: Upload coverage to Codecov
+      uses: codecov/codecov-action@v4
+      with:
+        files: lcov.info
+        fail_ci_if_error: false
+
