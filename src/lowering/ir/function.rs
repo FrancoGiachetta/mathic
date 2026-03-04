@@ -179,7 +179,7 @@ impl<'ir> FunctionBuilder<'ir> {
             return Ok(self.ir_builder.get_function(name).cloned().unwrap());
         }
 
-        if let Some(decl) = self.ir_builder.get_function_decl(name).cloned() {
+        if let Some(decl) = self.get_function_decl(name).cloned() {
             lower_inner_function(self, &decl, self.span)?;
 
             return Ok(self.ir_builder.get_function(name).cloned().unwrap());
@@ -189,30 +189,6 @@ impl<'ir> FunctionBuilder<'ir> {
             name: name.to_string(),
             span,
         })
-
-        // Ok(match self.sym_table.functions.get(name) {
-        //     Some(f) => f,
-        //     None => match self.ir_builder.get_function(name) {
-        //         Some(f) => f,
-        //         None => match self.ir_builder.get_function_decl(name) {
-        //             Some(decl) => {
-        //                 lower_entry_point(self.ir_builder, decl)?;
-        //                 todo!()
-        //                 // self.ir_builder.get_function(name).unwrap()
-        //             }
-        //             None => {
-        //                 if let Some(decl) = self.ir_builder.get_function_decl(name) {
-        //                     lower_inner_function(self, decl, self.span)?;
-        //                     todo!()
-        //                     // self.get_function(name)?
-        //                 } else {
-        //                     todo!()
-        //                     // Err(LoweringError::UndeclaredFunction)
-        //                 }
-        //             }
-        //         },
-        //     },
-        // })
     }
 
     pub fn get_function_decl(&self, name: &str) -> Option<&FuncDecl> {

@@ -1,11 +1,3 @@
-//! Variable-based Intermediate Representation (IR) for Mathic
-//!
-//! Simplified IR that's lower than AST but still high-level:
-//! - Uses named variables instead of SSA registers
-//! - Mutable variables (Assign instruction)
-//! - Basic blocks with explicit control flow
-//! - Easier to lower to MLIR than SSA form
-
 use std::{collections::HashMap, fmt};
 
 use function::{Function, write_function_ir};
@@ -61,7 +53,7 @@ impl IrBuilder {
 
     pub fn build(self) -> Ir {
         Ir {
-            functions: self.functions.into_iter().map(|(_, f)| f).collect(),
+            functions: self.functions.into_values().collect(),
         }
     }
 }

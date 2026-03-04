@@ -82,15 +82,30 @@ fn lower_call(
     span: Span,
 ) -> Result<RValInstruct, LoweringError> {
     let mut arg_values: Vec<RValInstruct> = Vec::new();
+    let func_prototype = func.get_function(&callee, span)?;
 
-    for arg in func_args.iter() {
-        let (arg_val, _) = lower_expr(func, arg, Some(MathicType::Sint(SintTy::I64)))?;
+    if func_prototype.params_tys.len() != func_args.len() {
+        return Err(LoweringError::WrongArgumentCount {
+            name: callee.to_string(),
+            expected: func_prototype.params_tys.len(),
+            got: func_args.len(),
+            span,
+        });
+    }
+
+    for (arg, param_ty) in func_args.iter().zip(func_prototype.params_tys) {
+        let (arg_val, arg_ty) = lower_expr(func, arg, Some(MathicType::Sint(SintTy::I64)))?;
+
+        if arg_ty != param_ty {
+            return Err(LoweringError::MismatchedType {
+                expected: param_ty,
+                found: arg_ty,
+                span: arg.span,
+            });
+        }
 
         arg_values.push(arg_val);
     }
-
-    // FUTURE: check that the amount of args matches the expected and that
-    // every type matches the expected type.
 
     let local_idx = func.add_local(None, MathicType::Sint(SintTy::I64), None, LocalKind::Temp)?;
 
