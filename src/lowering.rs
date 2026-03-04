@@ -28,15 +28,15 @@ pub fn lower_program(program: &Program) -> Result<Ir, LoweringError> {
     }
 
     for func in program.funcs.iter() {
-        lower_entry_point(func, &mut ir_builder)?;
+        lower_entry_point(&mut ir_builder, func)?;
     }
 
     Ok(ir_builder.build())
 }
 
 fn lower_entry_point(
-    func_decl: &FuncDecl,
     ir_builder: &mut IrBuilder,
+    func_decl: &FuncDecl,
 ) -> Result<(), LoweringError> {
     let FuncDecl {
         name,

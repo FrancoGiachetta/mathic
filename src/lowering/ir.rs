@@ -32,14 +32,14 @@ pub struct Ir {
 #[derive(Debug, Default)]
 pub struct IrBuilder {
     decl_table: DeclTable,
-    functions: Vec<Function>,
+    functions: HashMap<String, Function>,
 }
 
 impl IrBuilder {
     pub fn new() -> Self {
         Self {
             decl_table: DeclTable::default(),
-            functions: Vec::new(),
+            functions: HashMap::new(),
         }
     }
 
@@ -48,12 +48,20 @@ impl IrBuilder {
     }
 
     pub fn add_function(&mut self, func: Function) {
-        self.functions.push(func);
+        self.functions.insert(func.name.clone(), func);
+    }
+
+    pub fn get_function_decl(&self, name: &str) -> Option<&FuncDecl> {
+        self.decl_table.functions.get(name)
+    }
+
+    pub fn get_function(&self, name: &str) -> Option<&Function> {
+        self.functions.get(name)
     }
 
     pub fn build(self) -> Ir {
         Ir {
-            functions: self.functions,
+            functions: self.functions.into_iter().map(|(_, f)| f).collect(),
         }
     }
 }

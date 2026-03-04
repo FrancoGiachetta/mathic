@@ -3,10 +3,18 @@ use std::collections::HashMap;
 use super::basic_block::{BasicBlock, BlockId, write_block_ir};
 use crate::{
     diagnostics::LoweringError,
-    lowering::ir::{
-        DeclTable, IrBuilder, basic_block::Terminator, instruction::LValInstruct, types::MathicType,
+    lowering::{
+        ast_lowering::declaration::lower_inner_function,
+        ir::{
+            DeclTable, IrBuilder, basic_block::Terminator, instruction::LValInstruct,
+            types::MathicType,
+        },
+        lower_entry_point,
     },
-    parser::{Span, ast::declaration::Param},
+    parser::{
+        Span,
+        ast::declaration::{FuncDecl, Param},
+    },
 };
 
 /// A function in the IR
@@ -156,9 +164,59 @@ impl<'ir> FunctionBuilder<'ir> {
         Ok(self.sym_table.locals[local_idx].clone())
     }
 
-    #[allow(dead_code)]
-    pub fn get_function(&self, name: &str) -> Option<&Function> {
-        self.sym_table.functions.get(name)
+    pub fn get_function(&mut self, name: &str, span: Span) -> Result<Function, LoweringError> {
+        if let Some(f) = self.sym_table.functions.get(name).cloned() {
+            return Ok(f);
+        }
+
+        if let Some(f) = self.ir_builder.get_function(name).cloned() {
+            return Ok(f);
+        }
+
+        if let Some(decl) = self.ir_builder.get_function_decl(name).cloned() {
+            lower_entry_point(self.ir_builder, &decl)?;
+
+            return Ok(self.ir_builder.get_function(name).cloned().unwrap());
+        }
+
+        if let Some(decl) = self.ir_builder.get_function_decl(name).cloned() {
+            lower_inner_function(self, &decl, self.span)?;
+
+            return Ok(self.ir_builder.get_function(name).cloned().unwrap());
+        }
+
+        Err(LoweringError::UndeclaredFunction {
+            name: name.to_string(),
+            span,
+        })
+
+        // Ok(match self.sym_table.functions.get(name) {
+        //     Some(f) => f,
+        //     None => match self.ir_builder.get_function(name) {
+        //         Some(f) => f,
+        //         None => match self.ir_builder.get_function_decl(name) {
+        //             Some(decl) => {
+        //                 lower_entry_point(self.ir_builder, decl)?;
+        //                 todo!()
+        //                 // self.ir_builder.get_function(name).unwrap()
+        //             }
+        //             None => {
+        //                 if let Some(decl) = self.ir_builder.get_function_decl(name) {
+        //                     lower_inner_function(self, decl, self.span)?;
+        //                     todo!()
+        //                     // self.get_function(name)?
+        //                 } else {
+        //                     todo!()
+        //                     // Err(LoweringError::UndeclaredFunction)
+        //                 }
+        //             }
+        //         },
+        //     },
+        // })
+    }
+
+    pub fn get_function_decl(&self, name: &str) -> Option<&FuncDecl> {
+        self.decl_table.functions.get(name)
     }
 
     /// Add a basic block
