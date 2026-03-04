@@ -1,0 +1,5 @@
+df main() i64 {
+    let x: i64 = 10;
+    x = x + 10;
+    return x;
+}

@@ -1,0 +1,4 @@
+df main() i32 {
+    let result: i32 = 6 * 7;
+    return result;
+}

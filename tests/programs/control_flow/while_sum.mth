@@ -1,0 +1,9 @@
+df main() i32 {
+    let sum: i32 = 0;
+    let i: i32 = 1;
+    while i <= 10 {
+        sum = sum + i;
+        i = i + 1;
+    }
+    return sum;
+}
