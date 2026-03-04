@@ -24,7 +24,7 @@ pub struct Ir {
 #[derive(Debug, Default)]
 pub struct IrBuilder {
     decl_table: DeclTable,
-    functions: HashMap<String, Function>,
+    pub functions: HashMap<String, Function>,
 }
 
 impl IrBuilder {
@@ -45,10 +45,6 @@ impl IrBuilder {
 
     pub fn get_function_decl(&self, name: &str) -> Option<&FuncDecl> {
         self.decl_table.functions.get(name)
-    }
-
-    pub fn get_function(&self, name: &str) -> Option<&Function> {
-        self.functions.get(name)
     }
 
     pub fn build(self) -> Ir {

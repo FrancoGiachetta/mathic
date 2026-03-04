@@ -9,7 +9,10 @@ use crate::{
     },
     parser::{
         Span,
-        ast::declaration::{FuncDecl, VarDecl},
+        ast::{
+            declaration::{DeclStmt, FuncDecl, VarDecl},
+            statement::StmtKind,
+        },
     },
 };
 
@@ -60,6 +63,17 @@ pub fn lower_inner_function(
 
     let mut inner_func =
         FunctionBuilder::new(name.clone(), params, *return_ty, func.ir_builder, span);
+
+    // Save function's declaration. This for on-demand lowering, allowing
+    // to reference function no yet declared. For example, a function call
+    // of a not yet declared function.
+    for stmt in body.iter() {
+        if let StmtKind::Decl(DeclStmt::Func(f)) = &stmt.kind {
+            inner_func.add_func_decl(f.clone());
+        }
+
+        // FUTURE: do the same for structs, enums, etc
+    }
 
     for stmt in body.iter() {
         statement::lower_stmt(&mut inner_func, stmt)?;

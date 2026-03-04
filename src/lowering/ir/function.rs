@@ -3,13 +3,8 @@ use std::collections::HashMap;
 use super::basic_block::{BasicBlock, BlockId, write_block_ir};
 use crate::{
     diagnostics::LoweringError,
-    lowering::{
-        ast_lowering::declaration::lower_inner_function,
-        ir::{
-            DeclTable, IrBuilder, basic_block::Terminator, instruction::LValInstruct,
-            types::MathicType,
-        },
-        lower_entry_point,
+    lowering::ir::{
+        DeclTable, IrBuilder, basic_block::Terminator, instruction::LValInstruct, types::MathicType,
     },
     parser::{
         Span,
@@ -36,7 +31,7 @@ pub struct FunctionBuilder<'ir> {
     pub params_tys: Vec<MathicType>,
     pub basic_blocks: Vec<BasicBlock>,
     pub return_ty: MathicType,
-    pub ir_builder: &'ir mut IrBuilder,
+    pub ir_builder: &'ir IrBuilder,
     pub span: Span,
 }
 
@@ -68,7 +63,7 @@ impl<'ir> FunctionBuilder<'ir> {
         name: String,
         params: &[Param],
         return_ty: MathicType,
-        ir_builder: &'ir mut IrBuilder,
+        ir_builder: &'ir IrBuilder,
         span: Span,
     ) -> Self {
         let mut func = Self {
@@ -164,35 +159,17 @@ impl<'ir> FunctionBuilder<'ir> {
         Ok(self.sym_table.locals[local_idx].clone())
     }
 
-    pub fn get_function(&mut self, name: &str, span: Span) -> Result<Function, LoweringError> {
-        if let Some(f) = self.sym_table.functions.get(name).cloned() {
-            return Ok(f);
+    pub fn get_function_decl(&self, name: &str, span: Span) -> Result<FuncDecl, LoweringError> {
+        match self.decl_table.functions.get(name).cloned() {
+            Some(f) => Ok(f),
+            None => match self.ir_builder.get_function_decl(name).cloned() {
+                Some(f) => Ok(f),
+                None => Err(LoweringError::UndeclaredFunction {
+                    name: name.to_string(),
+                    span,
+                }),
+            },
         }
-
-        if let Some(f) = self.ir_builder.get_function(name).cloned() {
-            return Ok(f);
-        }
-
-        if let Some(decl) = self.ir_builder.get_function_decl(name).cloned() {
-            lower_entry_point(self.ir_builder, &decl)?;
-
-            return Ok(self.ir_builder.get_function(name).cloned().unwrap());
-        }
-
-        if let Some(decl) = self.get_function_decl(name).cloned() {
-            lower_inner_function(self, &decl, self.span)?;
-
-            return Ok(self.ir_builder.get_function(name).cloned().unwrap());
-        }
-
-        Err(LoweringError::UndeclaredFunction {
-            name: name.to_string(),
-            span,
-        })
-    }
-
-    pub fn get_function_decl(&self, name: &str) -> Option<&FuncDecl> {
-        self.decl_table.functions.get(name)
     }
 
     /// Add a basic block
