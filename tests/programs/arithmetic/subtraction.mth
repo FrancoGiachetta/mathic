@@ -1,0 +1,4 @@
+df main() i32 {
+    let result: i32 = 10 - 4;
+    return result;
+}
