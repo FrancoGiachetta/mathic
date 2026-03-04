@@ -87,7 +87,7 @@ jobs:
               uses: dtolnay/rust-toolchain@1.93.0
 
             - name: Check for unused dependencies
-              uses: bnjbvr/cargo-machete@0.9.1
+              uses: bnjbvr/cargo-machete@main
 
     coverage:
         name: Coverage
