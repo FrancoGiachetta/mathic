@@ -1,96 +1,121 @@
 name: CI
 
 on:
-  push:
-    branches: [main]
-  pull_request:
-  merge_group:
-    types: [checks_requested]
+    push:
+        branches: [main]
+    pull_request:
+    merge_group:
+        types: [checks_requested]
 
 permissions:
-  contents: read
+    contents: read
 
 concurrency:
-  group: ${{ github.workflow }}-${{ github.ref }}
-  cancel-in-progress: ${{ github.ref != 'refs/heads/main' }}
+    group: ${{ github.workflow }}-${{ github.ref }}
+    cancel-in-progress: ${{ github.ref != 'refs/heads/main' }}
 
 env:
-  LLVM_SYS_211_PREFIX: "/usr/lib/llvm-21"
-  MLIR_SYS_210_PREFIX: "/usr/lib/llvm-21"
-  TABLEGEN_210_PREFIX: "/usr/lib/llvm-21"
+    LLVM_SYS_211_PREFIX: "/usr/lib/llvm-21"
+    MLIR_SYS_210_PREFIX: "/usr/lib/llvm-21"
+    TABLEGEN_210_PREFIX: "/usr/lib/llvm-21"
 
 jobs:
-  test:
-    name: Test Suite
-    runs-on: ubuntu-24.04
-    steps:
-    - uses: actions/checkout@v4
-    
-    - name: Install LLVM Dependencies
-      uses: ./.github/actions/install-llvm-deps
-    
-    - name: Install Rust
-      uses: dtolnay/rust-toolchain@1.93.0
-    
-    - name: Rust Cache
-      uses: Swatinem/rust-cache@v2
-    
-    - name: Install cargo-nextest
-      uses: cargo-bins/cargo-binstall@main
-    - run: cargo binstall cargo-nextest -y
-    
-    - name: Run tests
-      run: cargo nextest run --verbose
+    test:
+        name: Test Suite
+        runs-on: ubuntu-24.04
+        steps:
+            - uses: actions/checkout@v4
 
-  clippy:
-    name: Linting check
-    runs-on: ubuntu-24.04
-    steps:
-    - uses: actions/checkout@v4
-    
-    - name: Install LLVM Dependencies
-      uses: ./.github/actions/install-llvm-deps
-    
-    - name: Install Rust
-      uses: dtolnay/rust-toolchain@1.93.0
-      with:
-        components: rustfmt, clippy
-    
-    - name: Rust Cache
-      uses: Swatinem/rust-cache@v2
-    
-    - name: Run make check
-      run: make check
+            - name: Install LLVM Dependencies
+              uses: ./.github/actions/install-llvm-deps
 
-  format:
-    name: Check Formatting
-    runs-on: ubuntu-24.04
-    steps:
-    - uses: actions/checkout@v4
-    
-    - name: Install Rust
-      uses: dtolnay/rust-toolchain@1.93.0
-      with:
-        components: rustfmt
-    
-    - name: Check formatting
-      run: cargo fmt --all -- --check
+            - name: Install Rust
+              uses: dtolnay/rust-toolchain@1.93.0
 
-  unused-deps:
-    name: Check Unused Dependencies
-    runs-on: ubuntu-24.04
-    steps:
-    - uses: actions/checkout@v4
-    
-    - name: Install Rust
-      uses: dtolnay/rust-toolchain@1.93.0
-    
-    - name: Install cargo-binstall
-      uses: cargo-bins/cargo-binstall@main
-    
-    - name: Install cargo-machete
-      run: cargo binstall cargo-machete
-    
-    - name: Check for unused dependencies
-      run: cargo machete
+            - name: Rust Cache
+              uses: Swatinem/rust-cache@v2
 
+            - name: Install testing tools
+              uses: taiki-e/install-action@v2
+              with:
+                  tool: cargo-nextest
+
+            - name: Run tests
+              run: cargo nextest run --verbose
+
+    clippy:
+        name: Linting check
+        runs-on: ubuntu-24.04
+        steps:
+            - uses: actions/checkout@v4
+
+            - name: Install LLVM Dependencies
+              uses: ./.github/actions/install-llvm-deps
+
+            - name: Install Rust
+              uses: dtolnay/rust-toolchain@1.93.0
+              with:
+                  components: rustfmt, clippy
+
+            - name: Rust Cache
+              uses: Swatinem/rust-cache@v2
+
+            - name: Run make check
+              run: make check
+
+    format:
+        name: Check Formatting
+        runs-on: ubuntu-24.04
+        steps:
+            - uses: actions/checkout@v4
+
+            - name: Install Rust
+              uses: dtolnay/rust-toolchain@1.93.0
+              with:
+                  components: rustfmt
+
+            - name: Check formatting
+              run: cargo fmt --all -- --check
+
+    unused-deps:
+        name: Check Unused Dependencies
+        runs-on: ubuntu-24.04
+        steps:
+            - uses: actions/checkout@v4
+
+            - name: Install Rust
+              uses: dtolnay/rust-toolchain@1.93.0
+
+            - name: Check for unused dependencies
+              uses: bnjbvr/cargo-machete@main
+
+    coverage:
+        name: Coverage
+        runs-on: ubuntu-24.04
+        steps:
+            - uses: actions/checkout@v4
+
+            - name: Install LLVM Dependencies
+              uses: ./.github/actions/install-llvm-deps
+
+            - name: Install Rust
+              uses: dtolnay/rust-toolchain@1.93.0
+
+            - name: Rust Cache
+              uses: Swatinem/rust-cache@v2
+
+            - name: Install testing tools
+              uses: taiki-e/install-action@v2
+              with:
+                  tool: cargo-nextest,cargo-llvm-cov
+
+            - name: Generate coverage report
+              run: cargo llvm-cov nextest --workspace --verbose --lcov --output-path lcov.info
+
+            - name: Upload coverage to Codecov
+              uses: codecov/codecov-action@v4
+              with:
+                  token: ${{ secrets.CODECOV_TOKEN }}
+                  files: lcov.info
+                  fail_ci_if_error: false
+                  verbose: true
