@@ -121,4 +121,6 @@ jobs:
       with:
         files: lcov.info
         fail_ci_if_error: false
+        comment: true
+        token: ${{ secrets.CODECOV_TOKEN }}
 
