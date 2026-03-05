@@ -1,6 +1,6 @@
 use std::fmt::{self, Display, Formatter};
 
-#[derive(Debug, Clone, Copy, PartialEq)]
+#[derive(Debug, Clone, PartialEq)]
 pub enum Value {
     // Holds the index to find the associated local
     InMemory(usize),
@@ -9,8 +9,11 @@ pub enum Value {
 }
 
 /// Constant expressions
-#[derive(Debug, Clone, Copy, PartialEq)]
+#[derive(Debug, Clone, PartialEq)]
 pub enum ConstExpr {
+    // Fixed size strings
+    Str(String),
+    Char(char),
     Numeric(NumericConst),
     Bool(bool),
     Void,
@@ -80,6 +83,8 @@ numeric_const_value_from_int!(F64, f64);
 impl Display for ConstExpr {
     fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
         match self {
+            Self::Str(s) => write!(f, "{}", &s),
+            Self::Char(c) => write!(f, "{}", c),
             Self::Numeric(n) => write!(f, "{}", n),
             Self::Bool(b) => write!(f, "{}", b),
             Self::Void => write!(f, "void"),

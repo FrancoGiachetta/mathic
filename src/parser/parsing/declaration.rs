@@ -28,6 +28,8 @@ impl<'a> MathicParser<'a> {
             "f32" => MathicType::Float(FloatTy::F32),
             "f64" => MathicType::Float(FloatTy::F64),
             "bool" => MathicType::Bool,
+            "str" => MathicType::Str,
+            "char" => MathicType::Char,
             _ => todo!("user-defined types not yet supported: {}", ident.lexeme),
         };
 

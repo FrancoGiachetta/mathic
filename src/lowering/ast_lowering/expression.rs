@@ -282,8 +282,9 @@ fn lower_primary_value(
                             ConstExpr::Numeric(NumericConst::F64(n.parse::<f64>().unwrap()))
                         }
                     },
-                    MathicType::Bool => unreachable!(),
-                    MathicType::Void => unreachable!(),
+                    MathicType::Bool | MathicType::Void | MathicType::Char | MathicType::Str => {
+                        unreachable!()
+                    }
                 }),
                 ty,
             ),

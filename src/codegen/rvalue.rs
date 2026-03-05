@@ -9,7 +9,7 @@ use crate::{
     diagnostics::CodegenError,
     lowering::ir::{
         instruction::{RValInstruct, RValueKind},
-        value::{NumericConst, Value as IRValue},
+        value::{ConstExpr, NumericConst, Value as IRValue},
     },
     parser::{
         Span,
@@ -193,7 +193,7 @@ impl MathicCodeGen<'_> {
                 block.load(self.ctx, location, local_ptr, local_ty)?
             }
             IRValue::Const(const_expr) => match const_expr {
-                crate::lowering::ir::value::ConstExpr::Numeric(num_const) => match num_const {
+                ConstExpr::Numeric(num_const) => match num_const {
                     NumericConst::I8(val) => block.const_int_from_type(
                         self.ctx,
                         location,
@@ -257,10 +257,12 @@ impl MathicCodeGen<'_> {
                     NumericConst::F32(_) => todo!(),
                     NumericConst::F64(_) => todo!(),
                 },
-                crate::lowering::ir::value::ConstExpr::Bool(val) => {
-                    block.const_int(self.ctx, location, *val as u8, 1)?
+                ConstExpr::Str(_s) => {
+                    todo!()
                 }
-                crate::lowering::ir::value::ConstExpr::Void => todo!(),
+                ConstExpr::Char(c) => block.const_int(self.ctx, location, *c, 8)?,
+                ConstExpr::Bool(val) => block.const_int(self.ctx, location, *val as u8, 1)?,
+                ConstExpr::Void => todo!(),
             },
         })
     }
