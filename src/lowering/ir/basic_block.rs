@@ -8,10 +8,10 @@ use crate::parser::Span;
 
 pub type BlockId = usize;
 
-/// MATHIR representation of a basic block.
+/// MATHIR's representation of a basic block.
 ///
-/// A basic block is a list of lvalue instructions which **always** has a
-/// terminator as its last instruction.
+/// A basic block is a list of lvalue instructions which **always** ends with a
+/// terminator instruction.
 #[derive(Debug, Clone)]
 #[allow(dead_code)]
 pub struct BasicBlock {

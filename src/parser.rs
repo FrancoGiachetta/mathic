@@ -15,6 +15,7 @@ pub mod token;
 
 pub type ParserResult<T> = Result<T, ParseError>;
 
+/// A struct representing a section of the source code.
 #[derive(Clone, Copy, PartialEq, Eq, Debug)]
 pub struct Span {
     pub start: usize,
