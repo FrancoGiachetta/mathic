@@ -1,7 +1,13 @@
 [package]
 name = "mathic"
 version = "0.1.0"
+description = "A compiler with builtin support of symbolic operations, built with LLVM/MLIR"
 edition = "2024"
+license = "Apache-2.0"
+repository = "https://github.com/FrancoGiachetta/mathic"
+keywords = ["compiler", "mlir", "llvm"]
+categories = ["compilers"]
+readme = "README.md"
 
 [[bin]]
 name = "euler"
