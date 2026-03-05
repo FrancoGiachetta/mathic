@@ -9,12 +9,12 @@ use llvm_sys::{
     core::LLVMDisposeMessage,
     target::{
         LLVM_InitializeAllAsmPrinters, LLVM_InitializeAllTargetInfos, LLVM_InitializeAllTargetMCs,
-        LLVM_InitializeAllTargets,
+        LLVM_InitializeAllTargets, LLVMDisposeTargetData,
     },
     target_machine::{
-        LLVMCodeGenOptLevel, LLVMCodeModel, LLVMCreateTargetMachine, LLVMGetDefaultTargetTriple,
-        LLVMGetHostCPUFeatures, LLVMGetHostCPUName, LLVMGetTargetFromTriple, LLVMRelocMode,
-        LLVMTargetRef,
+        LLVMCodeGenOptLevel, LLVMCodeModel, LLVMCreateTargetMachine, LLVMDisposeTargetMachine,
+        LLVMGetDefaultTargetTriple, LLVMGetHostCPUFeatures, LLVMGetHostCPUName,
+        LLVMGetTargetFromTriple, LLVMRelocMode, LLVMTargetRef,
     },
 };
 use melior::{
@@ -137,7 +137,9 @@ fn create_dialect_registry() -> DialectRegistry {
 pub fn get_target_triple() -> String {
     unsafe {
         let value = LLVMGetDefaultTargetTriple();
-        CStr::from_ptr(value).to_string_lossy().into_owned()
+        let result = CStr::from_ptr(value).to_string_lossy().into_owned();
+        LLVMDisposeMessage(value);
+        result
     }
 }
 
@@ -150,10 +152,15 @@ pub fn get_data_layout_rep(opt_lvl: OptLvl) -> Result<String, CodegenError> {
         let error_buffer = addr_of_mut!(null);
 
         let target_triple = LLVMGetDefaultTargetTriple();
+        let target_triple_str = CStr::from_ptr(target_triple).to_string_lossy().into_owned();
 
         let target_cpu = LLVMGetHostCPUName();
+        let target_cpu_str = CStr::from_ptr(target_cpu).to_string_lossy().into_owned();
 
         let target_cpu_features = LLVMGetHostCPUFeatures();
+        let target_cpu_features_str = CStr::from_ptr(target_cpu_features)
+            .to_string_lossy()
+            .into_owned();
 
         let mut target: MaybeUninit<LLVMTargetRef> = MaybeUninit::uninit();
 
@@ -161,6 +168,9 @@ pub fn get_data_layout_rep(opt_lvl: OptLvl) -> Result<String, CodegenError> {
             let error = CStr::from_ptr(*error_buffer);
             let err = error.to_string_lossy().to_string();
             LLVMDisposeMessage(*error_buffer);
+            LLVMDisposeMessage(target_triple);
+            LLVMDisposeMessage(target_cpu);
+            LLVMDisposeMessage(target_cpu_features);
             Err(CodegenError::LLVMError(err))?;
         }
         if !(*error_buffer).is_null() {
@@ -171,9 +181,9 @@ pub fn get_data_layout_rep(opt_lvl: OptLvl) -> Result<String, CodegenError> {
 
         let machine = LLVMCreateTargetMachine(
             target,
-            target_triple.cast(),
-            target_cpu.cast(),
-            target_cpu_features.cast(),
+            target_triple_str.as_ptr().cast(),
+            target_cpu_str.as_ptr().cast(),
+            target_cpu_features_str.as_ptr().cast(),
             match opt_lvl {
                 OptLvl::None => LLVMCodeGenOptLevel::LLVMCodeGenLevelNone,
                 OptLvl::O1 => LLVMCodeGenOptLevel::LLVMCodeGenLevelLess,
@@ -187,6 +197,12 @@ pub fn get_data_layout_rep(opt_lvl: OptLvl) -> Result<String, CodegenError> {
         let data_layout = llvm_sys::target_machine::LLVMCreateTargetDataLayout(machine);
         let data_layout_str =
             CStr::from_ptr(llvm_sys::target::LLVMCopyStringRepOfTargetData(data_layout));
+
+        LLVMDisposeTargetData(data_layout);
+        LLVMDisposeTargetMachine(machine);
+        LLVMDisposeMessage(target_triple);
+        LLVMDisposeMessage(target_cpu);
+        LLVMDisposeMessage(target_cpu_features);
 
         Ok(data_layout_str.to_string_lossy().into_owned())
     }
