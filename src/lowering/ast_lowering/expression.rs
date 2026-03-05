@@ -296,7 +296,8 @@ fn lower_primary_value(
             ),
         },
         PrimaryExpr::Bool(b) => (Value::Const(ConstExpr::Bool(*b)), MathicType::Bool),
-        PrimaryExpr::Str(_) => todo!(),
+        PrimaryExpr::Str(s) => (Value::Const(ConstExpr::Str(s.clone())), MathicType::Str),
+        PrimaryExpr::Char(c) => (Value::Const(ConstExpr::Char(*c)), MathicType::Char),
     };
 
     Ok(RValInstruct {
@@ -326,7 +327,8 @@ fn lower_expression_type(
                 Some(ty) => ty,
                 None => MathicType::Sint(SintTy::I32),
             },
-            PrimaryExpr::Str(_) => todo!(),
+            PrimaryExpr::Str(_) => MathicType::Str,
+            PrimaryExpr::Char(_) => MathicType::Char,
             PrimaryExpr::Bool(_) => MathicType::Bool,
         },
         ExprStmtKind::Binary { lhs, op, .. } => match op {
