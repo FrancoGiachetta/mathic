@@ -1,50 +1,19 @@
 mod common;
 
-#[test]
-fn test_simple_function() {
-    let source = include_str!("programs/functions/simple_function.mth");
-    let result = common::compile_and_execute(source);
-    assert_eq!(result, 7);
-}
+use std::path::PathBuf;
 
-#[test]
-fn test_fibonacci() {
-    let source = include_str!("programs/functions/fibonacci.mth");
-    let result = common::compile_and_execute(source);
-    assert_eq!(result, 55);
-}
+use common::compile_and_execute;
+use rstest::rstest;
 
-#[test]
-fn test_factorial() {
-    let source = include_str!("programs/functions/factorial.mth");
-    let result = common::compile_and_execute(source);
-    assert_eq!(result, 120);
-}
-
-#[test]
-fn test_nested_calls() {
-    let source = include_str!("programs/functions/nested_calls.mth");
-    let result = common::compile_and_execute(source);
-    assert_eq!(result, 26);
-}
-
-#[test]
-fn test_forward_call() {
-    let source = include_str!("programs/functions/forward_call.mth");
-    let result = common::compile_and_execute(source);
-    assert_eq!(result, 10);
-}
-
-#[test]
-fn test_forward_multiple_calls() {
-    let source = include_str!("programs/functions/forward_multiple_calls.mth");
-    let result = common::compile_and_execute(source);
-    assert_eq!(result, 8);
-}
-
-#[test]
-fn test_forward_mutual_recursion() {
-    let source = include_str!("programs/functions/forward_mutual_recursion.mth");
-    let result = common::compile_and_execute(source);
-    assert_eq!(result, 1);
+#[rstest]
+#[case("tests/programs/functions/simple_function.mth", 7)]
+#[case("tests/programs/functions/fibonacci.mth", 55)]
+#[case("tests/programs/functions/factorial.mth", 120)]
+#[case("tests/programs/functions/nested_calls.mth", 26)]
+#[case("tests/programs/functions/forward_call.mth", 10)]
+#[case("tests/programs/functions/forward_multiple_calls.mth", 8)]
+#[case("tests/programs/functions/forward_mutual_recursion.mth", 1)]
+fn test_functions(#[case] path: PathBuf, #[case] expected: i64) {
+    let result = compile_and_execute(&path);
+    assert_eq!(result, expected);
 }
