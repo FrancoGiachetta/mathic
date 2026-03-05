@@ -12,7 +12,7 @@ use crate::{
     },
 };
 
-/// A function in the IR
+/// MATHIR's representation of a function.
 #[derive(Debug, Clone)]
 #[allow(dead_code)]
 pub struct Function {
@@ -24,6 +24,7 @@ pub struct Function {
     pub span: Span,
 }
 
+/// Helper struct to build a Function.
 pub struct FunctionBuilder<'ir> {
     pub name: String,
     pub decl_table: DeclTable,
@@ -41,6 +42,7 @@ pub enum LocalKind {
     Temp,
 }
 
+/// MATHIR's representation of local variables.
 #[derive(Debug, Clone)]
 #[allow(dead_code)]
 pub struct Local {
@@ -50,6 +52,9 @@ pub struct Local {
     pub debug_name: Option<String>,
 }
 
+/// Symbol Table.
+///
+/// Stores locals and function declared within the function's context.
 #[derive(Debug, Clone, Default)]
 pub struct SymbolTable {
     pub locals: Vec<Local>,
@@ -111,6 +116,7 @@ impl<'ir> FunctionBuilder<'ir> {
     pub fn add_func_decl(&mut self, func: crate::parser::ast::declaration::FuncDecl) {
         self.decl_table.functions.insert(func.name.clone(), func);
     }
+
     /// Adds a user-defined local.
     pub fn add_local(
         &mut self,
@@ -172,7 +178,6 @@ impl<'ir> FunctionBuilder<'ir> {
         }
     }
 
-    /// Add a basic block
     pub fn add_block(&mut self, terminator: Terminator, span: Option<Span>) -> BlockId {
         let id = self.basic_blocks.len();
 

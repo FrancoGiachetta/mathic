@@ -107,6 +107,11 @@ fn lower_call(
         arg_values.push(arg_val);
     }
 
+    // Since we represent function calls as expressions, we need to return a
+    // value. Due to the fact that function calls are actually terminators and
+    // not RValue instructions, we need to create a temporary local to store
+    // the return value and then create the RValue instruction pointing to that
+    // new local.
     let local_idx = func.add_local(None, MathicType::Sint(SintTy::I64), None, LocalKind::Temp)?;
 
     let dest_block_idx = func.last_block_idx() + 1;
@@ -116,6 +121,7 @@ fn lower_call(
         args: arg_values,
         span: Some(span),
         return_dest: Value::InMemory(local_idx),
+        return_ty: func_prototype.return_ty,
         dest_block: dest_block_idx,
     };
 
@@ -301,6 +307,11 @@ fn lower_primary_value(
     })
 }
 
+/// Tries to infer the type of an expression.
+///
+/// A **ty_hint** may be provided to help guessing the type of expressions such
+/// as numeric constants, whose type depend on the bit width declared. In such
+/// cases, if no **ty_hint** was provided, the default type will be returned.
 fn lower_expression_type(
     func: &FunctionBuilder,
     expr: &ExprStmtKind,

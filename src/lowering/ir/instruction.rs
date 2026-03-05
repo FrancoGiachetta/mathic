@@ -7,7 +7,10 @@ use crate::parser::{
     ast::expression::{ArithOp, BinaryOp, CmpOp, LogicalOp, UnaryOp},
 };
 
-/// IR Instructions
+/// MATHIR's representation of LValue instruction.
+///
+/// An LValue instruction represents either the declaration of a variable or an
+/// assigment to it.
 #[derive(Debug, Clone)]
 pub enum LValInstruct {
     Let {
@@ -48,6 +51,10 @@ pub enum RValueKind {
     },
 }
 
+/// MATHIR's representation of RValue instruction.
+///
+/// An RValue instruction represents the evaluation of an expression used as
+/// the value of an LValue instruction.
 #[derive(Debug, Clone)]
 pub struct RValInstruct {
     pub kind: RValueKind,

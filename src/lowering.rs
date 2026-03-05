@@ -15,6 +15,10 @@ use crate::{
 };
 use ir::Ir;
 
+/// Lowering entrypoint.
+///
+/// Given an AST, this function lowers it and returns a MATHIR. In the process,
+/// semantic check are perfomed to verify the correctness of the program.
 pub fn lower_program(program: &Program) -> Result<Ir, LoweringError> {
     let mut ir_builder = IrBuilder::new();
 
@@ -34,6 +38,7 @@ pub fn lower_program(program: &Program) -> Result<Ir, LoweringError> {
     Ok(ir_builder.build())
 }
 
+/// Lowers global functions.
 fn lower_entry_point(
     ir_builder: &mut IrBuilder,
     func_decl: &FuncDecl,

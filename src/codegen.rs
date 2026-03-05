@@ -14,9 +14,16 @@ use crate::{
 };
 
 pub mod function_ctx;
+pub mod lvalue;
 pub mod rvalue;
-pub mod statement;
 
+/// Struct that holds global infomation to the code generation.
+///
+/// ## Fields
+///
+/// **ctx**: MLIR Context, global to the whole compilation.
+/// **module**: MLIR Module, where we store the generated mlir code.
+/// **file_path**: the path to file being compiled.
 pub struct MathicCodeGen<'ctx> {
     ctx: &'ctx Context,
     module: &'ctx Module<'ctx>,
@@ -32,6 +39,9 @@ impl<'ctx> MathicCodeGen<'ctx> {
         }
     }
 
+    /// Returns a melior location.
+    ///
+    /// The location is relative to the file being compiled.
     pub fn get_location(&self, span: Option<Span>) -> Result<Location<'ctx>, CodegenError> {
         Ok(
             if let (Some(path), Some(span)) = (self.file_path.as_ref(), span) {
@@ -51,6 +61,9 @@ impl<'ctx> MathicCodeGen<'ctx> {
         )
     }
 
+    /// Code generation entrypoint.
+    ///
+    /// Populates the module for a compile unit.
     pub fn generate_module(&self, program: &Ir) -> MathicResult<()> {
         // Check if main function is present
         if !program.functions.iter().any(|f| f.name == "main") {
@@ -63,6 +76,7 @@ impl<'ctx> MathicCodeGen<'ctx> {
             self.compile_function(
                 func,
                 &[(
+                    // we need this attribute so that we can call the function with the JIT executor.
                     Identifier::new(self.ctx, "llvm.emit_c_interface"),
                     Attribute::unit(self.ctx),
                 )],

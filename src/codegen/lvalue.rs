@@ -106,6 +106,7 @@ impl MathicCodeGen<'_> {
                 args,
                 return_dest: _,
                 dest_block,
+                return_ty,
                 span,
             } => {
                 let unknown_location = Location::unknown(self.ctx);
@@ -115,18 +116,18 @@ impl MathicCodeGen<'_> {
                     args_vals.push(self.compile_rvalue(fn_ctx, block, arg)?);
                 }
 
+                let mlir_return_ty = return_ty.get_compiled_type(self.ctx);
                 let return_ptr = block.alloca1(
                     self.ctx,
                     unknown_location,
-                    IntegerType::new(self.ctx, 64).into(),
-                    8,
+                    mlir_return_ty,
+                    return_ty.align(),
                 )?;
-
                 let return_value = block.append_op_result(func::call(
                     self.ctx,
                     FlatSymbolRefAttribute::new(self.ctx, &format!("mathic__{}", callee)),
                     &args_vals,
-                    &[IntegerType::new(self.ctx, 64).into()],
+                    &[mlir_return_ty],
                     self.get_location(*span)?,
                 ))?;
 

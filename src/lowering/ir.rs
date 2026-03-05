@@ -10,17 +10,23 @@ pub mod instruction;
 pub mod types;
 pub mod value;
 
+/// Declaration Table
+///
+/// Use to store function, struct and enum declarations to allow for
+/// forward referencing.
 #[derive(Debug, Clone, Default)]
 #[allow(dead_code)]
 pub struct DeclTable {
     pub functions: HashMap<String, FuncDecl>,
 }
 
+/// Mathic's IR (MATHIR).
 #[derive(Debug, Default)]
 pub struct Ir {
     pub functions: Vec<Function>,
 }
 
+/// Helper struct to build the IR.
 #[derive(Debug, Default)]
 pub struct IrBuilder {
     decl_table: DeclTable,
