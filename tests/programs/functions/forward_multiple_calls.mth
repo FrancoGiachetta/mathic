@@ -1,0 +1,15 @@
+df main() i64 {
+    return add(five(), three());
+}
+
+df add(a: i64, b: i64) i64 {
+    return a + b;
+}
+
+df five() i64 {
+    return 5;
+}
+
+df three() i64 {
+    return 3;
+}
