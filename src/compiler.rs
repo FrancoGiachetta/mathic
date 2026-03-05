@@ -34,6 +34,9 @@ pub struct MathicCompiler {
     ctx: Context,
 }
 
+unsafe impl Send for MathicCompiler {}
+unsafe impl Sync for MathicCompiler {}
+
 impl MathicCompiler {
     pub fn new() -> Result<Self, CodegenError> {
         Ok(Self {

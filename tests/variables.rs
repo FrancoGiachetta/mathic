@@ -1,29 +1,16 @@
 mod common;
 
-#[test]
-fn test_basic_declaration() {
-    let source = include_str!("programs/variables/basic_declaration.mth");
-    let result = common::compile_and_execute(source);
-    assert_eq!(result, 42);
-}
+use std::path::PathBuf;
 
-#[test]
-fn test_reassignment() {
-    let source = include_str!("programs/variables/reassignment.mth");
-    let result = common::compile_and_execute(source);
-    assert_eq!(result, 20);
-}
+use common::compile_and_execute;
+use rstest::rstest;
 
-#[test]
-fn test_multiple_variables() {
-    let source = include_str!("programs/variables/multiple_variables.mth");
-    let result = common::compile_and_execute(source);
-    assert_eq!(result, 15);
-}
-
-#[test]
-fn test_variable_increment() {
-    let source = include_str!("programs/variables/variable_increment.mth");
-    let result = common::compile_and_execute(source);
-    assert_eq!(result, 20);
+#[rstest]
+#[case("tests/programs/variables/basic_declaration.mth", 42)]
+#[case("tests/programs/variables/reassignment.mth", 20)]
+#[case("tests/programs/variables/multiple_variables.mth", 15)]
+#[case("tests/programs/variables/variable_increment.mth", 20)]
+fn test_variables(#[case] path: PathBuf, #[case] expected: i64) {
+    let result = compile_and_execute(&path);
+    assert_eq!(result, expected);
 }

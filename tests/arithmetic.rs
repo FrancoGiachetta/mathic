@@ -1,36 +1,17 @@
 mod common;
 
-#[test]
-fn test_addition() {
-    let source = include_str!("programs/arithmetic/addition.mth");
-    let result = common::compile_and_execute(source);
-    assert_eq!(result, 8);
-}
+use std::path::PathBuf;
 
-#[test]
-fn test_subtraction() {
-    let source = include_str!("programs/arithmetic/subtraction.mth");
-    let result = common::compile_and_execute(source);
-    assert_eq!(result, 6);
-}
+use common::compile_and_execute;
+use rstest::rstest;
 
-#[test]
-fn test_multiplication() {
-    let source = include_str!("programs/arithmetic/multiplication.mth");
-    let result = common::compile_and_execute(source);
-    assert_eq!(result, 42);
-}
-
-#[test]
-fn test_division() {
-    let source = include_str!("programs/arithmetic/division.mth");
-    let result = common::compile_and_execute(source);
-    assert_eq!(result, 5);
-}
-
-#[test]
-fn test_order_of_operations() {
-    let source = include_str!("programs/arithmetic/order_of_operations.mth");
-    let result = common::compile_and_execute(source);
-    assert_eq!(result, 14);
+#[rstest]
+#[case("tests/programs/arithmetic/addition.mth", 8)]
+#[case("tests/programs/arithmetic/subtraction.mth", 6)]
+#[case("tests/programs/arithmetic/multiplication.mth", 42)]
+#[case("tests/programs/arithmetic/division.mth", 5)]
+#[case("tests/programs/arithmetic/order_of_operations.mth", 14)]
+fn test_arithmetic(#[case] path: PathBuf, #[case] expected: i64) {
+    let result = compile_and_execute(&path);
+    assert_eq!(result, expected);
 }
