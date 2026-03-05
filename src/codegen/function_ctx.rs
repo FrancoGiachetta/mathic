@@ -16,6 +16,12 @@ use crate::{
     lowering::ir::function::{Function, LocalKind},
 };
 
+/// Helper struct to store the current context of the function being compiled.
+///
+/// ## Fields
+///
+/// **locals**: variables defined within the function context.
+/// **mlir_blocks**: the MLIR Blocks that the function will use.
 pub struct FunctionCtx<'ctx, 'this> {
     locals: Vec<(MlirValue, MlirType)>,
     mlir_blocks: &'this [BlockRef<'ctx, 'this>],
@@ -60,6 +66,8 @@ impl MathicCodeGen<'_> {
         let mut params_types = Vec::with_capacity(inner_func.params_tys.len());
         let mut block_params = Vec::with_capacity(inner_func.params_tys.len());
 
+        // Prepare the function's params' types and the entry block params as
+        // well.
         for param_ty in inner_func.params_tys.iter() {
             let mlir_ty = param_ty.get_compiled_type(self.ctx);
 
@@ -81,7 +89,8 @@ impl MathicCodeGen<'_> {
             block
         };
 
-        // Create the rest of the blocks.
+        // We already know the amount of blocks this function will use from the
+        // lowering phase.
         for _ in 0..inner_func.basic_blocks.len() - 1 {
             mlir_blocks.push(region.append_block(Block::new(&[])));
         }
@@ -94,7 +103,7 @@ impl MathicCodeGen<'_> {
             .filter(|l| l.kind == LocalKind::Param);
 
         {
-            // Allocate space for params and make them visible to the function
+            // Allocate space for params and make them visible to the function.
             for (i, _) in function_params.enumerate() {
                 let value = entry_block.arg(i)?;
                 let ptr = entry_block.alloca1(self.ctx, location, params_types[i], 8)?;
@@ -117,16 +126,15 @@ impl MathicCodeGen<'_> {
             )?;
         }
 
-        // Generate code for every basic_block. For every block, we first
-        // compile its instructions. After that, the block's terminator
-        // instruction gets compiled.
+        // Generate code for every basic_block. For each of them, we first
+        // compile their instructions and their terminator instruction.
         for (block, mlir_block) in inner_func.basic_blocks.iter().zip(&mlir_blocks) {
             self.compile_block(&mut inner_fn_ctx, mlir_block, &block.instructions)?;
 
             self.compile_terminator(&mut inner_fn_ctx, mlir_block, &block.terminator)?;
         }
 
-        // Generate the function itself.
+        // Generate the function itself and add it to the module.
         self.module.body().append_operation(func::func(
             self.ctx,
             StringAttribute::new(self.ctx, &format!("mathic__{}", inner_func.name)),
