@@ -8,7 +8,7 @@ use mathic::{
 static COMPILER: OnceLock<MathicCompiler> = OnceLock::new();
 
 fn get_compiler() -> &'static MathicCompiler {
-    &COMPILER.get_or_init(|| MathicCompiler::new().expect("Failed to create the compiler"))
+    COMPILER.get_or_init(|| MathicCompiler::new().expect("Failed to create the compiler"))
 }
 
 pub fn compile_and_execute(path: &Path) -> i64 {
