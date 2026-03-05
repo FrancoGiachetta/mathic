@@ -17,4 +17,4 @@ test:
 
 .PHONY: clean-dumps
 clean-dumps:
-	rm *.mlir *.mathir
+	rm -f *.mlir *.mathir

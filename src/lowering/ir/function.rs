@@ -3,8 +3,13 @@ use std::collections::HashMap;
 use super::basic_block::{BasicBlock, BlockId, write_block_ir};
 use crate::{
     diagnostics::LoweringError,
-    lowering::ir::{basic_block::Terminator, instruction::LValInstruct, types::MathicType},
-    parser::{Span, ast::declaration::Param},
+    lowering::ir::{
+        DeclTable, IrBuilder, basic_block::Terminator, instruction::LValInstruct, types::MathicType,
+    },
+    parser::{
+        Span,
+        ast::declaration::{FuncDecl, Param},
+    },
 };
 
 /// A function in the IR
@@ -16,6 +21,17 @@ pub struct Function {
     pub basic_blocks: Vec<BasicBlock>,
     pub params_tys: Vec<MathicType>,
     pub return_ty: MathicType,
+    pub span: Span,
+}
+
+pub struct FunctionBuilder<'ir> {
+    pub name: String,
+    pub decl_table: DeclTable,
+    pub sym_table: SymbolTable,
+    pub params_tys: Vec<MathicType>,
+    pub basic_blocks: Vec<BasicBlock>,
+    pub return_ty: MathicType,
+    pub ir_builder: &'ir IrBuilder,
     pub span: Span,
 }
 
@@ -41,15 +57,23 @@ pub struct SymbolTable {
     pub functions: HashMap<String, Function>,
 }
 
-impl Function {
+impl<'ir> FunctionBuilder<'ir> {
     /// Create a new function
-    pub fn new(name: String, params: &[Param], return_ty: MathicType, span: Span) -> Self {
+    pub fn new(
+        name: String,
+        params: &[Param],
+        return_ty: MathicType,
+        ir_builder: &'ir IrBuilder,
+        span: Span,
+    ) -> Self {
         let mut func = Self {
             name,
+            decl_table: DeclTable::default(),
             sym_table: Default::default(),
             basic_blocks: vec![BasicBlock::new(0, Terminator::Return(None, None), None)],
             params_tys: Vec::with_capacity(params.len()),
             return_ty,
+            ir_builder,
             span,
         };
 
@@ -71,6 +95,22 @@ impl Function {
         func
     }
 
+    /// Build the function and add it to the IR builder
+    pub fn build(self) -> Function {
+        Function {
+            name: self.name,
+            sym_table: self.sym_table,
+            params_tys: self.params_tys,
+            basic_blocks: self.basic_blocks,
+            return_ty: self.return_ty,
+            span: self.span,
+        }
+    }
+
+    /// Add a function declaration to the declaration table
+    pub fn add_func_decl(&mut self, func: crate::parser::ast::declaration::FuncDecl) {
+        self.decl_table.functions.insert(func.name.clone(), func);
+    }
     /// Adds a user-defined local.
     pub fn add_local(
         &mut self,
@@ -119,9 +159,17 @@ impl Function {
         Ok(self.sym_table.locals[local_idx].clone())
     }
 
-    #[allow(dead_code)]
-    pub fn get_function(&self, name: &str) -> Option<&Function> {
-        self.sym_table.functions.get(name)
+    pub fn get_function_decl(&self, name: &str, span: Span) -> Result<FuncDecl, LoweringError> {
+        match self.decl_table.functions.get(name).cloned() {
+            Some(f) => Ok(f),
+            None => match self.ir_builder.get_function_decl(name).cloned() {
+                Some(f) => Ok(f),
+                None => Err(LoweringError::UndeclaredFunction {
+                    name: name.to_string(),
+                    span,
+                }),
+            },
+        }
     }
 
     /// Add a basic block

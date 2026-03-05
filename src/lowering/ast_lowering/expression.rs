@@ -2,7 +2,7 @@ use crate::{
     diagnostics::LoweringError,
     lowering::ir::{
         basic_block::Terminator,
-        function::{Function, LocalKind},
+        function::{FunctionBuilder, LocalKind},
         instruction::{LValInstruct, RValInstruct, RValueKind},
         types::{FloatTy, MathicType, SintTy, UintTy},
         value::{ConstExpr, NumericConst, Value},
@@ -14,7 +14,7 @@ use crate::{
 };
 
 pub fn lower_expr(
-    func: &mut Function,
+    func: &mut FunctionBuilder,
     expr: &ExprStmt,
     ty_hint: Option<MathicType>,
 ) -> Result<(RValInstruct, MathicType), LoweringError> {
@@ -41,7 +41,7 @@ pub fn lower_expr(
 }
 
 fn lower_assignment(
-    func: &mut Function,
+    func: &mut FunctionBuilder,
     name: &str,
     expr: &ExprStmt,
     span: Span,
@@ -76,21 +76,36 @@ fn lower_assignment(
 }
 
 fn lower_call(
-    func: &mut Function,
+    func: &mut FunctionBuilder,
     callee: String,
     func_args: &[ExprStmt],
     span: Span,
 ) -> Result<RValInstruct, LoweringError> {
     let mut arg_values: Vec<RValInstruct> = Vec::new();
+    let func_prototype = func.get_function_decl(&callee, span)?;
 
-    for arg in func_args.iter() {
-        let (arg_val, _) = lower_expr(func, arg, Some(MathicType::Sint(SintTy::I64)))?;
+    if func_prototype.params.len() != func_args.len() {
+        return Err(LoweringError::WrongArgumentCount {
+            name: callee.to_string(),
+            expected: func_prototype.params.len(),
+            got: func_args.len(),
+            span,
+        });
+    }
+
+    for (arg, param) in func_args.iter().zip(func_prototype.params.iter()) {
+        let (arg_val, arg_ty) = lower_expr(func, arg, Some(param.ty))?;
+
+        if arg_ty != param.ty {
+            return Err(LoweringError::MismatchedType {
+                expected: param.ty,
+                found: arg_ty,
+                span: arg.span,
+            });
+        }
 
         arg_values.push(arg_val);
     }
-
-    // FUTURE: check that the amount of args matches the expected and that
-    // every type matches the expected type.
 
     let local_idx = func.add_local(None, MathicType::Sint(SintTy::I64), None, LocalKind::Temp)?;
 
@@ -116,7 +131,7 @@ fn lower_call(
 }
 
 fn lower_binary_op(
-    func: &mut Function,
+    func: &mut FunctionBuilder,
     lhs: &ExprStmt,
     op: BinaryOp,
     rhs: &ExprStmt,
@@ -150,7 +165,7 @@ fn lower_binary_op(
 }
 
 fn lower_logical_op(
-    func: &mut Function,
+    func: &mut FunctionBuilder,
     lhs: &ExprStmt,
     op: LogicalOp,
     rhs: &ExprStmt,
@@ -187,7 +202,7 @@ fn lower_logical_op(
 }
 
 fn lower_unary_op(
-    func: &mut Function,
+    func: &mut FunctionBuilder,
     op: UnaryOp,
     rhs: &ExprStmt,
     span: Span,
@@ -206,7 +221,7 @@ fn lower_unary_op(
 }
 
 fn lower_primary_value(
-    func: &mut Function,
+    func: &mut FunctionBuilder,
     expr: &PrimaryExpr,
     span: Span,
     ty_hint: Option<MathicType>,
@@ -287,7 +302,7 @@ fn lower_primary_value(
 }
 
 fn lower_expression_type(
-    func: &Function,
+    func: &FunctionBuilder,
     expr: &ExprStmtKind,
     ty_hint: Option<MathicType>,
     span: Span,

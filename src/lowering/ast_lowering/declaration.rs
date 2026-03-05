@@ -3,18 +3,21 @@ use crate::{
     lowering::{
         ast_lowering::{expression, statement},
         ir::{
-            function::{Function, LocalKind},
+            function::{FunctionBuilder, LocalKind},
             instruction::LValInstruct,
         },
     },
     parser::{
         Span,
-        ast::declaration::{FuncDecl, VarDecl},
+        ast::{
+            declaration::{DeclStmt, FuncDecl, VarDecl},
+            statement::StmtKind,
+        },
     },
 };
 
 pub fn lower_var_declaration(
-    func: &mut Function,
+    func: &mut FunctionBuilder,
     stmt: &VarDecl,
     span: Span,
 ) -> Result<(), LoweringError> {
@@ -46,7 +49,7 @@ pub fn lower_var_declaration(
 }
 
 pub fn lower_inner_function(
-    func: &mut Function,
+    func: &mut FunctionBuilder,
     stmt: &FuncDecl,
     span: Span,
 ) -> Result<(), LoweringError> {
@@ -58,11 +61,25 @@ pub fn lower_inner_function(
         ..
     } = stmt;
 
-    let mut inner_func = Function::new(name.clone(), params, *return_ty, span);
+    let mut inner_func =
+        FunctionBuilder::new(name.clone(), params, *return_ty, func.ir_builder, span);
+
+    // Save function's declaration. This for on-demand lowering, allowing
+    // to reference function no yet declared. For example, a function call
+    // of a not yet declared function.
+    for stmt in body.iter() {
+        if let StmtKind::Decl(DeclStmt::Func(f)) = &stmt.kind {
+            inner_func.add_func_decl(f.clone());
+        }
+
+        // FUTURE: do the same for structs, enums, etc
+    }
 
     for stmt in body.iter() {
-        statement::lower_stmt(stmt, &mut inner_func)?;
+        statement::lower_stmt(&mut inner_func, stmt)?;
     }
+
+    let inner_func = inner_func.build();
 
     func.add_function(inner_func);
 

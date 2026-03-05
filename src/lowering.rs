@@ -3,37 +3,70 @@ pub mod ir;
 
 use crate::{
     diagnostics::LoweringError,
-    lowering::ast_lowering::statement,
-    parser::ast::{Program, declaration::FuncDecl},
+    lowering::{
+        ast_lowering::statement,
+        ir::{IrBuilder, function::FunctionBuilder},
+    },
+    parser::ast::{
+        Program,
+        declaration::{DeclStmt, FuncDecl},
+        statement::StmtKind,
+    },
 };
-use ir::{Ir, function::Function};
+use ir::Ir;
 
 pub fn lower_program(program: &Program) -> Result<Ir, LoweringError> {
-    let mut ir = Ir::new();
+    let mut ir_builder = IrBuilder::new();
 
-    for func in program.funcs.iter() {
-        lower_entry_point(func, &mut ir)?;
+    // Save function's declaration. This for on-demand lowering, allowing
+    // to reference function no yet declared. For example, a function call
+    // of a not yet declared function.
+    for f in program.funcs.iter() {
+        ir_builder.add_func_decl(f.clone());
+
+        // FUTURE: do the same for structs, enums, etc
     }
 
-    Ok(ir)
+    for func in program.funcs.iter() {
+        lower_entry_point(&mut ir_builder, func)?;
+    }
+
+    Ok(ir_builder.build())
 }
 
-fn lower_entry_point(func: &FuncDecl, ir: &mut Ir) -> Result<(), LoweringError> {
+fn lower_entry_point(
+    ir_builder: &mut IrBuilder,
+    func_decl: &FuncDecl,
+) -> Result<(), LoweringError> {
     let FuncDecl {
         name,
         params,
         body,
         span,
         return_ty,
-    } = func;
+    } = func_decl;
 
-    let mut ir_func = Function::new(name.clone(), params, *return_ty, *span);
+    let mut func_builder =
+        FunctionBuilder::new(name.clone(), params, *return_ty, ir_builder, *span);
 
-    for stmt in body {
-        statement::lower_stmt(stmt, &mut ir_func)?;
+    // Save function's declaration. This for on-demand lowering, allowing
+    // to reference function no yet declared. For example, a function call
+    // of a not yet declared function.
+    for stmt in body.iter() {
+        if let StmtKind::Decl(DeclStmt::Func(f)) = &stmt.kind {
+            func_builder.add_func_decl(f.clone());
+        }
+
+        // FUTURE: do the same for structs, enums, etc
     }
 
-    ir.add_function(ir_func);
+    for stmt in body {
+        statement::lower_stmt(&mut func_builder, stmt)?;
+    }
+
+    let func = func_builder.build();
+
+    ir_builder.add_function(func);
 
     Ok(())
 }

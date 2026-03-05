@@ -2,12 +2,14 @@ use crate::{
     diagnostics::LoweringError,
     lowering::ir::{
         basic_block::{BlockId, Terminator},
-        function::Function,
+        function::FunctionBuilder,
     },
     parser::{
         Span,
-        ast::declaration::DeclStmt,
-        ast::statement::{BlockStmt, Stmt, StmtKind},
+        ast::{
+            declaration::DeclStmt,
+            statement::{BlockStmt, Stmt, StmtKind},
+        },
     },
 };
 
@@ -15,7 +17,7 @@ use super::control_flow::{lower_for, lower_if, lower_while};
 use super::declaration::{lower_inner_function, lower_var_declaration};
 use super::expression::lower_expr;
 
-pub fn lower_stmt(stmt: &Stmt, func: &mut Function) -> Result<(), LoweringError> {
+pub fn lower_stmt(func: &mut FunctionBuilder, stmt: &Stmt) -> Result<(), LoweringError> {
     match &stmt.kind {
         StmtKind::Decl(decl) => lower_declaration(func, decl, &stmt.span)?,
         StmtKind::Return(expr) => {
@@ -61,7 +63,7 @@ pub fn lower_stmt(stmt: &Stmt, func: &mut Function) -> Result<(), LoweringError>
 }
 
 fn lower_declaration(
-    func: &mut Function,
+    func: &mut FunctionBuilder,
     stmt: &DeclStmt,
     span: &Span,
 ) -> Result<(), LoweringError> {
@@ -82,7 +84,7 @@ fn lower_declaration(
 }
 
 pub fn lower_block(
-    func: &mut Function,
+    func: &mut FunctionBuilder,
     block: &BlockStmt,
     terminator: Terminator,
 ) -> Result<BlockId, LoweringError> {
@@ -91,7 +93,7 @@ pub fn lower_block(
     let block_id = func.add_block(terminator, Some(block.span));
 
     for s in block.stmts.iter() {
-        lower_stmt(s, func)?;
+        lower_stmt(func, s)?;
     }
 
     func.sym_table = old_sym_table;

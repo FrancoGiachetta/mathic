@@ -27,3 +27,24 @@ fn test_nested_calls() {
     let result = common::compile_and_execute(source);
     assert_eq!(result, 26);
 }
+
+#[test]
+fn test_forward_call() {
+    let source = include_str!("programs/functions/forward_call.mth");
+    let result = common::compile_and_execute(source);
+    assert_eq!(result, 10);
+}
+
+#[test]
+fn test_forward_multiple_calls() {
+    let source = include_str!("programs/functions/forward_multiple_calls.mth");
+    let result = common::compile_and_execute(source);
+    assert_eq!(result, 8);
+}
+
+#[test]
+fn test_forward_mutual_recursion() {
+    let source = include_str!("programs/functions/forward_mutual_recursion.mth");
+    let result = common::compile_and_execute(source);
+    assert_eq!(result, 1);
+}

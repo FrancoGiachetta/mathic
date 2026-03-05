@@ -10,6 +10,9 @@ pub enum LoweringError {
     #[error("Undeclared variable '{name}'")]
     UndeclaredVariable { name: String, span: Span },
 
+    #[error("Undeclared function '{name}'")]
+    UndeclaredFunction { name: String, span: Span },
+
     #[error("Duplicate declaration of '{name}'")]
     DuplicateDeclaration { name: String, span: Span },
 
@@ -20,9 +23,6 @@ pub enum LoweringError {
         got: usize,
         span: Span,
     },
-
-    #[error("Undefined function '{name}'")]
-    UndefinedFunction { name: String, span: Span },
 
     #[error("Unsupported feature: {feature}")]
     UnsupportedFeature { feature: String, span: Span },
@@ -70,7 +70,7 @@ pub fn format_lowering_error<'err>(
             format!("provide {} argument(s) to '{}'", expected, name),
             span,
         ),
-        LoweringError::UndefinedFunction { span, .. } => (
+        LoweringError::UndeclaredFunction { span, .. } => (
             "S004",
             "declare the function before calling it".to_string(),
             span,

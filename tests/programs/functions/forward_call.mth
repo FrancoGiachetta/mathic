@@ -1,0 +1,7 @@
+df main() i64 {
+    return double(5);
+}
+
+df double(x: i64) i64 {
+    return x * 2;
+}
