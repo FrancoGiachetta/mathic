@@ -31,10 +31,12 @@ pub enum FloatTy {
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum MathicType {
+    Bool,
+    Char,
+    Float(FloatTy),
+    Str,
     Uint(UintTy),
     Sint(SintTy),
-    Float(FloatTy),
-    Bool,
     Void,
 }
 
@@ -47,6 +49,8 @@ impl MathicType {
                 FloatTy::F64 => Type::float64(ctx),
             },
             MathicType::Bool => IntegerType::new(ctx, 1).into(),
+            MathicType::Char => IntegerType::new(ctx, 8).into(),
+            MathicType::Str => todo!(),
             MathicType::Void => Type::none(ctx),
         }
     }
@@ -72,6 +76,8 @@ impl MathicType {
                 FloatTy::F64 => 64,
             },
             Self::Bool => 1,
+            Self::Char => 8,
+            Self::Str => todo!(),
             Self::Void => 0,
         }
     }
@@ -97,6 +103,7 @@ impl MathicType {
                 FloatTy::F64 => 64,
             },
             Self::Bool => 1,
+            Self::Char | Self::Str => 8,
             Self::Void => 0,
         }
     }
@@ -162,6 +169,8 @@ impl fmt::Display for MathicType {
             MathicType::Sint(ty) => write!(f, "{}", ty),
             MathicType::Float(ty) => write!(f, "{}", ty),
             MathicType::Bool => write!(f, "bool"),
+            MathicType::Str => write!(f, "str"),
+            MathicType::Char => write!(f, "char"),
             MathicType::Void => write!(f, "void"),
         }
     }

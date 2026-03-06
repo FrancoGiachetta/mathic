@@ -83,5 +83,6 @@ pub enum PrimaryExpr {
     Ident(String),
     Num(String),
     Str(String),
+    Char(char),
     Bool(bool),
 }
