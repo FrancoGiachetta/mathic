@@ -71,6 +71,7 @@ jobs:
               with:
                   tool: cargo-nextest
 
+            - uses: Homebrew/actions/setup-homebrew@master
             - name: Run tests
               run: make test
 
