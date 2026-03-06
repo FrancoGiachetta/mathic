@@ -6,9 +6,11 @@
 
 </div>
 
+# Installation
+
 ## 🔧 Dependencies
 
-- **Rust** 1.93 or higher
+- **Rust** 1.94.0 or higher
 - **LLVM/MLIR** 21.x.x 
 
 ### LLVM/MLIR Installation
@@ -24,6 +26,7 @@ brew install llvm@21
 After installation, set the environment variables:
 
 ```sh
+export LIBRARY_PATH=/opt/homebrew/lib
 export LLVM_SYS_211_PREFIX=$(brew --prefix llvm@21)
 export MLIR_SYS_210_PREFIX=$(brew --prefix llvm@21)
 export TABLEGEN_210_PREFIX=$(brew --prefix llvm@21)
@@ -65,6 +68,7 @@ if you have mold installed, you can add this flag which will make linking much f
 For more info about building from source, check: https://llvm.org/docs/GettingStarted.html
 
 3. **Build and Install**
+
 ```bash
 ninja install
 ```
@@ -79,12 +83,24 @@ export TABLEGEN_210_PREFIX=<path-to-install-prefix>
 
 > If you used to command above, the prefix will be `/opt/llvm-21`
 
-## Usage
+## Installing Mathic
+
+You can install mathic using cargo. If the installation fails due to disk quota issues (common when /tmp is limited), change the target directory:
+
+```shell
+CARGO_TARGET_DIR=<custom-path> cargo install mathic
+```
+
+Once the binary has been built, you can delete that directory.
+
+> Note: Ensure the required environment variables are set, otherwise the build will fail.
+
+### Usage
 
 You can run a program using this command:
 
 ```bash
-cargo --bin euler -- <path-to-file>.mth 
+euler <path-to-file>.mth
 ```
 
 ## 📖 Current Status

@@ -24,3 +24,20 @@ rstest = "0.26.1"
 thiserror = "2.0.10"
 tracing = "0.1.44"
 tracing-subscriber = { version = "0.3.22", features = ["env-filter"] }
+
+[profile.optimized-dev]
+inherits = "dev"
+opt-level = 3
+
+[profile.ci]
+inherits = "dev"
+opt-level = 3
+debug = "line-tables-only"
+
+[profile.release]
+codegen-units = 1
+lto = true
+
+# Set the default for dependencies.
+[profile.dev.package."*"]
+opt-level = 2
