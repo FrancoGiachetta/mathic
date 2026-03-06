@@ -14,15 +14,15 @@ concurrency:
     group: ${{ github.workflow }}-${{ github.ref }}
     cancel-in-progress: ${{ github.ref != 'refs/heads/main' }}
 
-env:
-    LLVM_SYS_211_PREFIX: "/usr/lib/llvm-21"
-    MLIR_SYS_210_PREFIX: "/usr/lib/llvm-21"
-    TABLEGEN_210_PREFIX: "/usr/lib/llvm-21"
 
 jobs:
     test:
         name: Test Suite
         runs-on: ubuntu-24.04
+        env:
+          LLVM_SYS_211_PREFIX: "/usr/lib/llvm-21"
+          MLIR_SYS_210_PREFIX: "/usr/lib/llvm-21"
+          TABLEGEN_210_PREFIX: "/usr/lib/llvm-21"
         steps:
             - uses: actions/checkout@v6
 
@@ -46,6 +46,8 @@ jobs:
     test-macos:
         name: Test Suite (macOS)
         runs-on: macos-14
+        env:
+          LIBRARY_PATH: /opt/homebrew/lib
         steps:
             - uses: actions/checkout@v6
 
@@ -75,6 +77,10 @@ jobs:
     clippy:
         name: Linting check
         runs-on: ubuntu-24.04
+        env:
+          LLVM_SYS_211_PREFIX: "/usr/lib/llvm-21"
+          MLIR_SYS_210_PREFIX: "/usr/lib/llvm-21"
+          TABLEGEN_210_PREFIX: "/usr/lib/llvm-21"
         steps:
             - uses: actions/checkout@v6
 
@@ -121,6 +127,10 @@ jobs:
     coverage:
         name: Coverage
         runs-on: ubuntu-24.04
+        env:
+          LLVM_SYS_211_PREFIX: "/usr/lib/llvm-21"
+          MLIR_SYS_210_PREFIX: "/usr/lib/llvm-21"
+          TABLEGEN_210_PREFIX: "/usr/lib/llvm-21"
         steps:
             - uses: actions/checkout@v6
 

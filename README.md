@@ -26,6 +26,7 @@ brew install llvm@21
 After installation, set the environment variables:
 
 ```sh
+export LIBRARY_PATH=/opt/homebrew/lib
 export LLVM_SYS_211_PREFIX=$(brew --prefix llvm@21)
 export MLIR_SYS_210_PREFIX=$(brew --prefix llvm@21)
 export TABLEGEN_210_PREFIX=$(brew --prefix llvm@21)
