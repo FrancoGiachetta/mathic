@@ -1,6 +1,16 @@
+use std::{mem, ptr};
+
 use melior::{ExecutionEngine, ir::Module};
 
 use crate::{MathicResult, compiler::OptLvl, diagnostics::CodegenError};
+
+#[repr(C)]
+#[derive(Default, Debug)]
+pub struct Str {
+    pub ptr: *mut u8,
+    pub len: u64,
+    pub cap: u64,
+}
 
 /// A wrapper over melior's ExecutionEngine.
 pub struct MathicExecutor {
@@ -18,18 +28,13 @@ impl MathicExecutor {
     ///
     /// Given a symbol_name (the name of the function to execute) the engine looks
     /// for the associated function and executes it.
-    pub fn call_function(&self, symbol_name: &str) -> Result<i64, CodegenError> {
-        let mut result: i64 = 0;
-        let args: &mut [*mut ()] = &mut [
-            &mut result as *mut i64 as *mut (), // result pointer
-        ];
+    pub fn call_function(&self, symbol_name: &str) -> Result<String, CodegenError> {
+        let main_func: fn() -> Str =
+            unsafe { mem::transmute(self.lookup_symbol(symbol_name).unwrap()) };
 
-        unsafe {
-            self.engine
-                .invoke_packed(&format!("mathic__{}", symbol_name), args)?;
-        }
+        let result = main_func();
 
-        Ok(result)
+        Ok(unsafe { String::from_raw_parts(result.ptr, result.len as usize, result.cap as usize) })
     }
 
     /// Returns a pointer associated to the given symbol name.

@@ -2,6 +2,7 @@ use std::fmt;
 
 use melior::{
     Context,
+    dialect::llvm,
     ir::{Type, r#type::IntegerType},
 };
 
@@ -50,7 +51,19 @@ impl MathicType {
             },
             MathicType::Bool => IntegerType::new(ctx, 1).into(),
             MathicType::Char => IntegerType::new(ctx, 8).into(),
-            MathicType::Str => todo!(),
+            MathicType::Str => {
+                // A string is represented as:
+                //
+                // struct {
+                //     ptr: *u8,
+                //     len: u64,
+                //     cap: u64
+                // }
+                let ptr_ty = llvm::r#type::pointer(ctx, 0);
+                let u64_ty = IntegerType::new(ctx, 64).into();
+
+                llvm::r#type::r#struct(ctx, &[ptr_ty, u64_ty, u64_ty], false)
+            }
             MathicType::Void => Type::none(ctx),
         }
     }
@@ -102,8 +115,9 @@ impl MathicType {
                 FloatTy::F32 => 32,
                 FloatTy::F64 => 64,
             },
-            Self::Bool => 1,
-            Self::Char | Self::Str => 8,
+            Self::Bool => 8,
+            Self::Str => 64,
+            Self::Char => 8,
             Self::Void => 0,
         }
     }

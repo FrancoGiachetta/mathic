@@ -89,6 +89,6 @@ pub enum Token {
     Str,
     #[regex(r"(?:0|[1-9]\d*)(?:\.\d+)?")]
     Num,
-    #[regex(r"[\p{XID_Start}_]\p{XID_Continue}*")] // Allow for Unicode characters.
+    #[regex(r"[\p{XID_Start}_]\p{XID_Continue}*")]
     Ident,
 }

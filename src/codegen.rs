@@ -75,11 +75,7 @@ impl<'ctx> MathicCodeGen<'ctx> {
         for func in program.functions.iter() {
             self.compile_function(
                 func,
-                &[(
-                    // we need this attribute so that we can call the function with the JIT executor.
-                    Identifier::new(self.ctx, "llvm.emit_c_interface"),
-                    Attribute::unit(self.ctx),
-                )],
+                &[],
             )?;
         }
 
