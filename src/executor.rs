@@ -1,8 +1,10 @@
-use std::{mem, ptr};
+use std::mem;
 
 use melior::{ExecutionEngine, ir::Module};
 
-use crate::{MathicResult, compiler::OptLvl, diagnostics::CodegenError};
+use crate::{
+    MathicResult, codegen::compiler_helper::debugging, compiler::OptLvl, diagnostics::CodegenError,
+};
 
 #[repr(C)]
 #[derive(Default, Debug)]
@@ -21,20 +23,21 @@ impl MathicExecutor {
     pub fn new(module: &Module, opt_lvl: OptLvl) -> MathicResult<Self> {
         let engine = ExecutionEngine::new(module, opt_lvl as usize, &[], false);
 
-        Ok(Self { engine })
+        let executor = Self { engine };
+
+        debugging::debug_utils_runtime::setup(|sym| executor.lookup_symbol(sym));
+
+        Ok(executor)
     }
 
     /// Executes a function.
     ///
     /// Given a symbol_name (the name of the function to execute) the engine looks
     /// for the associated function and executes it.
-    pub fn call_function(&self, symbol_name: &str) -> Result<String, CodegenError> {
-        let main_func: fn() -> Str =
-            unsafe { mem::transmute(self.lookup_symbol(symbol_name).unwrap()) };
+    pub fn call_function(&self, symbol_name: &str) -> Result<i64, CodegenError> {
+        let func: fn() -> i64 = unsafe { mem::transmute(self.lookup_symbol(symbol_name).unwrap()) };
 
-        let result = main_func();
-
-        Ok(unsafe { String::from_raw_parts(result.ptr, result.len as usize, result.cap as usize) })
+        Ok(func())
     }
 
     /// Returns a pointer associated to the given symbol name.

@@ -3,7 +3,7 @@ use std::{fs, path::PathBuf};
 use ariadne::Source;
 use melior::{
     Context,
-    ir::{Identifier, Location, Module, attribute::Attribute},
+    ir::{Location, Module},
 };
 
 use crate::{
@@ -16,6 +16,7 @@ use crate::{
 pub mod function_ctx;
 pub mod lvalue;
 pub mod rvalue;
+pub mod compiler_helper;
 
 /// Struct that holds global infomation to the code generation.
 ///
@@ -73,10 +74,7 @@ impl<'ctx> MathicCodeGen<'ctx> {
         // TODO: Compile structs in the future
 
         for func in program.functions.iter() {
-            self.compile_function(
-                func,
-                &[],
-            )?;
+            self.compile_function(func, &[])?;
         }
 
         Ok(())
