@@ -2,7 +2,7 @@ use std::collections::HashSet;
 
 use melior::{
     Context,
-    dialect::{func, llvm, ods},
+    dialect::{llvm, ods},
     helpers::{ArithBlockExt, BuiltinBlockExt, LlvmBlockExt},
     ir::{
         Attribute, Block, BlockLike, Location, Module, Region, Value,
@@ -12,7 +12,7 @@ use melior::{
     },
 };
 
-use crate::diagnostics::CodegenError;
+use crate::{codegen::compiler_helper::build_llvm_indirect_call, diagnostics::CodegenError};
 
 #[derive(Clone, Copy, PartialEq, Eq, Debug, Hash)]
 pub enum DebugBinding {
@@ -39,13 +39,19 @@ impl DebugBinding {
     }
 }
 
-struct DebugUtils {
+pub struct DebugUtils {
     active_map: HashSet<DebugBinding>,
 }
 
 impl DebugUtils {
+    pub fn new() -> Self {
+        Self {
+            active_map: Default::default(),
+        }
+    }
+
     fn build_function<'ctx, 'func>(
-        &'func mut self,
+        &mut self,
         ctx: &'ctx Context,
         module: &Module,
         block: &'func Block<'ctx>,
@@ -121,7 +127,7 @@ impl DebugUtils {
 
         let len = block.const_int(ctx, location, message.len(), 64)?;
 
-        self.print_str(ctx, module, block, ptr, len, location)
+        self.print_str(ctx, module, block, ptr, len)
     }
 
     pub fn print_str(
@@ -131,11 +137,24 @@ impl DebugUtils {
         block: &Block,
         ptr: Value,
         len: Value,
-        location: Location,
     ) -> Result<(), CodegenError> {
-        let function = self.build_function(ctx, module, block, DebugBinding::PrintStr)?;
+        let func_ptr = self.build_function(ctx, module, block, DebugBinding::PrintStr)?;
 
-        block.append_operation(func::call_indirect(function, &[ptr, len], &[], location));
+        block.append_operation(build_llvm_indirect_call(ctx, &[func_ptr, ptr, len], &[])?);
+
+        Ok(())
+    }
+
+    pub fn print_ptr(
+        &mut self,
+        ctx: &Context,
+        module: &Module,
+        block: &Block,
+        ptr: Value,
+    ) -> Result<(), CodegenError> {
+        let func_ptr = self.build_function(ctx, module, block, DebugBinding::PrintPtr)?;
+
+        block.append_operation(build_llvm_indirect_call(ctx, &[func_ptr, ptr], &[])?);
 
         Ok(())
     }
@@ -146,11 +165,10 @@ impl DebugUtils {
         module: &Module,
         block: &Block,
         val: Value,
-        location: Location,
     ) -> Result<(), CodegenError> {
-        let function = self.build_function(ctx, module, block, DebugBinding::PrintNumber)?;
+        let func_ptr = self.build_function(ctx, module, block, DebugBinding::PrintNumber)?;
 
-        block.append_operation(func::call_indirect(function, &[val], &[], location));
+        block.append_operation(build_llvm_indirect_call(ctx, &[func_ptr, val], &[])?);
 
         Ok(())
     }

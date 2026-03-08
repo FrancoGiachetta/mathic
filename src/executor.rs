@@ -35,7 +35,12 @@ impl MathicExecutor {
     /// Given a symbol_name (the name of the function to execute) the engine looks
     /// for the associated function and executes it.
     pub fn call_function(&self, symbol_name: &str) -> Result<i64, CodegenError> {
-        let func: fn() -> i64 = unsafe { mem::transmute(self.lookup_symbol(symbol_name).unwrap()) };
+        let func: fn() -> i64 = unsafe {
+            mem::transmute(
+                self.lookup_symbol(&format!("mathic__{}", symbol_name))
+                    .unwrap(),
+            )
+        };
 
         Ok(func())
     }
@@ -45,7 +50,7 @@ impl MathicExecutor {
     /// if the symbol was registered, the engine will find it and return the
     /// associated pointer, otherwise it will return None.
     pub fn lookup_symbol(&self, symbol_name: &str) -> Option<*mut ()> {
-        let ptr = self.engine.lookup(&format!("mathic__{}", symbol_name));
+        let ptr = self.engine.lookup(symbol_name);
 
         if ptr.is_null() { None } else { Some(ptr) }
     }

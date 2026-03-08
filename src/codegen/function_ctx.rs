@@ -11,7 +11,7 @@ use melior::{
 use mlir_sys::{MlirType, MlirValue};
 
 use crate::{
-    codegen::MathicCodeGen,
+    codegen::{MathicCodeGen, compiler_helper::CompilerHelper},
     diagnostics::CodegenError,
     lowering::ir::function::{Function, LocalKind},
 };
@@ -56,6 +56,7 @@ impl MathicCodeGen<'_> {
         &'func self,
         inner_func: &Function,
         attributes: &[(Identifier<'_>, Attribute<'_>)],
+        helper: &mut CompilerHelper,
     ) -> Result<(), CodegenError>
     where
         'func: 'ctx,
@@ -123,15 +124,16 @@ impl MathicCodeGen<'_> {
                     Identifier::new(self.ctx, "sym_visibility"),
                     StringAttribute::new(self.ctx, "private").into(),
                 )],
+                helper,
             )?;
         }
 
         // Generate code for every basic_block. For each of them, we first
         // compile their instructions and their terminator instruction.
         for (block, mlir_block) in inner_func.basic_blocks.iter().zip(&mlir_blocks) {
-            self.compile_block(&mut inner_fn_ctx, mlir_block, &block.instructions)?;
+            self.compile_block(&mut inner_fn_ctx, mlir_block, &block.instructions, helper)?;
 
-            self.compile_terminator(&mut inner_fn_ctx, mlir_block, &block.terminator)?;
+            self.compile_terminator(&mut inner_fn_ctx, mlir_block, &block.terminator, helper)?;
         }
 
         // Generate the function itself and add it to the module.

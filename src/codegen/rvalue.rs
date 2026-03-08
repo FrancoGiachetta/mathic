@@ -9,7 +9,7 @@ use melior::{
 };
 
 use crate::{
-    codegen::{MathicCodeGen, function_ctx::FunctionCtx},
+    codegen::{MathicCodeGen, compiler_helper::CompilerHelper, function_ctx::FunctionCtx},
     diagnostics::CodegenError,
     lowering::ir::{
         instruction::{RValInstruct, RValueKind},
@@ -27,21 +27,22 @@ impl MathicCodeGen<'_> {
         fn_ctx: &mut FunctionCtx<'ctx, 'func>,
         block: &'func Block<'ctx>,
         rvalue: &RValInstruct,
+        helper: &mut CompilerHelper,
     ) -> Result<Value<'ctx, 'func>, CodegenError>
     where
         'func: 'ctx,
     {
         match &rvalue.kind {
-            RValueKind::Use { value, .. } => self.compile_value_use(fn_ctx, block, value),
+            RValueKind::Use { value, .. } => self.compile_value_use(fn_ctx, block, value, helper),
             RValueKind::Binary {
                 op, lhs, rhs, span, ..
-            } => self.compile_binop(fn_ctx, block, lhs, *op, rhs, *span),
+            } => self.compile_binop(fn_ctx, block, lhs, *op, rhs, *span, helper),
             RValueKind::Unary { op, rhs, span, .. } => {
-                self.compile_unary(fn_ctx, block, *op, rhs, *span)
+                self.compile_unary(fn_ctx, block, *op, rhs, *span, helper)
             }
             RValueKind::Logical {
                 op, lhs, rhs, span, ..
-            } => self.compile_logical(fn_ctx, block, lhs, *op, rhs, *span),
+            } => self.compile_logical(fn_ctx, block, lhs, *op, rhs, *span, helper),
         }
     }
 
@@ -53,14 +54,15 @@ impl MathicCodeGen<'_> {
         op: LogicalOp,
         rhs: &RValInstruct,
         span: Span,
+        helper: &mut CompilerHelper,
     ) -> Result<Value<'ctx, 'func>, CodegenError>
     where
         'func: 'ctx,
     {
         let location = self.get_location(Some(span))?;
 
-        let lhs_val = self.compile_rvalue(fn_ctx, block, lhs)?;
-        let rhs_val = self.compile_rvalue(fn_ctx, block, rhs)?;
+        let lhs_val = self.compile_rvalue(fn_ctx, block, lhs, helper)?;
+        let rhs_val = self.compile_rvalue(fn_ctx, block, rhs, helper)?;
 
         Ok(match op {
             LogicalOp::And => block.andi(lhs_val, rhs_val, location)?,
@@ -76,14 +78,15 @@ impl MathicCodeGen<'_> {
         op: BinaryOp,
         rhs: &RValInstruct,
         span: Span,
+        helper: &mut CompilerHelper,
     ) -> Result<Value<'ctx, 'func>, CodegenError>
     where
         'func: 'ctx,
     {
         let location = self.get_location(Some(span))?;
 
-        let lhs_val = self.compile_rvalue(fn_ctx, block, lhs)?;
-        let rhs_val = self.compile_rvalue(fn_ctx, block, rhs)?;
+        let lhs_val = self.compile_rvalue(fn_ctx, block, lhs, helper)?;
+        let rhs_val = self.compile_rvalue(fn_ctx, block, rhs, helper)?;
 
         Ok(match op {
             BinaryOp::Compare(cmp) => match cmp {
@@ -158,12 +161,13 @@ impl MathicCodeGen<'_> {
         op: UnaryOp,
         rhs: &RValInstruct,
         span: Span,
+        helper: &mut CompilerHelper,
     ) -> Result<Value<'ctx, 'func>, CodegenError>
     where
         'func: 'ctx,
     {
         let location = self.get_location(Some(span))?;
-        let rhs_val = self.compile_rvalue(fn_ctx, block, rhs)?;
+        let rhs_val = self.compile_rvalue(fn_ctx, block, rhs, helper)?;
 
         Ok(match op {
             UnaryOp::Not => {
@@ -183,6 +187,7 @@ impl MathicCodeGen<'_> {
         fn_ctx: &mut FunctionCtx<'ctx, 'func>,
         block: &'func Block<'ctx>,
         value: &IRValue,
+        helper: &mut CompilerHelper,
     ) -> Result<Value<'ctx, 'func>, CodegenError>
     where
         'func: 'ctx,

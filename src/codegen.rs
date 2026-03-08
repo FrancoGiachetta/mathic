@@ -8,15 +8,16 @@ use melior::{
 
 use crate::{
     MathicResult,
+    codegen::compiler_helper::CompilerHelper,
     diagnostics::{CodegenError, MathicError},
     lowering::ir::Ir,
     parser::Span,
 };
 
+pub mod compiler_helper;
 pub mod function_ctx;
 pub mod lvalue;
 pub mod rvalue;
-pub mod compiler_helper;
 
 /// Struct that holds global infomation to the code generation.
 ///
@@ -65,7 +66,7 @@ impl<'ctx> MathicCodeGen<'ctx> {
     /// Code generation entrypoint.
     ///
     /// Populates the module for a compile unit.
-    pub fn generate_module(&self, program: &Ir) -> MathicResult<()> {
+    pub fn generate_module(&self, program: &Ir, helper: &mut CompilerHelper) -> MathicResult<()> {
         // Check if main function is present
         if !program.functions.iter().any(|f| f.name == "main") {
             return Err(MathicError::Codegen(CodegenError::MissingMainFunction));
@@ -74,7 +75,7 @@ impl<'ctx> MathicCodeGen<'ctx> {
         // TODO: Compile structs in the future
 
         for func in program.functions.iter() {
-            self.compile_function(func, &[])?;
+            self.compile_function(func, &[], helper)?;
         }
 
         Ok(())
