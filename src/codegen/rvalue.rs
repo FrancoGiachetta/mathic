@@ -42,6 +42,7 @@ impl MathicCodeGen<'_> {
         }
     }
 
+    #[allow(clippy::too_many_arguments)]
     fn compile_logical<'ctx, 'func>(
         &'func self,
         fn_ctx: &mut FunctionCtx<'ctx, 'func>,
@@ -66,6 +67,7 @@ impl MathicCodeGen<'_> {
         })
     }
 
+    #[allow(clippy::too_many_arguments)]
     fn compile_binop<'ctx, 'func>(
         &'func self,
         fn_ctx: &mut FunctionCtx<'ctx, 'func>,

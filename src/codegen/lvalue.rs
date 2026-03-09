@@ -1,15 +1,11 @@
 use melior::{
     dialect::{cf, func, llvm},
-    helpers::{ArithBlockExt, BuiltinBlockExt, LlvmBlockExt},
+    helpers::{BuiltinBlockExt, LlvmBlockExt},
     ir::{Block, BlockLike, Location, attribute::FlatSymbolRefAttribute, r#type::IntegerType},
 };
 
 use crate::{
-    codegen::{
-        MathicCodeGen,
-        compiler_helper::{CompilerHelper, debugging::DebugUtils},
-        function_ctx::FunctionCtx,
-    },
+    codegen::{MathicCodeGen, compiler_helper::CompilerHelper, function_ctx::FunctionCtx},
     diagnostics::CodegenError,
     lowering::ir::{basic_block::Terminator, instruction::LValInstruct},
 };
@@ -76,8 +72,6 @@ impl MathicCodeGen<'_> {
             Terminator::Return(rval_instruct, span) => match rval_instruct {
                 Some(rvalue) => {
                     let val = self.compile_rvalue(fn_ctx, block, rvalue, helper)?;
-
-                    let debug = helper.get_or_insert(|| DebugUtils::new());
 
                     block.append_operation(func::r#return(&[val], self.get_location(*span)?))
                 }

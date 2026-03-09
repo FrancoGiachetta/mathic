@@ -18,25 +18,25 @@ use crate::{codegen::compiler_helper::build_llvm_indirect_call, diagnostics::Cod
 
 #[derive(Clone, Copy, PartialEq, Eq, Debug, Hash)]
 pub enum DebugBinding {
-    PrintNumber,
-    PrintPtr,
-    PrintStr,
+    Number,
+    Ptr,
+    Str,
 }
 
 impl DebugBinding {
     fn symbol(&self) -> &'static str {
         match self {
-            DebugBinding::PrintNumber => "mathic__debug__print_number_impl",
-            DebugBinding::PrintPtr => "mathic__debug__print_ptr",
-            DebugBinding::PrintStr => "mathic__debug__print_str",
+            DebugBinding::Number => "mathic__debug__print_number_impl",
+            DebugBinding::Ptr => "mathic__debug__print_ptr",
+            DebugBinding::Str => "mathic__debug__print_str",
         }
     }
 
     fn func_ptr(&self) -> *const () {
         match self {
-            DebugBinding::PrintNumber => debug_utils_runtime::print_number_impl as *const (),
-            DebugBinding::PrintPtr => debug_utils_runtime::print_ptr as *const (),
-            DebugBinding::PrintStr => debug_utils_runtime::print_str as *const (),
+            DebugBinding::Number => debug_utils_runtime::print_number_impl as *const (),
+            DebugBinding::Ptr => debug_utils_runtime::print_ptr as *const (),
+            DebugBinding::Str => debug_utils_runtime::print_str as *const (),
         }
     }
 }
@@ -140,7 +140,7 @@ impl DebugUtils {
         ptr: Value,
         len: Value,
     ) -> Result<(), CodegenError> {
-        let func_ptr = self.build_function(ctx, module, block, DebugBinding::PrintStr)?;
+        let func_ptr = self.build_function(ctx, module, block, DebugBinding::Str)?;
 
         block.append_operation(build_llvm_indirect_call(ctx, &[func_ptr, ptr, len], &[])?);
 
@@ -154,7 +154,7 @@ impl DebugUtils {
         block: &Block,
         ptr: Value,
     ) -> Result<(), CodegenError> {
-        let func_ptr = self.build_function(ctx, module, block, DebugBinding::PrintPtr)?;
+        let func_ptr = self.build_function(ctx, module, block, DebugBinding::Ptr)?;
 
         block.append_operation(build_llvm_indirect_call(ctx, &[func_ptr, ptr], &[])?);
 
@@ -168,7 +168,7 @@ impl DebugUtils {
         block: &Block,
         val: Value,
     ) -> Result<(), CodegenError> {
-        let func_ptr = self.build_function(ctx, module, block, DebugBinding::PrintNumber)?;
+        let func_ptr = self.build_function(ctx, module, block, DebugBinding::Number)?;
 
         block.append_operation(build_llvm_indirect_call(ctx, &[func_ptr, val], &[])?);
 
@@ -180,13 +180,7 @@ pub mod debug_utils_runtime {
     use crate::codegen::compiler_helper::debugging::DebugBinding;
 
     pub fn setup(find_symbol_callback: impl Fn(&str) -> Option<*mut ()>) {
-        for b in [
-            DebugBinding::PrintNumber,
-            DebugBinding::PrintPtr,
-            DebugBinding::PrintStr,
-        ]
-        .iter()
-        {
+        for b in [DebugBinding::Number, DebugBinding::Ptr, DebugBinding::Str].iter() {
             if let Some(p) = find_symbol_callback(b.symbol()) {
                 let p = p.cast::<*const ()>();
 

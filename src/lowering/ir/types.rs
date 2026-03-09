@@ -6,8 +6,6 @@ use melior::{
     ir::{Type, r#type::IntegerType},
 };
 
-use educe::Educe;
-
 use crate::parser::ast::declaration::AstType;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -34,8 +32,7 @@ pub enum FloatTy {
     F64,
 }
 
-#[derive(Debug, Clone, Copy, Educe)]
-#[educe(PartialEq, Eq)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum MathicType {
     Bool,
     Char,
@@ -83,7 +80,7 @@ impl MathicType {
             },
             Self::Bool => 1,
             Self::Char => 8,
-            Self::Str { .. } => todo!(),
+            Self::Str => todo!(),
             Self::Void => 0,
         }
     }
@@ -224,7 +221,7 @@ impl fmt::Display for MathicType {
             MathicType::Sint(ty) => write!(f, "{}", ty),
             MathicType::Float(ty) => write!(f, "{}", ty),
             MathicType::Bool => write!(f, "bool"),
-            MathicType::Str { .. } => write!(f, "str"),
+            MathicType::Str => write!(f, "str"),
             MathicType::Char => write!(f, "char"),
             MathicType::Void => write!(f, "void"),
         }
