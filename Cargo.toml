@@ -24,3 +24,6 @@ rstest = "0.26.1"
 thiserror = "2.0.10"
 tracing = "0.1.44"
 tracing-subscriber = { version = "0.3.22", features = ["env-filter"] }
+
+[package.metadata.cargo-machete]
+ignored = ["libc"]
