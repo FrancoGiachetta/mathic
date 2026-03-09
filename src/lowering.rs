@@ -52,7 +52,7 @@ fn lower_entry_point(
     } = func_decl;
 
     let mut func_builder =
-        FunctionBuilder::new(name.clone(), params, *return_ty, ir_builder, *span);
+        FunctionBuilder::new(name.clone(), params, return_ty.into(), ir_builder, *span);
 
     // Save function's declaration. This for on-demand lowering, allowing
     // to reference function no yet declared. For example, a function call

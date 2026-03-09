@@ -61,8 +61,13 @@ pub fn lower_inner_function(
         ..
     } = stmt;
 
-    let mut inner_func =
-        FunctionBuilder::new(name.clone(), params, *return_ty, func.ir_builder, span);
+    let mut inner_func = FunctionBuilder::new(
+        name.clone(),
+        params,
+        return_ty.into(),
+        func.ir_builder,
+        span,
+    );
 
     // Save function's declaration. This for on-demand lowering, allowing
     // to reference function no yet declared. For example, a function call

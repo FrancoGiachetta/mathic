@@ -14,7 +14,7 @@ use std::{fs, path::Path};
 
 use crate::{
     MathicResult,
-    codegen::MathicCodeGen,
+    codegen::{MathicCodeGen, compiler_helper::CompilerHelper},
     diagnostics::{self, CodegenError},
     ffi, lowering,
     parser::MathicParser,
@@ -96,8 +96,9 @@ impl MathicCompiler {
 
         {
             let codegen = MathicCodeGen::new(&self.ctx, &module, file_path);
+            let mut helper = CompilerHelper::new();
 
-            codegen.generate_module(&ir)?;
+            codegen.generate_module(&ir, &mut helper)?;
         }
 
         if let Ok(v) = std::env::var("MATHIC_DBG_DUMP") {

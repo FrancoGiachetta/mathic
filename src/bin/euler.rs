@@ -26,7 +26,7 @@ fn main() -> MathicResult<()> {
     let compiler = MathicCompiler::new()?;
 
     let module = compiler.compile_path(&args.file_path, OptLvl::default())?;
-    let executor = MathicExecutor::new(&module, OptLvl::O1)?;
+    let executor = MathicExecutor::new(&module, OptLvl::O2)?;
 
     tracing::debug!("Executor Created");
     let result = executor.call_function("main");

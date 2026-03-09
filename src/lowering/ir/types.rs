@@ -2,8 +2,11 @@ use std::fmt;
 
 use melior::{
     Context,
+    dialect::llvm,
     ir::{Type, r#type::IntegerType},
 };
+
+use crate::parser::ast::declaration::AstType;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum UintTy {
@@ -31,10 +34,12 @@ pub enum FloatTy {
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum MathicType {
+    Bool,
+    Char,
+    Float(FloatTy),
+    Str,
     Uint(UintTy),
     Sint(SintTy),
-    Float(FloatTy),
-    Bool,
     Void,
 }
 
@@ -47,6 +52,8 @@ impl MathicType {
                 FloatTy::F64 => Type::float64(ctx),
             },
             MathicType::Bool => IntegerType::new(ctx, 1).into(),
+            MathicType::Char => IntegerType::new(ctx, 8).into(),
+            MathicType::Str => llvm::r#type::pointer(ctx, 0),
             MathicType::Void => Type::none(ctx),
         }
     }
@@ -72,6 +79,8 @@ impl MathicType {
                 FloatTy::F64 => 64,
             },
             Self::Bool => 1,
+            Self::Char => 8,
+            Self::Str => todo!(),
             Self::Void => 0,
         }
     }
@@ -97,6 +106,8 @@ impl MathicType {
                 FloatTy::F64 => 64,
             },
             Self::Bool => 1,
+            Self::Str => 8,
+            Self::Char => 8,
             Self::Void => 0,
         }
     }
@@ -119,6 +130,54 @@ impl MathicType {
     #[inline(always)]
     pub fn is_bool(&self) -> bool {
         matches!(self, Self::Bool)
+    }
+}
+
+impl From<&AstType> for MathicType {
+    fn from(value: &AstType) -> Self {
+        match value {
+            AstType::Str => MathicType::Str,
+            AstType::Char => MathicType::Char,
+            AstType::Bool => MathicType::Bool,
+            AstType::Void => MathicType::Void,
+            AstType::I8 => MathicType::Sint(SintTy::I8),
+            AstType::I16 => MathicType::Sint(SintTy::I16),
+            AstType::I32 => MathicType::Sint(SintTy::I32),
+            AstType::I64 => MathicType::Sint(SintTy::I64),
+            AstType::I128 => MathicType::Sint(SintTy::I128),
+            AstType::U8 => MathicType::Uint(UintTy::U8),
+            AstType::U16 => MathicType::Uint(UintTy::U16),
+            AstType::U32 => MathicType::Uint(UintTy::U32),
+            AstType::U64 => MathicType::Uint(UintTy::U64),
+            AstType::U128 => MathicType::Uint(UintTy::U128),
+            AstType::F32 => MathicType::Float(FloatTy::F32),
+            AstType::F64 => MathicType::Float(FloatTy::F64),
+            AstType::Adt(name) => todo!("Adt({name})"),
+        }
+    }
+}
+
+impl From<AstType> for MathicType {
+    fn from(value: AstType) -> Self {
+        match value {
+            AstType::Str => MathicType::Str,
+            AstType::Char => MathicType::Char,
+            AstType::Bool => MathicType::Bool,
+            AstType::Void => MathicType::Void,
+            AstType::I8 => MathicType::Sint(SintTy::I8),
+            AstType::I16 => MathicType::Sint(SintTy::I16),
+            AstType::I32 => MathicType::Sint(SintTy::I32),
+            AstType::I64 => MathicType::Sint(SintTy::I64),
+            AstType::I128 => MathicType::Sint(SintTy::I128),
+            AstType::U8 => MathicType::Uint(UintTy::U8),
+            AstType::U16 => MathicType::Uint(UintTy::U16),
+            AstType::U32 => MathicType::Uint(UintTy::U32),
+            AstType::U64 => MathicType::Uint(UintTy::U64),
+            AstType::U128 => MathicType::Uint(UintTy::U128),
+            AstType::F32 => MathicType::Float(FloatTy::F32),
+            AstType::F64 => MathicType::Float(FloatTy::F64),
+            AstType::Adt(name) => todo!("Adt({name})"),
+        }
     }
 }
 
@@ -162,6 +221,8 @@ impl fmt::Display for MathicType {
             MathicType::Sint(ty) => write!(f, "{}", ty),
             MathicType::Float(ty) => write!(f, "{}", ty),
             MathicType::Bool => write!(f, "bool"),
+            MathicType::Str => write!(f, "str"),
+            MathicType::Char => write!(f, "char"),
             MathicType::Void => write!(f, "void"),
         }
     }
