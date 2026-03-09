@@ -7,6 +7,7 @@ use token::Token;
 
 use crate::diagnostics::parse::{ExpectedToken, FoundToken, ParseError, SyntaxError};
 use crate::parser::lexer::LexerOutput;
+use tracing::instrument;
 
 pub mod ast;
 pub mod lexer;
@@ -59,7 +60,9 @@ impl<'a> MathicParser<'a> {
         }
     }
 
+    #[instrument(target = "parsing", skip(self))]
     pub fn parse(&self) -> ParserResult<Program> {
+        tracing::debug!("Starting parsing");
         let mut funcs = Vec::new();
         let mut _structs = Vec::new();
 

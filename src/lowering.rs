@@ -14,12 +14,16 @@ use crate::{
     },
 };
 use ir::Ir;
+use tracing::instrument;
 
 /// Lowering entrypoint.
 ///
 /// Given an AST, this function lowers it and returns a MATHIR. In the process,
 /// semantic check are perfomed to verify the correctness of the program.
+#[instrument(target = "lowering")]
 pub fn lower_program(program: &Program) -> Result<Ir, LoweringError> {
+    let start = std::time::Instant::now();
+    tracing::info!("Starting lowering phase");
     let mut ir_builder = IrBuilder::new();
 
     // Save function's declaration. This for on-demand lowering, allowing
@@ -35,14 +39,17 @@ pub fn lower_program(program: &Program) -> Result<Ir, LoweringError> {
         lower_entry_point(&mut ir_builder, func)?;
     }
 
+    tracing::info!("Lowering complete: {:?}", start.elapsed());
     Ok(ir_builder.build())
 }
 
 /// Lowers global functions.
+#[instrument(target = "lowering", skip(ir_builder))]
 fn lower_entry_point(
     ir_builder: &mut IrBuilder,
     func_decl: &FuncDecl,
 ) -> Result<(), LoweringError> {
+    tracing::debug!("Lowering function: {}", func_decl.name);
     let FuncDecl {
         name,
         params,
