@@ -20,7 +20,7 @@
                | <sym_decl>
 
 <func_decl>   := "df" <ident> "(" <params>? ")" <type>? <block>
-<struct_decl> := "struct" <ident> "{" <params>? "}"
+<struct_decl> := "struct" <ident> "{" <struct_fields>? "}"
 <var_decl>    := "let" <ident> ":" <type> "=" <expr> ";"
 <sym_decl>    := "sym" <ident> "=" <ident> ";"
 
@@ -60,5 +60,6 @@
 <alpha>  := [a-zA-Z]
 <digit>  := [0-9]
 <params> := <ident> ":" <type> ("," <ident> ":" <type>)*
+<struct_fields> := ("pub")? <ident> ":" <type> ("," ("pub")? <ident> ":" <type>)*
 <args>   := <expr> ("," <expr>)*
 

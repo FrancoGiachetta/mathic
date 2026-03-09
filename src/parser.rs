@@ -64,7 +64,7 @@ impl<'a> MathicParser<'a> {
     pub fn parse(&self) -> ParserResult<Program> {
         tracing::debug!("Starting parsing");
         let mut funcs = Vec::new();
-        let mut _structs = Vec::new();
+        let mut structs = Vec::new();
 
         while let Ok(Some(SpannedToken {
             token,
@@ -74,7 +74,7 @@ impl<'a> MathicParser<'a> {
         {
             match token {
                 Token::Df => funcs.push(self.parse_func()?),
-                Token::Struct => todo!("parse struct"),
+                Token::Struct => structs.push(self.parse_struct()?),
                 _ => {
                     return Err(ParseError::Syntax(SyntaxError::UnexpectedToken {
                         found: FoundToken {
@@ -89,10 +89,7 @@ impl<'a> MathicParser<'a> {
             }
         }
 
-        Ok(Program {
-            funcs,
-            structs: _structs,
-        })
+        Ok(Program { funcs, structs })
     }
 
     /// Returns the next token, advancing the lexer.

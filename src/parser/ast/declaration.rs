@@ -21,7 +21,16 @@ pub struct VarDecl {
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct StructDecl {
     pub name: String,
-    pub fields: Vec<Param>,
+    pub fields: Vec<StructField>,
+    pub span: Span,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct StructField {
+    pub name: String,
+    pub ty: AstType,
+    pub is_pub: bool,
+    pub span: Span,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
