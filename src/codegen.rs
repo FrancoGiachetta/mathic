@@ -13,6 +13,7 @@ use crate::{
     lowering::ir::Ir,
     parser::Span,
 };
+use tracing::instrument;
 
 pub mod compiler_helper;
 pub mod function_ctx;
@@ -66,7 +67,14 @@ impl<'ctx> MathicCodeGen<'ctx> {
     /// Code generation entrypoint.
     ///
     /// Populates the module for a compile unit.
+    #[instrument(target = "codegen", skip(self, helper))]
     pub fn generate_module(&self, program: &Ir, helper: &mut CompilerHelper) -> MathicResult<()> {
+        let start = std::time::Instant::now();
+        tracing::info!(
+            "Starting code generation for {} functions",
+            program.functions.len()
+        );
+
         // Check if main function is present
         if !program.functions.iter().any(|f| f.name == "main") {
             return Err(MathicError::Codegen(CodegenError::MissingMainFunction));
@@ -75,9 +83,11 @@ impl<'ctx> MathicCodeGen<'ctx> {
         // TODO: Compile structs in the future
 
         for func in program.functions.iter() {
+            tracing::debug!("Compiling function: {}", func.name);
             self.compile_function(func, &[], helper)?;
         }
 
+        tracing::info!("Code generation complete: {:?}", start.elapsed());
         Ok(())
     }
 }
