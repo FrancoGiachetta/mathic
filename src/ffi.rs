@@ -21,15 +21,10 @@ use melior::{
     Context,
     dialect::DialectRegistry,
     ir::{
-        Attribute, AttributeLike, Block, Identifier, Location, Module, Region, RegionLike,
-        attribute::StringAttribute, operation::OperationBuilder,
+        Block, Identifier, Location, Module, Region, RegionLike, attribute::StringAttribute,
+        operation::OperationBuilder,
     },
     utility::{register_all_dialects, register_all_llvm_translations, register_all_passes},
-};
-use mlir_sys::{
-    MlirLLVMDIEmissionKind_MlirLLVMDIEmissionKindFull,
-    MlirLLVMDINameTableKind_MlirLLVMDINameTableKindDefault, mlirDisctinctAttrCreate,
-    mlirLLVMDICompileUnitAttrGet, mlirLLVMDIFileAttrGet, mlirLLVMDIModuleAttrGet,
 };
 
 use crate::{compiler::OptLvl, diagnostics::CodegenError};
@@ -54,61 +49,19 @@ pub fn create_module<'ctx>(
 
     let data_layout_ret = &get_data_layout_rep(opt_lvl)?;
 
-    let di_unit_id = unsafe {
-        let id = StringAttribute::new(ctx, "compile_unit_id").to_raw();
-        mlirDisctinctAttrCreate(id)
-    };
-
-    let op = OperationBuilder::new(
-        "builtin.module",
-        Location::fused(ctx, &[Location::new(ctx, "program.mth", 0, 0)], {
-            let file_attr = unsafe {
-                Attribute::from_raw(mlirLLVMDIFileAttrGet(
-                    ctx.to_raw(),
-                    StringAttribute::new(ctx, "program.mth").to_raw(),
-                    StringAttribute::new(ctx, "").to_raw(),
-                ))
-            };
-            unsafe {
-                let di_unit = mlirLLVMDICompileUnitAttrGet(
-                    ctx.to_raw(),
-                    di_unit_id,
-                    0x1c, // rust
-                    file_attr.to_raw(),
-                    StringAttribute::new(ctx, "mathic").to_raw(),
-                    false,
-                    MlirLLVMDIEmissionKind_MlirLLVMDIEmissionKindFull,
-                    MlirLLVMDINameTableKind_MlirLLVMDINameTableKindDefault,
-                );
-
-                let di_module = mlirLLVMDIModuleAttrGet(
-                    ctx.to_raw(),
-                    file_attr.to_raw(),
-                    di_unit,
-                    StringAttribute::new(ctx, "LLVMDialectModule").to_raw(),
-                    StringAttribute::new(ctx, "").to_raw(),
-                    StringAttribute::new(ctx, "").to_raw(),
-                    StringAttribute::new(ctx, "").to_raw(),
-                    0,
-                    false,
-                );
-
-                Attribute::from_raw(di_module)
-            }
-        }),
-    )
-    .add_attributes(&[
-        (
-            Identifier::new(ctx, "llvm.target_triple"),
-            StringAttribute::new(ctx, &target_triple).into(),
-        ),
-        (
-            Identifier::new(ctx, "llvm.data_layout"),
-            StringAttribute::new(ctx, data_layout_ret).into(),
-        ),
-    ])
-    .add_regions([module_region])
-    .build()?;
+    let op = OperationBuilder::new("builtin.module", Location::unknown(ctx))
+        .add_attributes(&[
+            (
+                Identifier::new(ctx, "llvm.target_triple"),
+                StringAttribute::new(ctx, &target_triple).into(),
+            ),
+            (
+                Identifier::new(ctx, "llvm.data_layout"),
+                StringAttribute::new(ctx, data_layout_ret).into(),
+            ),
+        ])
+        .add_regions([module_region])
+        .build()?;
 
     Module::from_operation(op).ok_or(CodegenError::Custom("Could not create module".to_string()))
 }
@@ -152,15 +105,8 @@ pub fn get_data_layout_rep(opt_lvl: OptLvl) -> Result<String, CodegenError> {
         let error_buffer = addr_of_mut!(null);
 
         let target_triple = LLVMGetDefaultTargetTriple();
-        let target_triple_str = CStr::from_ptr(target_triple).to_string_lossy().into_owned();
-
         let target_cpu = LLVMGetHostCPUName();
-        let target_cpu_str = CStr::from_ptr(target_cpu).to_string_lossy().into_owned();
-
         let target_cpu_features = LLVMGetHostCPUFeatures();
-        let target_cpu_features_str = CStr::from_ptr(target_cpu_features)
-            .to_string_lossy()
-            .into_owned();
 
         let mut target: MaybeUninit<LLVMTargetRef> = MaybeUninit::uninit();
 
@@ -181,16 +127,16 @@ pub fn get_data_layout_rep(opt_lvl: OptLvl) -> Result<String, CodegenError> {
 
         let machine = LLVMCreateTargetMachine(
             target,
-            target_triple_str.as_ptr().cast(),
-            target_cpu_str.as_ptr().cast(),
-            target_cpu_features_str.as_ptr().cast(),
+            target_triple.cast(),
+            target_cpu.cast(),
+            target_cpu_features.cast(),
             match opt_lvl {
                 OptLvl::None => LLVMCodeGenOptLevel::LLVMCodeGenLevelNone,
                 OptLvl::O1 => LLVMCodeGenOptLevel::LLVMCodeGenLevelLess,
                 OptLvl::O2 => LLVMCodeGenOptLevel::LLVMCodeGenLevelDefault,
                 OptLvl::O3 => LLVMCodeGenOptLevel::LLVMCodeGenLevelAggressive,
             },
-            LLVMRelocMode::LLVMRelocDynamicNoPic,
+            LLVMRelocMode::LLVMRelocDefault,
             LLVMCodeModel::LLVMCodeModelDefault,
         );
 
