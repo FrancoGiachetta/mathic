@@ -1,11 +1,7 @@
 use melior::{
-    dialect::{arith::CmpiPredicate, func, llvm, ods},
-    helpers::{ArithBlockExt, BuiltinBlockExt, GepIndex, LlvmBlockExt},
-    ir::{
-        Block, BlockLike, Identifier, Location, Region, Value, ValueLike,
-        attribute::{FlatSymbolRefAttribute, StringAttribute, TypeAttribute},
-        r#type::{FunctionType, IntegerType},
-    },
+    dialect::{arith::CmpiPredicate, llvm, ods},
+    helpers::{ArithBlockExt, BuiltinBlockExt, LlvmBlockExt},
+    ir::{Block, Value, ValueLike, attribute::StringAttribute, r#type::IntegerType},
 };
 
 use crate::{
@@ -187,7 +183,7 @@ impl MathicCodeGen<'_> {
         fn_ctx: &mut FunctionCtx<'ctx, 'func>,
         block: &'func Block<'ctx>,
         value: &IRValue,
-        helper: &mut CompilerHelper,
+        _helper: &mut CompilerHelper,
     ) -> Result<Value<'ctx, 'func>, CodegenError>
     where
         'func: 'ctx,
@@ -267,66 +263,32 @@ impl MathicCodeGen<'_> {
                     NumericConst::F64(_) => todo!(),
                 },
                 ConstExpr::Str(s) => {
+                    // Str is a fixed size, null terminated array of bytes
+                    // which is allocated in the stack.
+                    let str_len_with_sentinel = s.len() as u32 + 1;
+
                     let u8_ty = IntegerType::new(self.ctx, 8).into();
-                    let u64_ty = IntegerType::new(self.ctx, 64).into();
-                    let arr_ty = llvm::r#type::array(u8_ty, s.len() as u32);
-                    let ptr_ty = llvm::r#type::pointer(self.ctx, 0);
-                    let str_ty = llvm::r#type::r#struct(self.ctx, &[ptr_ty, u64_ty, u64_ty], false);
+                    let arr_ty = llvm::r#type::array(u8_ty, str_len_with_sentinel);
 
-                    self.module.body().append_operation(func::func(
-                        self.ctx,
-                        StringAttribute::new(self.ctx, "malloc"),
-                        TypeAttribute::new(
-                            FunctionType::new(self.ctx, &[u64_ty], &[ptr_ty]).into(),
-                        ),
-                        Region::new(),
-                        &[(
-                            Identifier::new(self.ctx, "sym_visibility"),
-                            StringAttribute::new(self.ctx, "private").into(),
-                        )],
-                        Location::unknown(self.ctx),
-                    ));
+                    // Rust String does not hold a null byte at the end, so we need to add it.
+                    let mut s_with_null = s.clone();
+                    s_with_null.push('\0');
 
-                    let k0 = block.const_int(self.ctx, location, 0, 64)?;
                     let str_const = block.append_op_result(
                         ods::llvm::mlir_constant(
                             self.ctx,
                             arr_ty,
-                            StringAttribute::new(self.ctx, s).into(),
+                            StringAttribute::new(self.ctx, &s_with_null).into(),
                             location,
                         )
                         .into(),
                     )?;
-                    let str_len_val = block.const_int(self.ctx, location, s.len() + 1, 64)?;
 
-                    let str_ptr = block.append_op_result(func::call(
-                        self.ctx,
-                        FlatSymbolRefAttribute::new(self.ctx, "malloc"),
-                        &[str_len_val],
-                        &[llvm::r#type::pointer(self.ctx, 0)],
-                        location,
-                    ))?;
+                    let ptr = block.alloca1(self.ctx, location, arr_ty, 8)?;
 
-                    block.store(self.ctx, location, str_ptr, str_const)?;
+                    block.store(self.ctx, location, ptr, str_const)?;
 
-                    let offseted_ptr = block.gep(
-                        self.ctx,
-                        location,
-                        str_ptr,
-                        &[GepIndex::Const(s.len() as i32)],
-                        u8_ty,
-                    )?;
-
-                    block.store(self.ctx, location, offseted_ptr, k0)?;
-
-                    let struct_val = block.append_op_result(llvm::undef(str_ty, location))?;
-
-                    block.insert_values(
-                        self.ctx,
-                        location,
-                        struct_val,
-                        &[str_ptr, str_len_val, str_len_val],
-                    )?
+                    ptr
                 }
                 ConstExpr::Char(c) => block.const_int(self.ctx, location, *c, 8)?,
                 ConstExpr::Bool(val) => block.const_int(self.ctx, location, *val as u8, 1)?,

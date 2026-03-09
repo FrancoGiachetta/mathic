@@ -94,11 +94,12 @@ fn lower_call(
     }
 
     for (arg, param) in func_args.iter().zip(func_prototype.params.iter()) {
-        let (arg_val, arg_ty) = lower_expr(func, arg, Some(param.ty))?;
+        let param_ty: MathicType = (&param.ty).into();
+        let (arg_val, arg_ty) = lower_expr(func, arg, Some(param_ty))?;
 
-        if arg_ty != param.ty {
+        if arg_ty != param_ty {
             return Err(LoweringError::MismatchedType {
-                expected: param.ty,
+                expected: param_ty,
                 found: arg_ty,
                 span: arg.span,
             });
@@ -121,7 +122,7 @@ fn lower_call(
         args: arg_values,
         span: Some(span),
         return_dest: Value::InMemory(local_idx),
-        return_ty: func_prototype.return_ty,
+        return_ty: (&func_prototype.return_ty).into(),
         dest_block: dest_block_idx,
     };
 
@@ -282,7 +283,10 @@ fn lower_primary_value(
                             ConstExpr::Numeric(NumericConst::F64(n.parse::<f64>().unwrap()))
                         }
                     },
-                    MathicType::Bool | MathicType::Void | MathicType::Char | MathicType::Str => {
+                    MathicType::Bool
+                    | MathicType::Void
+                    | MathicType::Char
+                    | MathicType::Str { .. } => {
                         unreachable!()
                     }
                 }),

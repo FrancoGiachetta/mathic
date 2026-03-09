@@ -6,14 +6,6 @@ use crate::{
     MathicResult, codegen::compiler_helper::debugging, compiler::OptLvl, diagnostics::CodegenError,
 };
 
-#[repr(C)]
-#[derive(Default, Debug)]
-pub struct Str {
-    pub ptr: *mut u8,
-    pub len: u64,
-    pub cap: u64,
-}
-
 /// A wrapper over melior's ExecutionEngine.
 pub struct MathicExecutor {
     engine: ExecutionEngine,

@@ -83,12 +83,14 @@ impl<'ir> FunctionBuilder<'ir> {
         };
 
         for (param_idx, param) in params.iter().enumerate() {
-            func.params_tys.push(param.ty);
+            let param_ty: MathicType = (&param.ty).into();
+
+            func.params_tys.push(param_ty);
 
             func.sym_table.locals.push(Local {
                 local_idx: param_idx,
                 kind: LocalKind::Param,
-                ty: param.ty,
+                ty: param_ty,
                 debug_name: Some(param.name.clone()),
             });
 

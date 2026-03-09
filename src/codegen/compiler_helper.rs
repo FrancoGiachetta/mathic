@@ -1,3 +1,5 @@
+#![allow(dead_code)]
+
 use std::{any::TypeId, collections::HashMap};
 
 use std::any::Any;
