@@ -94,11 +94,12 @@ fn lower_call(
     }
 
     for (arg, param) in func_args.iter().zip(func_prototype.params.iter()) {
-        let (arg_val, arg_ty) = lower_expr(func, arg, Some(param.ty))?;
+        let param_ty: MathicType = (&param.ty).into();
+        let (arg_val, arg_ty) = lower_expr(func, arg, Some(param_ty))?;
 
-        if arg_ty != param.ty {
+        if arg_ty != param_ty {
             return Err(LoweringError::MismatchedType {
-                expected: param.ty,
+                expected: param_ty,
                 found: arg_ty,
                 span: arg.span,
             });
@@ -121,7 +122,7 @@ fn lower_call(
         args: arg_values,
         span: Some(span),
         return_dest: Value::InMemory(local_idx),
-        return_ty: func_prototype.return_ty,
+        return_ty: (&func_prototype.return_ty).into(),
         dest_block: dest_block_idx,
     };
 
@@ -282,8 +283,9 @@ fn lower_primary_value(
                             ConstExpr::Numeric(NumericConst::F64(n.parse::<f64>().unwrap()))
                         }
                     },
-                    MathicType::Bool => unreachable!(),
-                    MathicType::Void => unreachable!(),
+                    MathicType::Bool | MathicType::Void | MathicType::Char | MathicType::Str => {
+                        unreachable!()
+                    }
                 }),
                 ty,
             ),
@@ -295,7 +297,8 @@ fn lower_primary_value(
             ),
         },
         PrimaryExpr::Bool(b) => (Value::Const(ConstExpr::Bool(*b)), MathicType::Bool),
-        PrimaryExpr::Str(_) => todo!(),
+        PrimaryExpr::Str(s) => (Value::Const(ConstExpr::Str(s.clone())), MathicType::Str),
+        PrimaryExpr::Char(c) => (Value::Const(ConstExpr::Char(*c)), MathicType::Char),
     };
 
     Ok(RValInstruct {
@@ -325,7 +328,8 @@ fn lower_expression_type(
                 Some(ty) => ty,
                 None => MathicType::Sint(SintTy::I32),
             },
-            PrimaryExpr::Str(_) => todo!(),
+            PrimaryExpr::Str(_) => MathicType::Str,
+            PrimaryExpr::Char(_) => MathicType::Char,
             PrimaryExpr::Bool(_) => MathicType::Bool,
         },
         ExprStmtKind::Binary { lhs, op, .. } => match op {

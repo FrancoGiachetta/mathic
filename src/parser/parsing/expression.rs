@@ -294,6 +294,7 @@ impl<'a> MathicParser<'a> {
         let span = lookahead.span;
 
         let kind = match lookahead.token {
+            Token::Str => ExprStmtKind::Primary(PrimaryExpr::Str(lookahead.lexeme.to_string())),
             Token::Num => ExprStmtKind::Primary(PrimaryExpr::Num(lookahead.lexeme.to_string())),
             Token::True => ExprStmtKind::Primary(PrimaryExpr::Bool(true)),
             Token::False => ExprStmtKind::Primary(PrimaryExpr::Bool(false)),

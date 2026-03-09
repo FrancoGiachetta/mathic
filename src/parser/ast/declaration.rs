@@ -30,12 +30,35 @@ pub struct FuncDecl {
     pub params: Vec<Param>,
     pub body: Vec<Stmt>,
     pub span: Span,
-    pub return_ty: MathicType,
+    pub return_ty: AstType,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Param {
     pub name: String,
     pub span: Span,
-    pub ty: MathicType,
+    pub ty: AstType,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum AstType {
+    Str,
+    Char,
+    Bool,
+    // Numeric.
+    I8,
+    I16,
+    I32,
+    I64,
+    I128,
+    U8,
+    U16,
+    U32,
+    U64,
+    U128,
+    F32,
+    F64,
+    // Abstract Data Type.
+    Adt(String),
+    Void,
 }

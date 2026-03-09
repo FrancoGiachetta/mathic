@@ -5,7 +5,7 @@ use melior::{
 };
 
 use crate::{
-    codegen::{MathicCodeGen, function_ctx::FunctionCtx},
+    codegen::{MathicCodeGen, compiler_helper::CompilerHelper, function_ctx::FunctionCtx},
     diagnostics::CodegenError,
     lowering::ir::{basic_block::Terminator, instruction::LValInstruct},
 };
@@ -16,6 +16,7 @@ impl MathicCodeGen<'_> {
         fn_ctx: &mut FunctionCtx<'ctx, 'func>,
         block: &'func Block<'ctx>,
         inst: &LValInstruct,
+        helper: &mut CompilerHelper,
     ) -> Result<(), CodegenError>
     where
         'func: 'ctx,
@@ -28,7 +29,7 @@ impl MathicCodeGen<'_> {
             } => {
                 let location = self.get_location(*span)?;
 
-                let init_val = self.compile_rvalue(fn_ctx, block, init)?;
+                let init_val = self.compile_rvalue(fn_ctx, block, init, helper)?;
                 let ptr = block.alloca1(
                     self.ctx,
                     location,
@@ -47,7 +48,7 @@ impl MathicCodeGen<'_> {
             } => {
                 let location = self.get_location(*span)?;
 
-                let val = self.compile_rvalue(fn_ctx, block, value)?;
+                let val = self.compile_rvalue(fn_ctx, block, value, helper)?;
                 let (ptr, _) = fn_ctx.get_local(*local_idx).expect("invalid local idx");
 
                 block.store(self.ctx, location, ptr, val)?;
@@ -62,6 +63,7 @@ impl MathicCodeGen<'_> {
         fn_ctx: &mut FunctionCtx<'ctx, 'func>,
         block: &'func Block<'ctx>,
         terminator: &Terminator,
+        helper: &mut CompilerHelper,
     ) -> Result<(), CodegenError>
     where
         'func: 'ctx,
@@ -69,7 +71,7 @@ impl MathicCodeGen<'_> {
         match terminator {
             Terminator::Return(rval_instruct, span) => match rval_instruct {
                 Some(rvalue) => {
-                    let val = self.compile_rvalue(fn_ctx, block, rvalue)?;
+                    let val = self.compile_rvalue(fn_ctx, block, rvalue, helper)?;
 
                     block.append_operation(func::r#return(&[val], self.get_location(*span)?))
                 }
@@ -86,7 +88,7 @@ impl MathicCodeGen<'_> {
                 false_block,
                 span,
             } => {
-                let cond_val = self.compile_rvalue(fn_ctx, block, condition)?;
+                let cond_val = self.compile_rvalue(fn_ctx, block, condition, helper)?;
 
                 block.append_operation(cf::cond_br(
                     self.ctx,
@@ -113,7 +115,7 @@ impl MathicCodeGen<'_> {
 
                 let mut args_vals = Vec::with_capacity(args.len());
                 for arg in args.iter() {
-                    args_vals.push(self.compile_rvalue(fn_ctx, block, arg)?);
+                    args_vals.push(self.compile_rvalue(fn_ctx, block, arg, helper)?);
                 }
 
                 let mlir_return_ty = return_ty.get_compiled_type(self.ctx);
@@ -151,12 +153,13 @@ impl MathicCodeGen<'_> {
         fn_ctx: &mut FunctionCtx<'ctx, 'func>,
         block: &'func Block<'ctx>,
         stmts: &[LValInstruct],
+        helper: &mut CompilerHelper,
     ) -> Result<(), CodegenError>
     where
         'func: 'ctx,
     {
         for stmt in stmts {
-            self.compile_statement(fn_ctx, block, stmt)?;
+            self.compile_statement(fn_ctx, block, stmt, helper)?;
         }
 
         Ok(())
