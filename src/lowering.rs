@@ -9,7 +9,7 @@ use crate::{
     },
     parser::ast::{
         Program,
-        declaration::{DeclStmt, FuncDecl},
+        declaration::{DeclStmt, FuncDecl, TopLevelItem},
         statement::StmtKind,
     },
 };
@@ -29,14 +29,18 @@ pub fn lower_program(program: &Program) -> Result<Ir, LoweringError> {
     // Save function's declaration. This for on-demand lowering, allowing
     // to reference function no yet declared. For example, a function call
     // of a not yet declared function.
-    for f in program.funcs.iter() {
-        ir_builder.add_func_decl(f.clone());
-
-        // FUTURE: do the same for structs, enums, etc
+    for item in program.items.iter() {
+        match item {
+            TopLevelItem::Func(f) => ir_builder.add_func_decl(f.clone()),
+            TopLevelItem::Struct(s) => {}
+        }
     }
 
-    for func in program.funcs.iter() {
-        lower_entry_point(&mut ir_builder, func)?;
+    for item in program.items.iter() {
+        match item {
+            TopLevelItem::Func(f) => lower_entry_point(&mut ir_builder, f)?,
+            _ => {}
+        }
     }
 
     tracing::info!("Lowering complete: {:?}", start.elapsed());

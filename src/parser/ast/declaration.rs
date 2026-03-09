@@ -1,7 +1,13 @@
 use crate::{
     lowering::ir::types::MathicType,
-    parser::{Span, ast::expression::ExprStmt, ast::statement::Stmt},
+    parser::{ast::expression::ExprStmt, ast::statement::Stmt, Span},
 };
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum TopLevelItem {
+    Struct(StructDecl),
+    Func(FuncDecl),
+}
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 #[allow(dead_code)]

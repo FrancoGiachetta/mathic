@@ -1,8 +1,8 @@
 use crate::parser::{
-    Span,
     ast::control_flow::{ForStmt, IfStmt, WhileStmt},
     ast::declaration::DeclStmt,
     ast::expression::ExprStmt,
+    Span,
 };
 
 #[derive(Debug, Clone, PartialEq, Eq)]
