@@ -1,3 +1,0 @@
-df main() str {
-	return "hello world";
-}
