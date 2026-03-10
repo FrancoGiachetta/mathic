@@ -28,7 +28,7 @@ pub fn lower_var_declaration(
         expr,
         ty: var_ty,
     } = stmt;
-    let var_ty = lower_ast_type(func, var_ty)?;
+    let var_ty = lower_ast_type(func, var_ty, span)?;
     let (init, expr_ty) = expression::lower_expr(func, expr, Some(var_ty))?;
 
     if expr_ty != var_ty {
@@ -67,8 +67,8 @@ pub fn lower_inner_struct(
     for field in fields {
         adt.fields.push(StructField {
             name: field.name.clone(),
-            ty: lower_ast_type(func_builder, &field.ty)?,
-            is_pub: field.is_pub,
+            ty: lower_ast_type(func_builder, &field.ty, field.span)?,
+            _is_pub: field.is_pub,
         });
     }
 
@@ -96,7 +96,7 @@ pub fn lower_inner_function(
         name.clone(),
         params,
         match return_ty {
-            Some(ty) => lower_ast_type(func, ty)?,
+            Some(ty) => lower_ast_type(func, ty, span)?,
             None => MathicType::Void,
         },
         func.ir_builder,

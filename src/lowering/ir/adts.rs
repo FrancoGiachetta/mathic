@@ -16,7 +16,7 @@ pub struct StructAdt {
 pub struct StructField {
     pub name: String,
     pub ty: MathicType,
-    pub is_pub: bool,
+    pub _is_pub: bool,
 }
 
 pub fn write_adt_ir<W: std::fmt::Write>(adt: &Adt, f: &mut W, indent: usize) -> std::fmt::Result {

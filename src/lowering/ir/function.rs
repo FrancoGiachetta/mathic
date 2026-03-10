@@ -151,7 +151,7 @@ impl<'ir> FunctionBuilder<'ir> {
         };
 
         for (param_idx, param) in params.iter().enumerate() {
-            let param_ty: MathicType = lower_ast_type(&mut func_builder, &param.ty)?;
+            let param_ty: MathicType = lower_ast_type(&mut func_builder, &param.ty, param.span)?;
 
             func_builder.params_tys.push(param_ty);
 

@@ -94,7 +94,7 @@ fn lower_call(
     }
 
     for (arg, param) in func_args.iter().zip(func_prototype.params.iter()) {
-        let param_ty: MathicType = lower_ast_type(func, &param.ty)?;
+        let param_ty: MathicType = lower_ast_type(func, &param.ty, param.span)?;
         let (arg_val, arg_ty) = lower_expr(func, arg, Some(param_ty))?;
 
         if arg_ty != param_ty {
@@ -113,9 +113,13 @@ fn lower_call(
     // not RValue instructions, we need to create a temporary local to store
     // the return value and then create the RValue instruction pointing to that
     // new local.
-    let local_idx =
-        func.sym_table
-            .add_local(None, MathicType::Sint(SintTy::I64), None, LocalKind::Temp)?;
+    let return_ty = match func_prototype.return_ty {
+        Some(ty) => lower_ast_type(func, &ty, span)?,
+        None => MathicType::Void,
+    };
+    let local_idx = func
+        .sym_table
+        .add_local(None, return_ty, None, LocalKind::Temp)?;
 
     let dest_block_idx = func.last_block_idx() + 1;
 
@@ -124,10 +128,7 @@ fn lower_call(
         args: arg_values,
         span: Some(span),
         return_dest: Value::InMemory(local_idx),
-        return_ty: match func_prototype.return_ty {
-            Some(ty) => lower_ast_type(func, &ty)?,
-            None => MathicType::Void,
-        },
+        return_ty,
         dest_block: dest_block_idx,
     };
 

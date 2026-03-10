@@ -12,10 +12,13 @@ use crate::{
             types::{MathicType, SintTy, UintTy, lower_ast_type},
         },
     },
-    parser::ast::{
-        Program,
-        declaration::{AstType, DeclStmt, FuncDecl, StructDecl, TopLevelItem},
-        statement::StmtKind,
+    parser::{
+        Span,
+        ast::{
+            Program,
+            declaration::{AstType, DeclStmt, FuncDecl, StructDecl, TopLevelItem},
+            statement::StmtKind,
+        },
     },
 };
 use ir::Ir;
@@ -73,7 +76,7 @@ fn lower_top_level_function(
         FunctionBuilder::new(name.clone(), params, MathicType::Void, ir_builder, *span)?;
 
     let return_ty = match return_ty {
-        Some(ty) => lower_ast_type(&mut temporary_func_builder, ty)?,
+        Some(ty) => lower_ast_type(&mut temporary_func_builder, ty, *span)?,
         None => MathicType::Void,
     };
 
@@ -117,8 +120,8 @@ fn lower_top_level_struct(
     for field in fields {
         adt.fields.push(StructField {
             name: field.name.clone(),
-            ty: lower_top_level_ast_type(ir_builder, &field.ty)?,
-            is_pub: field.is_pub,
+            ty: lower_top_level_ast_type(ir_builder, &field.ty, field.span)?,
+            _is_pub: field.is_pub,
         });
     }
 
@@ -130,6 +133,7 @@ fn lower_top_level_struct(
 pub fn lower_top_level_ast_type(
     ir_builder: &mut IrBuilder,
     ty: &AstType,
+    span: Span,
 ) -> Result<MathicType, LoweringError> {
     Ok(match ty {
         AstType::Type(name) => match name.as_str() {
@@ -155,7 +159,12 @@ pub fn lower_top_level_ast_type(
                     Some(d) => MathicType::Adt {
                         index: lower_top_level_struct(ir_builder, &d)?,
                     },
-                    None => todo!(),
+                    None => {
+                        return Err(LoweringError::UndeclaredType {
+                            name: other.to_string(),
+                            span,
+                        });
+                    }
                 }
             }
         },

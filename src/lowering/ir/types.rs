@@ -9,7 +9,7 @@ use melior::{
 use crate::{
     diagnostics::LoweringError,
     lowering::{ast_lowering::declaration::lower_inner_struct, ir::function::FunctionBuilder},
-    parser::ast::declaration::AstType,
+    parser::{Span, ast::declaration::AstType},
 };
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
@@ -51,6 +51,7 @@ pub enum MathicType {
 pub fn lower_ast_type(
     func_builder: &mut FunctionBuilder,
     ty: &AstType,
+    span: Span,
 ) -> Result<MathicType, LoweringError> {
     Ok(match ty {
         AstType::Type(name) => match name.as_str() {
@@ -86,7 +87,10 @@ pub fn lower_ast_type(
                             index: lower_inner_struct(func_builder, &d)?,
                         },
                         None => {
-                            todo!()
+                            return Err(LoweringError::UndeclaredType {
+                                name: other.to_string(),
+                                span,
+                            });
                         }
                     },
                 }
@@ -234,7 +238,7 @@ impl fmt::Display for MathicType {
             MathicType::Str => write!(f, "str"),
             MathicType::Char => write!(f, "char"),
             MathicType::Void => write!(f, "void"),
-            MathicType::Adt { .. } => todo!(),
+            MathicType::Adt { index } => write!(f, "Adt({index})"),
         }
     }
 }

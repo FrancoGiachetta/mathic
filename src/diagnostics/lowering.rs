@@ -13,6 +13,9 @@ pub enum LoweringError {
     #[error("Undeclared function '{name}'")]
     UndeclaredFunction { name: String, span: Span },
 
+    #[error("Undeclared type '{name}'")]
+    UndeclaredType { name: String, span: Span },
+
     #[error("Duplicate declaration of '{name}'")]
     DuplicateDeclaration { name: String, span: Span },
 
@@ -75,6 +78,9 @@ pub fn format_lowering_error<'err>(
             "declare the function before calling it".to_string(),
             span,
         ),
+        LoweringError::UndeclaredType { span, .. } => {
+            ("S005", "declare it using it".to_string(), span)
+        }
         LoweringError::UnsupportedFeature { span, feature } => {
             ("S006", format!("{} is not yet implemented", feature), span)
         }
