@@ -105,7 +105,7 @@ euler <path-to-file>.mth
 
 ## 📖 Current Status
 
- ⚠️ This project is in early development. Features are being added incrementally.
+ ⚠️ This project is in early development. Features are being added incrementally. Due to this, you are welcome to test it and create issues.
 
 For more details, see the [docs](./docs/README.md).
 
