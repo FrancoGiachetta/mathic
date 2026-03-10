@@ -11,24 +11,7 @@ impl<'a> MathicParser<'a> {
     pub fn parse_type(&self) -> ParserResult<AstType> {
         let ident = self.consume_token(Token::Ident)?;
 
-        let ty = match ident.lexeme {
-            "i8" => AstType::I8,
-            "i16" => AstType::I16,
-            "i32" => AstType::I32,
-            "i64" => AstType::I64,
-            "i128" => AstType::I128,
-            "u8" => AstType::U8,
-            "u16" => AstType::U16,
-            "u32" => AstType::U32,
-            "u64" => AstType::U64,
-            "u128" => AstType::U128,
-            "f32" => AstType::F32,
-            "f64" => AstType::F64,
-            "bool" => AstType::Bool,
-            "str" => AstType::Str,
-            "char" => AstType::Char,
-            _ => todo!("user-defined types not yet supported: {}", ident.lexeme),
-        };
+        let ty = AstType::Type(ident.lexeme.to_string());
 
         Ok(ty)
     }
@@ -52,9 +35,9 @@ impl<'a> MathicParser<'a> {
         self.consume_token(Token::RParen)?;
 
         let return_ty = if self.check_next(Token::Ident)? {
-            self.parse_type()?
+            Some(self.parse_type()?)
         } else {
-            AstType::Void
+            None
         };
 
         let BlockStmt { stmts, .. } = self.parse_block()?;
@@ -85,11 +68,7 @@ impl<'a> MathicParser<'a> {
 
         self.consume_token(Token::Semicolon)?;
 
-        Ok(VarDecl {
-            name,
-            ty: ty.into(),
-            expr,
-        })
+        Ok(VarDecl { name, ty, expr })
     }
 
     pub fn parse_struct(&self) -> ParserResult<StructDecl> {

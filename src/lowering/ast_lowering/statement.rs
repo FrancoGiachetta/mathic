@@ -1,8 +1,11 @@
 use crate::{
     diagnostics::LoweringError,
-    lowering::ir::{
-        basic_block::{BlockId, Terminator},
-        function::FunctionBuilder,
+    lowering::{
+        ast_lowering::declaration::lower_inner_struct,
+        ir::{
+            basic_block::{BlockId, Terminator},
+            function::FunctionBuilder,
+        },
     },
     parser::{
         Span,
@@ -71,11 +74,8 @@ fn lower_declaration(
         DeclStmt::Var(var_decl) => {
             lower_var_declaration(func, var_decl, *span)?;
         }
-        DeclStmt::Struct(_struct_decl) => {
-            return Err(LoweringError::UnsupportedFeature {
-                feature: "struct declarations".to_string(),
-                span: *span,
-            });
+        DeclStmt::Struct(struct_decl) => {
+            let _ = lower_inner_struct(func, struct_decl)?;
         }
         DeclStmt::Func(func_decl) => lower_inner_function(func, func_decl, *span)?,
     }

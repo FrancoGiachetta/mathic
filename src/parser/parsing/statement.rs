@@ -46,7 +46,13 @@ impl<'a> MathicParser<'a> {
                 let span = Span::from_merged_spans(start_span, var.expr.span);
                 (StmtKind::Decl(DeclStmt::Var(var)), span)
             }
-            Token::Struct | Token::Sym => {
+            Token::Struct => {
+                let struct_decl = self.parse_struct()?;
+                let span = Span::from_merged_spans(start_span, self.current_span());
+                (StmtKind::Decl(DeclStmt::Struct(struct_decl)), span)
+            }
+
+            Token::Sym => {
                 todo!()
             }
             Token::Return => {

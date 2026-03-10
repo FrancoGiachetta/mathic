@@ -4,7 +4,7 @@ use crate::{
         basic_block::Terminator,
         function::{FunctionBuilder, LocalKind},
         instruction::{LValInstruct, RValInstruct, RValueKind},
-        types::{FloatTy, MathicType, SintTy, UintTy},
+        types::{FloatTy, MathicType, SintTy, UintTy, lower_ast_type},
         value::{ConstExpr, NumericConst, Value},
     },
     parser::{
@@ -46,7 +46,7 @@ fn lower_assignment(
     expr: &ExprStmt,
     span: Span,
 ) -> Result<RValInstruct, LoweringError> {
-    let local = func.get_local_from_name(name, span)?;
+    let local = func.sym_table.get_local_from_name(name, span)?;
     let (value, ty) = lower_expr(func, expr, Some(local.ty))?;
 
     // The new value should be of the same type as the local's.
@@ -94,7 +94,7 @@ fn lower_call(
     }
 
     for (arg, param) in func_args.iter().zip(func_prototype.params.iter()) {
-        let param_ty: MathicType = (&param.ty).into();
+        let param_ty: MathicType = lower_ast_type(func, &param.ty)?;
         let (arg_val, arg_ty) = lower_expr(func, arg, Some(param_ty))?;
 
         if arg_ty != param_ty {
@@ -113,7 +113,9 @@ fn lower_call(
     // not RValue instructions, we need to create a temporary local to store
     // the return value and then create the RValue instruction pointing to that
     // new local.
-    let local_idx = func.add_local(None, MathicType::Sint(SintTy::I64), None, LocalKind::Temp)?;
+    let local_idx =
+        func.sym_table
+            .add_local(None, MathicType::Sint(SintTy::I64), None, LocalKind::Temp)?;
 
     let dest_block_idx = func.last_block_idx() + 1;
 
@@ -122,7 +124,10 @@ fn lower_call(
         args: arg_values,
         span: Some(span),
         return_dest: Value::InMemory(local_idx),
-        return_ty: (&func_prototype.return_ty).into(),
+        return_ty: match func_prototype.return_ty {
+            Some(ty) => lower_ast_type(func, &ty)?,
+            None => MathicType::Void,
+        },
         dest_block: dest_block_idx,
     };
 
@@ -235,7 +240,7 @@ fn lower_primary_value(
 ) -> Result<RValInstruct, LoweringError> {
     let (value, ty) = match expr {
         PrimaryExpr::Ident(name) => {
-            let local = func.get_local_from_name(name, span)?;
+            let local = func.sym_table.get_local_from_name(name, span)?;
             (Value::InMemory(local.local_idx), local.ty)
         }
         PrimaryExpr::Num(n) => match ty_hint {
@@ -283,7 +288,11 @@ fn lower_primary_value(
                             ConstExpr::Numeric(NumericConst::F64(n.parse::<f64>().unwrap()))
                         }
                     },
-                    MathicType::Bool | MathicType::Void | MathicType::Char | MathicType::Str => {
+                    MathicType::Bool
+                    | MathicType::Void
+                    | MathicType::Char
+                    | MathicType::Str
+                    | MathicType::Adt { .. } => {
                         unreachable!()
                     }
                 }),
@@ -323,7 +332,7 @@ fn lower_expression_type(
 ) -> Result<MathicType, LoweringError> {
     Ok(match expr {
         ExprStmtKind::Primary(primary_expr) => match primary_expr {
-            PrimaryExpr::Ident(name) => func.get_local_from_name(name, span)?.ty,
+            PrimaryExpr::Ident(name) => func.sym_table.get_local_from_name(name, span)?.ty,
             PrimaryExpr::Num(_) => match ty_hint {
                 Some(ty) => ty,
                 None => MathicType::Sint(SintTy::I32),

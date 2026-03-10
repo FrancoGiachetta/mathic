@@ -124,7 +124,7 @@ pub fn lower_for(
     let (start_val, start_ty) = expression::lower_expr(func, start, None)?;
     let (end_val, _) = expression::lower_expr(func, end, None)?;
 
-    let loop_tracker_idx = func.add_local(
+    let loop_tracker_idx = func.sym_table.add_local(
         Some(variable.clone()),
         start_ty,
         Some(span),

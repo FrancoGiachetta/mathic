@@ -3,14 +3,16 @@ use crate::{
     lowering::{
         ast_lowering::{expression, statement},
         ir::{
+            adts::{Adt, StructAdt, StructField},
             function::{FunctionBuilder, LocalKind},
             instruction::LValInstruct,
+            types::{MathicType, lower_ast_type},
         },
     },
     parser::{
         Span,
         ast::{
-            declaration::{DeclStmt, FuncDecl, VarDecl},
+            declaration::{DeclStmt, FuncDecl, StructDecl, VarDecl},
             statement::StmtKind,
         },
     },
@@ -26,18 +28,20 @@ pub fn lower_var_declaration(
         expr,
         ty: var_ty,
     } = stmt;
+    let var_ty = lower_ast_type(func, var_ty)?;
+    let (init, expr_ty) = expression::lower_expr(func, expr, Some(var_ty))?;
 
-    let (init, expr_ty) = expression::lower_expr(func, expr, Some(*var_ty))?;
-
-    if expr_ty != *var_ty {
+    if expr_ty != var_ty {
         return Err(LoweringError::MismatchedType {
-            expected: *var_ty,
+            expected: var_ty,
             found: expr_ty,
             span,
         });
     }
 
-    let local_idx = func.add_local(Some(name.clone()), *var_ty, Some(span), LocalKind::Temp)?;
+    let local_idx =
+        func.sym_table
+            .add_local(Some(name.clone()), var_ty, Some(span), LocalKind::Temp)?;
 
     func.push_instruction(LValInstruct::Let {
         local_idx,
@@ -46,6 +50,33 @@ pub fn lower_var_declaration(
     });
 
     Ok(())
+}
+
+pub fn lower_inner_struct(
+    func_builder: &mut FunctionBuilder,
+    struct_decl: &StructDecl,
+) -> Result<usize, LoweringError> {
+    let StructDecl { name, fields, span } = struct_decl;
+
+    let mut adt = StructAdt {
+        name: name.clone(),
+        fields: Vec::new(),
+        span: *span,
+    };
+
+    for field in fields {
+        adt.fields.push(StructField {
+            name: field.name.clone(),
+            ty: lower_ast_type(func_builder, &field.ty)?,
+            is_pub: field.is_pub,
+        });
+    }
+
+    let idx = func_builder
+        .sym_table
+        .add_adt(name.clone(), Adt::Struct(adt));
+
+    Ok(idx)
 }
 
 pub fn lower_inner_function(
@@ -64,20 +95,23 @@ pub fn lower_inner_function(
     let mut inner_func = FunctionBuilder::new(
         name.clone(),
         params,
-        return_ty.into(),
+        match return_ty {
+            Some(ty) => lower_ast_type(func, ty)?,
+            None => MathicType::Void,
+        },
         func.ir_builder,
         span,
-    );
+    )?;
 
     // Save function's declaration. This for on-demand lowering, allowing
     // to reference function no yet declared. For example, a function call
     // of a not yet declared function.
     for stmt in body.iter() {
-        if let StmtKind::Decl(DeclStmt::Func(f)) = &stmt.kind {
-            inner_func.add_func_decl(f.clone());
+        match &stmt.kind {
+            StmtKind::Decl(DeclStmt::Func(f)) => inner_func.decl_table.add_func_decl(f.clone()),
+            StmtKind::Decl(DeclStmt::Struct(f)) => inner_func.decl_table.add_struct_decl(f.clone()),
+            _ => {}
         }
-
-        // FUTURE: do the same for structs, enums, etc
     }
 
     for stmt in body.iter() {
@@ -86,7 +120,7 @@ pub fn lower_inner_function(
 
     let inner_func = inner_func.build();
 
-    func.add_function(inner_func);
+    func.sym_table.add_function(inner_func);
 
     Ok(())
 }
