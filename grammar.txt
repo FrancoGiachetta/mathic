@@ -14,52 +14,53 @@
 
 ==== DECLARATIONS ====
 
-<declaration> := <func_decl>
-               | <struct_decl>
-               | <var_decl>
-               | <sym_decl>
+<declaration>  := <func_decl>
+                | <struct_decl>
+                | <var_decl>
+                | <sym_decl>
 
-<func_decl>   := "df" <ident> "(" <params>? ")" <type>? <block>
-<struct_decl> := "struct" <ident> "{" <struct_fields>? "}"
-<var_decl>    := "let" <ident> ":" <type> "=" <expr> ";"
-<sym_decl>    := "sym" <ident> "=" <ident> ";"
+<func_decl>    := "df" <ident> "(" <params>? ")" <type>? <block>
+<struct_decl>  := "struct" <ident> "{" <struct_fields>? "}"
+<var_decl>     := "let" <ident> ":" <type> "=" <expr> ";"
+<sym_decl>     := "sym" <ident> "=" <ident> ";"
 
 ==== CONTROL FLOW ====
 
-<for_stmt>    := "for" <ident> "in" <expr> ".." <expr> <block>
-               | "for" <ident> "in" <expr> <block>
-<while_stmt>  := "while" <expr> <block>
-<if_stmt>     := "if" <expr> <block> ("else" <block>)?
-<return_stmt> := "return" <expr> ";"
-<block>       := "{" <statement>* "}"
+<for_stmt>   := "for" <ident> "in" <expr> ".." <expr> <block>
+             | "for" <ident> "in" <expr> <block>
+<while_stmt> := "while" <expr> <block>
+<if_stmt>    := "if" <expr> <block> ("else" <block>)?
+<return_stmt>:= "return" <expr> ";"
+<block>      := "{" <statement>* "}"
 <expr_stmt>  := <expr> ";"
 
 ==== EXPRESSIONS ====
 
-<expr>       := <assignment>
-<assignment> := <ident> "=" <logic_or> | <logic_or>
-<logic_or>   := <logic_and> ("or" <logic_and>)*
-<logic_and>  := <equality> ("and" <equality>)*
-<equality>   := <inequality> (("==" | "!=") <inequality>)*
-<inequality> := <term> ((">" | ">=" | "<" | "<=") <term>)*
-<term>       := <factor> (("+" | "-") <factor>)*
-<factor>     := <unary> (("*" | "/") <unary>)*
-<unary>      := ("!" | "-") <unary> | <call>
-<call>       := <primary> ("(" <args>? ")" | "[" <expr> "]")*
-<primary>    := "true" | "false" | <ident> | <num> | <str> | "(" <expr> ")"
+<expr>        := <assignment>
+<assignment>  := <ident> "=" <logic_or> | <logic_or>
+<logic_or>    := <logic_and> ("or" <logic_and>)*
+<logic_and>   := <equality> ("and" <equality>)*
+<equality>    := <inequality> (("==" | "!=") <inequality>)*
+<inequality>  := <term> ((">" | ">=" | "<" | "<=") <term>)*
+<term>        := <factor> (("+" | "-") <factor>)*
+<factor>      := <unary> (("*" | "/") <unary>)*
+<unary>       := ("!" | "-") <unary> | <primary_suffix>
+<primary_suffix> := <primary> (<ident_op> | <struct_init>)?
+<ident_op>    := ("(" <args>? ")" | "[" <expr> "]" | "." <ident>)*
+<struct_init> := "{" <ident> ":" <expr> ("," <ident> ":" <expr>)* "}"
+<primary>     := "true" | "false" | <ident> | <num> | <str> | "(" <expr> ")"
 
 ==== TERMINALS ====
 
 <ident> := <alpha> (<alpha> | <digit> | "_")*
-<type> := <ident>
+<type>  := <ident>
 <str>   := \" [^"]* \"
 <num>   := "0" | [1-9] <digit>+ ("." <digit>+)?
 
 ==== UTILITIES ====
 
-<alpha>  := [a-zA-Z]
-<digit>  := [0-9]
-<params> := <ident> ":" <type> ("," <ident> ":" <type>)*
-<struct_fields> := ("pub")? <ident> ":" <type> ("," ("pub")? <ident> ":" <type>)*
-<args>   := <expr> ("," <expr>)*
-
+<alpha> := [a-zA-Z]
+<digit> := [0-9]
+<params>          := <ident> ":" <type> ("," <ident> ":" <type>)*
+<struct_fields>   := ("pub")? <ident> ":" <type> ("," ("pub")? <ident> ":" <type>)*
+<args>            := <expr> ("," <expr>)*

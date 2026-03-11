@@ -116,6 +116,10 @@ impl SymbolTable {
         index
     }
 
+    pub fn get_user_def_type(&self, name: &str) -> Option<MathicType> {
+        self.user_def_types.get(name).copied()
+    }
+
     pub fn get_local_from_name(&self, name: &str, span: Span) -> Result<Local, LoweringError> {
         let local_idx =
             self.local_indexes
@@ -193,6 +197,40 @@ impl<'ir> FunctionBuilder<'ir> {
                 }),
             },
         }
+    }
+
+    pub fn get_user_def_type(&self, name: &str, span: Span) -> Result<MathicType, LoweringError> {
+        if let Some(ty) = self.sym_table.get_user_def_type(name) {
+            return Ok(ty);
+        }
+        if let Some(ty) = self.ir_builder.get_user_def_type(name) {
+            return Ok(ty);
+        }
+
+        Err(LoweringError::UndeclaredType {
+            name: name.to_string(),
+            span,
+        })
+    }
+
+    pub fn get_adt_body(&self, name: &str, span: Span) -> Result<&Adt, LoweringError> {
+        if let Some(ty) = self.sym_table.get_user_def_type(name) {
+            let MathicType::Adt { index } = ty else {
+                unimplemented!()
+            };
+            return Ok(&self.sym_table.adts[index]);
+        }
+        if let Some(ty) = self.ir_builder.get_user_def_type(name) {
+            let MathicType::Adt { index } = ty else {
+                unimplemented!()
+            };
+            return Ok(&self.ir_builder.adts[index]);
+        }
+
+        Err(LoweringError::UndeclaredType {
+            name: name.to_string(),
+            span,
+        })
     }
 
     pub fn add_block(&mut self, terminator: Terminator, span: Option<Span>) -> BlockId {

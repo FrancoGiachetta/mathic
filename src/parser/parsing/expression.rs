@@ -1,4 +1,7 @@
+use std::collections::HashMap;
+
 use crate::diagnostics::parse::{ExpectedToken, ParseError, SyntaxError};
+use crate::parser::lexer::SpannedToken;
 use crate::parser::{
     MathicParser, ParserResult, Span,
     ast::expression::{
@@ -244,49 +247,86 @@ impl<'a> MathicParser<'a> {
             });
         }
 
-        self.parse_call()
+        self.parse_ident_op()
     }
 
-    fn parse_call(&self) -> ParserResult<ExprStmt> {
+    fn parse_ident_op(&self) -> ParserResult<ExprStmt> {
+        let Some(ident_lookahead) = self.peek()? else {
+            return Err(ParseError::Syntax(SyntaxError::UnexpectedEnd {
+                span: self.current_span(),
+            }));
+        };
+        let expr = self.parse_primary_expr()?;
+
         let Some(lookahead) = self.peek()? else {
             return Err(ParseError::Syntax(SyntaxError::UnexpectedEnd {
                 span: self.current_span(),
             }));
         };
-        let mut expr = self.parse_primary_expr()?;
 
-        while self.match_token(Token::LParen)?.is_some() {
-            let args = if self.check_next(Token::RParen)? {
-                Vec::new()
-            } else {
-                let mut args = Vec::new();
-                args.push(self.parse_expr()?);
+        match lookahead.token {
+            Token::LParen => self.parse_call(&expr, ident_lookahead),
+            Token::LSquareBracket => todo!(),
+            Token::LBrace => self.parse_struct_init(&expr, ident_lookahead),
+            _ => Ok(expr),
+        }
+    }
 
-                while self.match_token(Token::Comma)?.is_some() {
-                    args.push(self.parse_expr()?);
-                }
+    fn parse_struct_init(
+        &self,
+        expr: &ExprStmt,
+        lookahead: SpannedToken,
+    ) -> ParserResult<ExprStmt> {
+        self.next()?; // consume LBrace.
 
-                args
-            };
+        let fields = self.parse_struct_init_fields()?;
 
-            self.consume_token(Token::RParen)?;
+        self.consume_token(Token::RBrace)?;
 
-            let span = Span::from_merged_spans(expr.span, self.current_span());
+        let span = Span::from_merged_spans(expr.span, self.current_span());
 
-            if let ExprStmtKind::Primary(PrimaryExpr::Ident(callee)) = expr.kind {
-                expr = ExprStmt {
-                    kind: ExprStmtKind::Call { callee, args },
-                    span,
-                };
-            } else {
+        let expr = if let ExprStmtKind::Primary(PrimaryExpr::Ident(name)) = &expr.kind {
+            ExprStmt {
+                kind: ExprStmtKind::StructInit {
+                    name: name.to_string(),
+                    fields,
+                },
+                span,
+            }
+        } else {
+            return Err(ParseError::Syntax(SyntaxError::UnexpectedToken {
+                found: lookahead.into(),
+                expected: ExpectedToken::Identifier,
+            }));
+        };
+
+        Ok(expr)
+    }
+
+    fn parse_call(&self, expr: &ExprStmt, lookahead: SpannedToken) -> ParserResult<ExprStmt> {
+        self.next()?; // consume LParen.
+
+        let args = self.parse_call_args()?;
+
+        self.consume_token(Token::RParen)?;
+
+        let span = Span::from_merged_spans(expr.span, self.current_span());
+
+        Ok(match &expr.kind {
+            ExprStmtKind::Primary(PrimaryExpr::Ident(callee)) => ExprStmt {
+                kind: ExprStmtKind::Call {
+                    callee: callee.to_string(),
+                    args,
+                },
+                span,
+            },
+            _ => {
                 return Err(ParseError::Syntax(SyntaxError::UnexpectedToken {
                     found: lookahead.into(),
                     expected: ExpectedToken::Identifier,
                 }));
             }
-        }
-
-        Ok(expr)
+        })
     }
 
     fn parse_primary_expr(&self) -> ParserResult<ExprStmt> {
@@ -318,5 +358,39 @@ impl<'a> MathicParser<'a> {
         };
 
         Ok(ExprStmt { kind, span })
+    }
+
+    fn parse_struct_init_fields(&self) -> ParserResult<HashMap<String, ExprStmt>> {
+        let field_name = self.consume_token(Token::Ident)?;
+
+        self.consume_token(Token::Colon)?;
+
+        let field_expr = self.parse_expr()?;
+
+        let mut fields = HashMap::from([(field_name.lexeme.to_string(), field_expr)]);
+
+        while self.match_token(Token::Comma)?.is_some() {
+            let field_name = self.consume_token(Token::Ident)?;
+
+            self.consume_token(Token::Colon)?;
+
+            fields.insert(field_name.lexeme.to_string(), self.parse_expr()?);
+        }
+
+        Ok(fields)
+    }
+
+    fn parse_call_args(&self) -> ParserResult<Vec<ExprStmt>> {
+        Ok(if self.check_next(Token::RParen)? {
+            Vec::with_capacity(0)
+        } else {
+            let mut args = vec![self.parse_expr()?];
+
+            while self.match_token(Token::Comma)?.is_some() {
+                args.push(self.parse_expr()?);
+            }
+
+            args
+        })
     }
 }

@@ -32,6 +32,7 @@ pub enum RValueKind {
         value: Value,
         span: Option<Span>,
     },
+    Init(InitInstruc),
     Binary {
         op: BinaryOp,
         lhs: Box<RValInstruct>,
@@ -49,6 +50,11 @@ pub enum RValueKind {
         rhs: Box<RValInstruct>,
         span: Span,
     },
+}
+
+#[derive(Debug, Clone)]
+pub enum InitInstruc {
+    StructInit { fields: Vec<RValInstruct> },
 }
 
 /// MATHIR's representation of RValue instruction.
@@ -105,6 +111,15 @@ impl Display for RValueKind {
     fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
         match self {
             Self::Use { value, .. } => write!(f, "{}", value),
+            Self::Init(InitInstruc::StructInit { fields, .. }) => {
+                writeln!(f, "struct {{")?;
+
+                for (i, field) in fields.iter().enumerate() {
+                    writeln!(f, "    %{i}: {}", field)?;
+                }
+
+                writeln!(f, "    }}")
+            }
             Self::Binary { op, lhs, rhs, .. } => write!(f, "{} {} {}", lhs, op, rhs),
             Self::Unary { op, rhs, .. } => write!(f, "{}{}", op, rhs),
             Self::Logical { op, lhs, rhs, .. } => write!(f, "{} {} {}", lhs, op, rhs),

@@ -39,6 +39,7 @@ impl MathicCodeGen<'_> {
             RValueKind::Logical {
                 op, lhs, rhs, span, ..
             } => self.compile_logical(fn_ctx, block, lhs, *op, rhs, *span, helper),
+            RValueKind::Init(_) => todo!(),
         }
     }
 

@@ -19,7 +19,7 @@ pub enum LoweringError {
     #[error("Duplicate declaration of '{name}'")]
     DuplicateDeclaration { name: String, span: Span },
 
-    #[error("Function '{name}' called with {got} arguments, expected {expected}")]
+    #[error("Function '{name}' called with the wrong amount of arguments")]
     WrongArgumentCount {
         name: String,
         expected: usize,
@@ -30,19 +30,25 @@ pub enum LoweringError {
     #[error("Unsupported feature: {feature}")]
     UnsupportedFeature { feature: String, span: Span },
 
-    #[error("Mismatched type: expected {expected}, found {found}")]
+    #[error("Mismatched type")]
     MismatchedType {
         expected: MathicType,
         found: MathicType,
         span: Span,
     },
 
-    #[error("Mismatched return type: expected {expected}, found {found}")]
+    #[error("Mismatched return type")]
     MismatchedReturnType {
         expected: MathicType,
         found: MathicType,
         span: Span,
     },
+
+    #[error("The struct declaration does to have such field: {found}")]
+    UndeclaredStructField { found: String, span: Span },
+
+    #[error("the struct initialization is missing some fields")]
+    MissingStructFields { missing: String, span: Span },
 }
 
 pub fn format_lowering_error<'err>(
@@ -63,16 +69,9 @@ pub fn format_lowering_error<'err>(
             format!("'{}' is already declared in this scope", name),
             span,
         ),
-        LoweringError::WrongArgumentCount {
-            name,
-            expected,
-            span,
-            ..
-        } => (
-            "S003",
-            format!("provide {} argument(s) to '{}'", expected, name),
-            span,
-        ),
+        LoweringError::WrongArgumentCount { expected, span, .. } => {
+            ("S003", format!("expected {} argument(s)", expected), span)
+        }
         LoweringError::UndeclaredFunction { span, .. } => (
             "S004",
             "declare the function before calling it".to_string(),
@@ -84,9 +83,11 @@ pub fn format_lowering_error<'err>(
         LoweringError::UnsupportedFeature { span, feature } => {
             ("S006", format!("{} is not yet implemented", feature), span)
         }
-        LoweringError::MismatchedType { span, .. } => {
-            ("S007", "types must match".to_string(), span)
-        }
+        LoweringError::MismatchedType {
+            span,
+            found,
+            expected,
+        } => ("S007", format!("expected: {expected}, got {found}"), span),
         LoweringError::MismatchedReturnType {
             expected,
             found,
@@ -97,6 +98,14 @@ pub fn format_lowering_error<'err>(
                 "function expects return type '{}', found '{}'",
                 expected, found
             ),
+            span,
+        ),
+        LoweringError::UndeclaredStructField { span, .. } => {
+            ("S009", format!("check struct declaration"), span)
+        }
+        LoweringError::MissingStructFields { missing, span } => (
+            "S010",
+            format!("initialize the missing fields: {missing}"),
             span,
         ),
     };

@@ -19,6 +19,32 @@ pub struct StructField {
     pub _is_pub: bool,
 }
 
+impl Adt {
+    pub fn fields_len(&self) -> usize {
+        match self {
+            Adt::Struct(s) => s.fields.len(),
+        }
+    }
+
+    pub fn get_field_names(&self) -> Vec<String> {
+        match self {
+            Adt::Struct(s) => s.fields.iter().map(|f| f.name.clone()).collect(),
+        }
+    }
+
+    pub fn get_field_index(&self, name: &str) -> Option<usize> {
+        match self {
+            Adt::Struct(s) => s.fields.iter().position(|f| f.name == name),
+        }
+    }
+
+    pub fn get_field_ty(&self, name: &str) -> Option<MathicType> {
+        match self {
+            Adt::Struct(s) => s.fields.iter().find(|f| f.name == name).map(|f| f.ty),
+        }
+    }
+}
+
 pub fn write_adt_ir<W: std::fmt::Write>(adt: &Adt, f: &mut W, indent: usize) -> std::fmt::Result {
     let indent_str = " ".repeat(indent);
 

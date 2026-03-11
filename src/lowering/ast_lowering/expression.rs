@@ -1,9 +1,11 @@
+use std::collections::HashMap;
+
 use crate::{
     diagnostics::LoweringError,
     lowering::ir::{
         basic_block::Terminator,
         function::{FunctionBuilder, LocalKind},
-        instruction::{LValInstruct, RValInstruct, RValueKind},
+        instruction::{InitInstruc, LValInstruct, RValInstruct, RValueKind},
         types::{FloatTy, MathicType, SintTy, UintTy, lower_ast_type},
         value::{ConstExpr, NumericConst, Value},
     },
@@ -31,6 +33,7 @@ pub fn lower_expr(
             expr: assign_expr,
         } => lower_assignment(func, name, assign_expr, expr.span)?,
         ExprStmtKind::Logical { lhs, op, rhs } => lower_logical_op(func, lhs, *op, rhs, expr.span)?,
+        ExprStmtKind::StructInit { name, fields } => lower_adt_init(func, name, fields, expr.span)?,
         ExprStmtKind::Index { .. } => todo!(),
     };
 
@@ -233,6 +236,63 @@ fn lower_unary_op(
     })
 }
 
+fn lower_adt_init(
+    func: &mut FunctionBuilder,
+    name: &str,
+    fields: &HashMap<String, ExprStmt>,
+    span: Span,
+) -> Result<RValInstruct, LoweringError> {
+    let adt_ty = func.get_user_def_type(name, span)?;
+    let adt_body = func.get_adt_body(name, span)?.clone();
+    let mut init_fields = Vec::with_capacity(fields.len());
+
+    if fields.len() != adt_body.fields_len() {
+        let adt_fields_names = adt_body.get_field_names();
+        let missing = adt_fields_names
+            .into_iter()
+            .filter(|n| fields.contains_key(n))
+            .collect::<Vec<_>>()
+            .join(", ");
+
+        return Err(LoweringError::MissingStructFields { missing, span });
+    }
+
+    for (name, expr) in fields {
+        let (rvalue, rvalue_ty) = lower_expr(func, expr, adt_body.get_field_ty(name))?;
+        let field_ty = adt_body
+            .get_field_ty(name)
+            .ok_or(LoweringError::UndeclaredStructField {
+                found: name.to_string(),
+                span,
+            })?;
+
+        if field_ty != rvalue_ty {
+            return Err(LoweringError::MismatchedType {
+                expected: field_ty,
+                found: rvalue_ty,
+                span,
+            });
+        }
+
+        let field_idx =
+            adt_body
+                .get_field_index(name)
+                .ok_or(LoweringError::UndeclaredStructField {
+                    found: name.to_string(),
+                    span,
+                })?;
+
+        init_fields.insert(field_idx, rvalue);
+    }
+
+    Ok(RValInstruct {
+        kind: RValueKind::Init(InitInstruc::StructInit {
+            fields: init_fields,
+        }),
+        ty: adt_ty,
+    })
+}
+
 fn lower_primary_value(
     func: &mut FunctionBuilder,
     expr: &PrimaryExpr,
@@ -352,5 +412,6 @@ fn lower_expression_type(
         ExprStmtKind::Logical { .. } => MathicType::Bool,
         ExprStmtKind::Unary { rhs, .. } => lower_expression_type(func, &rhs.kind, None, span)?,
         ExprStmtKind::Assign { expr, .. } => lower_expression_type(func, &expr.kind, None, span)?,
+        ExprStmtKind::StructInit { name, .. } => func.get_user_def_type(name, span)?,
     })
 }
