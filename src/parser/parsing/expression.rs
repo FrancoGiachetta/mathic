@@ -264,10 +264,17 @@ impl<'a> MathicParser<'a> {
             }));
         };
 
-        while let Some(t) =
-            self.match_any_token(&[Token::LParen, Token::LSquareBracket, Token::Dot])?
+        while ident_lookahead.token == Token::Ident
+            && self.check_any_next(&[
+                Token::LParen,
+                Token::LSquareBracket,
+                Token::LBrace,
+                Token::Dot,
+            ])?
         {
-            match t.token {
+            let next_tok = self.next()?;
+
+            match next_tok.token {
                 Token::LParen => {
                     expr = self.parse_call(&expr, lookahead)?;
                 }

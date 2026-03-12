@@ -173,4 +173,12 @@ impl<'a> MathicParser<'a> {
             false
         })
     }
+
+    fn check_any_next(&self, expected: &[Token]) -> ParserResult<bool> {
+        Ok(if let Ok(Some(res)) = self.peek() {
+            expected.iter().any(|t| t == &res.token)
+        } else {
+            false
+        })
+    }
 }
