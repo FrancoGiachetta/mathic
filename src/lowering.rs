@@ -9,7 +9,7 @@ use crate::{
             IrBuilder,
             adts::{Adt, StructAdt, StructField},
             function::FunctionBuilder,
-            types::{MathicType, SintTy, UintTy, lower_ast_type},
+            types::{MathicType, SintTy, UintTy, lower_inner_ast_type},
         },
     },
     parser::{
@@ -76,7 +76,7 @@ fn lower_top_level_function(
         FunctionBuilder::new(name.clone(), params, MathicType::Void, ir_builder, *span)?;
 
     let return_ty = match return_ty {
-        Some(ty) => lower_ast_type(&mut temporary_func_builder, ty, *span)?,
+        Some(ty) => lower_inner_ast_type(&mut temporary_func_builder, ty, *span)?,
         None => MathicType::Void,
     };
 
@@ -158,12 +158,10 @@ pub fn lower_top_level_ast_type(
                 match ir_builder.decl_table.get_struct_decl(other).cloned() {
                     Some(d) => MathicType::Adt {
                         index: lower_top_level_struct(ir_builder, &d)?,
+                        is_local: false,
                     },
                     None => {
-                        return Err(LoweringError::UndeclaredType {
-                            name: other.to_string(),
-                            span,
-                        });
+                        return Err(LoweringError::UndeclaredType { span });
                     }
                 }
             }

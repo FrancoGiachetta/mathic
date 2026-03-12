@@ -44,7 +44,7 @@ pub enum ExprStmtKind {
         expr: Box<ExprStmt>,
     },
     StructGet {
-        expr: Box<Self>,
+        expr: Box<ExprStmt>,
         field_name: String,
     },
 }

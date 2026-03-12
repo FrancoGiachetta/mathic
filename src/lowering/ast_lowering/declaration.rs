@@ -6,7 +6,7 @@ use crate::{
             adts::{Adt, StructAdt, StructField},
             function::{FunctionBuilder, LocalKind},
             instruction::LValInstruct,
-            types::{MathicType, lower_ast_type},
+            types::{MathicType, lower_inner_ast_type},
         },
     },
     parser::{
@@ -28,7 +28,7 @@ pub fn lower_var_declaration(
         expr,
         ty: var_ty,
     } = stmt;
-    let var_ty = lower_ast_type(func, var_ty, span)?;
+    let var_ty = lower_inner_ast_type(func, var_ty, span)?;
     let (init, expr_ty) = expression::lower_expr(func, expr, Some(var_ty))?;
 
     if expr_ty != var_ty {
@@ -67,7 +67,7 @@ pub fn lower_inner_struct(
     for field in fields {
         adt.fields.push(StructField {
             name: field.name.clone(),
-            ty: lower_ast_type(func_builder, &field.ty, field.span)?,
+            ty: lower_inner_ast_type(func_builder, &field.ty, field.span)?,
             _is_pub: field.is_pub,
         });
     }
@@ -96,7 +96,7 @@ pub fn lower_inner_function(
         name.clone(),
         params,
         match return_ty {
-            Some(ty) => lower_ast_type(func, ty, span)?,
+            Some(ty) => lower_inner_ast_type(func, ty, span)?,
             None => MathicType::Void,
         },
         func.ir_builder,

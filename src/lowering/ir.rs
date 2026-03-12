@@ -1,31 +1,19 @@
 use std::{collections::HashMap, fmt};
 
-use crate::{
-    lowering::ir::{
-        adts::{Adt, write_adt_ir},
-        function::{Function, write_function_ir},
-        types::MathicType,
-    },
-    parser::ast::declaration::{FuncDecl, StructDecl},
+use crate::lowering::ir::{
+    adts::{Adt, write_adt_ir},
+    function::{Function, write_function_ir},
+    symbols::DeclTable,
+    types::MathicType,
 };
 
 pub mod adts;
 pub mod basic_block;
 pub mod function;
 pub mod instruction;
+pub mod symbols;
 pub mod types;
 pub mod value;
-
-/// Declaration Table
-///
-/// Use to store function, struct and enum declarations to allow for
-/// forward referencing.
-#[derive(Debug, Clone, Default)]
-#[allow(dead_code)]
-pub struct DeclTable {
-    functions: HashMap<String, FuncDecl>,
-    structs: HashMap<String, StructDecl>,
-}
 
 /// Mathic's IR (MATHIR).
 #[derive(Debug, Default)]
@@ -42,24 +30,6 @@ pub struct IrBuilder {
     pub functions: HashMap<String, Function>,
     pub adts: Vec<Adt>,
     pub user_def_types: HashMap<String, MathicType>,
-}
-
-impl DeclTable {
-    pub fn add_func_decl(&mut self, func: FuncDecl) {
-        self.functions.insert(func.name.clone(), func);
-    }
-
-    pub fn add_struct_decl(&mut self, strct: StructDecl) {
-        self.structs.insert(strct.name.clone(), strct);
-    }
-
-    pub fn get_function_decl(&self, name: &str) -> Option<&FuncDecl> {
-        self.functions.get(name)
-    }
-
-    pub fn get_struct_decl(&self, name: &str) -> Option<&StructDecl> {
-        self.structs.get(name)
-    }
 }
 
 impl IrBuilder {
@@ -79,7 +49,13 @@ impl IrBuilder {
     pub fn add_adt(&mut self, name: String, adt: Adt) -> usize {
         let index = self.adts.len();
 
-        self.user_def_types.insert(name, MathicType::Adt { index });
+        self.user_def_types.insert(
+            name,
+            MathicType::Adt {
+                index,
+                is_local: false,
+            },
+        );
         self.adts.push(adt);
 
         index

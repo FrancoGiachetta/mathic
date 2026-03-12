@@ -13,8 +13,8 @@ pub enum LoweringError {
     #[error("Undeclared function '{name}'")]
     UndeclaredFunction { name: String, span: Span },
 
-    #[error("Undeclared type '{name}'")]
-    UndeclaredType { name: String, span: Span },
+    #[error("Undeclared type")]
+    UndeclaredType { span: Span },
 
     #[error("Duplicate declaration of '{name}'")]
     DuplicateDeclaration { name: String, span: Span },

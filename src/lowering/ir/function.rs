@@ -1,5 +1,3 @@
-use std::collections::HashMap;
-
 use super::basic_block::{BasicBlock, BlockId, write_block_ir};
 use crate::{
     diagnostics::LoweringError,
@@ -8,7 +6,8 @@ use crate::{
         adts::{Adt, write_adt_ir},
         basic_block::Terminator,
         instruction::LValInstruct,
-        types::{MathicType, lower_ast_type},
+        symbols::SymbolTable,
+        types::{MathicType, lower_inner_ast_type},
     },
     parser::{
         Span,
@@ -56,84 +55,6 @@ pub struct Local {
     pub debug_name: Option<String>,
 }
 
-/// Symbol Table.
-///
-/// Stores locals and function declared within the function's context.
-#[derive(Debug, Clone, Default)]
-pub struct SymbolTable {
-    pub locals: Vec<Local>,
-    pub local_indexes: HashMap<String, usize>,
-    pub functions: HashMap<String, Function>,
-    pub adts: Vec<Adt>,
-    pub user_def_types: HashMap<String, MathicType>,
-}
-
-impl SymbolTable {
-    /// Adds a user-defined local.
-    pub fn add_local(
-        &mut self,
-        debug_name: Option<String>,
-        ty: MathicType,
-        span: Option<Span>,
-        kind: LocalKind,
-    ) -> Result<usize, LoweringError> {
-        if let Some(name) = &debug_name
-            && self.local_indexes.contains_key(name)
-        {
-            return Err(LoweringError::DuplicateDeclaration {
-                name: name.clone(),
-                span: span.unwrap(),
-            });
-        }
-
-        let idx = self.locals.len();
-
-        self.locals.push(Local {
-            local_idx: idx,
-            kind,
-            ty,
-            debug_name: debug_name.clone(),
-        });
-
-        if let Some(name) = debug_name {
-            self.local_indexes.insert(name, idx);
-        }
-
-        Ok(idx)
-    }
-
-    pub fn add_function(&mut self, func: Function) {
-        self.functions.insert(func.name.clone(), func);
-    }
-
-    pub fn add_adt(&mut self, name: String, adt: Adt) -> usize {
-        let index = self.adts.len();
-
-        self.user_def_types.insert(name, MathicType::Adt { index });
-
-        self.adts.push(adt);
-
-        index
-    }
-
-    pub fn get_user_def_type(&self, name: &str) -> Option<MathicType> {
-        self.user_def_types.get(name).copied()
-    }
-
-    pub fn get_local_from_name(&self, name: &str, span: Span) -> Result<Local, LoweringError> {
-        let local_idx =
-            self.local_indexes
-                .get(name)
-                .copied()
-                .ok_or(LoweringError::UndeclaredVariable {
-                    name: name.to_string(),
-                    span,
-                })?;
-
-        Ok(self.locals[local_idx].clone())
-    }
-}
-
 impl<'ir> FunctionBuilder<'ir> {
     /// Create a new function
     pub fn new(
@@ -155,7 +76,8 @@ impl<'ir> FunctionBuilder<'ir> {
         };
 
         for (param_idx, param) in params.iter().enumerate() {
-            let param_ty: MathicType = lower_ast_type(&mut func_builder, &param.ty, param.span)?;
+            let param_ty: MathicType =
+                lower_inner_ast_type(&mut func_builder, &param.ty, param.span)?;
 
             func_builder.params_tys.push(param_ty);
 
@@ -207,30 +129,21 @@ impl<'ir> FunctionBuilder<'ir> {
             return Ok(ty);
         }
 
-        Err(LoweringError::UndeclaredType {
-            name: name.to_string(),
-            span,
-        })
+        Err(LoweringError::UndeclaredType { span })
     }
 
-    pub fn get_adt_body(&self, name: &str, span: Span) -> Result<&Adt, LoweringError> {
-        if let Some(ty) = self.sym_table.get_user_def_type(name) {
-            let MathicType::Adt { index } = ty else {
-                unimplemented!()
-            };
-            return Ok(&self.sym_table.adts[index]);
-        }
-        if let Some(ty) = self.ir_builder.get_user_def_type(name) {
-            let MathicType::Adt { index } = ty else {
-                unimplemented!()
-            };
-            return Ok(&self.ir_builder.adts[index]);
-        }
+    pub fn get_adt_body(&self, adt_ty: MathicType, span: Span) -> Result<&Adt, LoweringError> {
+        let MathicType::Adt { index, is_local } = adt_ty else {
+            panic!()
+        };
 
-        Err(LoweringError::UndeclaredType {
-            name: name.to_string(),
-            span,
-        })
+        let adt = if is_local {
+            self.sym_table.adts.get(index)
+        } else {
+            self.ir_builder.adts.get(index)
+        };
+
+        adt.ok_or(LoweringError::UndeclaredType { span })
     }
 
     pub fn add_block(&mut self, terminator: Terminator, span: Option<Span>) -> BlockId {

@@ -6,7 +6,7 @@ use crate::{
         basic_block::Terminator,
         function::{FunctionBuilder, LocalKind},
         instruction::{InitInstruc, LValInstruct, RValInstruct, RValueKind},
-        types::{FloatTy, MathicType, SintTy, UintTy, lower_ast_type},
+        types::{FloatTy, MathicType, SintTy, UintTy, lower_inner_ast_type},
         value::{ConstExpr, NumericConst, Value},
     },
     parser::{
@@ -35,7 +35,24 @@ pub fn lower_expr(
         ExprStmtKind::Logical { lhs, op, rhs } => lower_logical_op(func, lhs, *op, rhs, expr.span)?,
         ExprStmtKind::StructInit { name, fields } => lower_adt_init(func, name, fields, expr.span)?,
         ExprStmtKind::Index { .. } => todo!(),
-        ExprStmtKind::StructGet { expr, field_name } => todo!(),
+        ExprStmtKind::StructGet { expr, field_name } => {
+            let (struct_expr, struct_ty) = lower_expr(func, expr, ty_hint)?;
+            let struct_adt = func
+                .get_adt_body(struct_ty, expr.span)?
+                .get_field_index(field_name)
+                .ok_or(LoweringError::UndeclaredStructField {
+                    found: field_name.to_string(),
+                    span: expr.span,
+                });
+
+            RValInstruct {
+                kind: RValueKind::Use {
+                    value: struct_expr,
+                    span: (),
+                },
+                ty: (),
+            }
+        }
     };
 
     Ok((
@@ -98,7 +115,7 @@ fn lower_call(
     }
 
     for (arg, param) in func_args.iter().zip(func_prototype.params.iter()) {
-        let param_ty: MathicType = lower_ast_type(func, &param.ty, param.span)?;
+        let param_ty: MathicType = lower_inner_ast_type(func, &param.ty, param.span)?;
         let (arg_val, arg_ty) = lower_expr(func, arg, Some(param_ty))?;
 
         if arg_ty != param_ty {
@@ -118,7 +135,7 @@ fn lower_call(
     // the return value and then create the RValue instruction pointing to that
     // new local.
     let return_ty = match func_prototype.return_ty {
-        Some(ty) => lower_ast_type(func, &ty, span)?,
+        Some(ty) => lower_inner_ast_type(func, &ty, span)?,
         None => MathicType::Void,
     };
     let local_idx = func
@@ -244,7 +261,7 @@ fn lower_adt_init(
     span: Span,
 ) -> Result<RValInstruct, LoweringError> {
     let adt_ty = func.get_user_def_type(name, span)?;
-    let adt_body = func.get_adt_body(name, span)?.clone();
+    let adt_body = func.get_adt_body(adt_ty, span)?.clone();
     let mut init_fields = Vec::with_capacity(fields.len());
 
     if fields.len() != adt_body.fields_len() {
@@ -415,7 +432,10 @@ fn lower_expression_type(
         ExprStmtKind::Assign { expr, .. } => lower_expression_type(func, &expr.kind, None, span)?,
         ExprStmtKind::StructInit { name, .. } => func.get_user_def_type(name, span)?,
         ExprStmtKind::StructGet { expr, field_name } => {
-            todo!()
+            let adt_ty = lower_expression_type(func, expr, ty_hint, span)?;
+            let adt = func.get_adt_body(adt_ty, span)?;
+
+            adt.get_field_ty(field_name).unwrap()
         }
     })
 }

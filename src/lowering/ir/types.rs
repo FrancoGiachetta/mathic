@@ -38,7 +38,7 @@ pub enum FloatTy {
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub enum MathicType {
-    Adt { index: usize },
+    Adt { index: usize, is_local: bool },
     Bool,
     Char,
     Float(FloatTy),
@@ -48,7 +48,7 @@ pub enum MathicType {
     Void,
 }
 
-pub fn lower_ast_type(
+pub fn lower_inner_ast_type(
     func_builder: &mut FunctionBuilder,
     ty: &AstType,
     span: Span,
@@ -81,16 +81,15 @@ pub fn lower_ast_type(
                 {
                     Some(d) => MathicType::Adt {
                         index: lower_inner_struct(func_builder, &d)?,
+                        is_local: true,
                     },
                     None => match func_builder.decl_table.get_struct_decl(other).cloned() {
                         Some(d) => MathicType::Adt {
                             index: lower_inner_struct(func_builder, &d)?,
+                            is_local: true,
                         },
                         None => {
-                            return Err(LoweringError::UndeclaredType {
-                                name: other.to_string(),
-                                span,
-                            });
+                            return Err(LoweringError::UndeclaredType { span });
                         }
                     },
                 }
@@ -238,7 +237,7 @@ impl fmt::Display for MathicType {
             MathicType::Str => write!(f, "str"),
             MathicType::Char => write!(f, "char"),
             MathicType::Void => write!(f, "void"),
-            MathicType::Adt { index } => write!(f, "Adt({index})"),
+            MathicType::Adt { index, .. } => write!(f, "Adt({index})"),
         }
     }
 }
