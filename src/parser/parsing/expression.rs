@@ -247,16 +247,16 @@ impl<'a> MathicParser<'a> {
             });
         }
 
-        self.parse_ident_op()
+        self.parse_primary_prefix()
     }
 
-    fn parse_ident_op(&self) -> ParserResult<ExprStmt> {
+    fn parse_primary_prefix(&self) -> ParserResult<ExprStmt> {
         let Some(ident_lookahead) = self.peek()? else {
             return Err(ParseError::Syntax(SyntaxError::UnexpectedEnd {
                 span: self.current_span(),
             }));
         };
-        let expr = self.parse_primary_expr()?;
+        let mut expr = self.parse_primary_expr()?;
 
         let Some(lookahead) = self.peek()? else {
             return Err(ParseError::Syntax(SyntaxError::UnexpectedEnd {
@@ -264,12 +264,31 @@ impl<'a> MathicParser<'a> {
             }));
         };
 
-        match lookahead.token {
-            Token::LParen => self.parse_call(&expr, ident_lookahead),
-            Token::LSquareBracket => todo!(),
-            Token::LBrace => self.parse_struct_init(&expr, ident_lookahead),
-            _ => Ok(expr),
+        while let Some(t) =
+            self.match_any_token(&[Token::LParen, Token::LSquareBracket, Token::Dot])?
+        {
+            match t.token {
+                Token::LParen => {
+                    expr = self.parse_call(&expr, lookahead)?;
+                }
+                Token::LSquareBracket => todo!(),
+                Token::Dot => {
+                    let ident = self.consume_token(Token::Ident)?;
+
+                    expr = ExprStmt {
+                        kind: ExprStmtKind::StructGet {
+                            expr: Box::new(expr.kind),
+                            field_name: ident.lexeme.to_string(),
+                        },
+                        span: expr.span,
+                    }
+                }
+                Token::LBrace => expr = self.parse_struct_init(&expr, ident_lookahead)?,
+                _ => {}
+            }
         }
+
+        Ok(expr)
     }
 
     fn parse_struct_init(
@@ -277,8 +296,6 @@ impl<'a> MathicParser<'a> {
         expr: &ExprStmt,
         lookahead: SpannedToken,
     ) -> ParserResult<ExprStmt> {
-        self.next()?; // consume LBrace.
-
         let fields = self.parse_struct_init_fields()?;
 
         self.consume_token(Token::RBrace)?;
@@ -304,8 +321,6 @@ impl<'a> MathicParser<'a> {
     }
 
     fn parse_call(&self, expr: &ExprStmt, lookahead: SpannedToken) -> ParserResult<ExprStmt> {
-        self.next()?; // consume LParen.
-
         let args = self.parse_call_args()?;
 
         self.consume_token(Token::RParen)?;

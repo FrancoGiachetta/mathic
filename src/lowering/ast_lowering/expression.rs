@@ -35,6 +35,7 @@ pub fn lower_expr(
         ExprStmtKind::Logical { lhs, op, rhs } => lower_logical_op(func, lhs, *op, rhs, expr.span)?,
         ExprStmtKind::StructInit { name, fields } => lower_adt_init(func, name, fields, expr.span)?,
         ExprStmtKind::Index { .. } => todo!(),
+        ExprStmtKind::StructGet { expr, field_name } => todo!(),
     };
 
     Ok((
@@ -413,5 +414,8 @@ fn lower_expression_type(
         ExprStmtKind::Unary { rhs, .. } => lower_expression_type(func, &rhs.kind, None, span)?,
         ExprStmtKind::Assign { expr, .. } => lower_expression_type(func, &expr.kind, None, span)?,
         ExprStmtKind::StructInit { name, .. } => func.get_user_def_type(name, span)?,
+        ExprStmtKind::StructGet { expr, field_name } => {
+            todo!()
+        }
     })
 }

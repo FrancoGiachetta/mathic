@@ -43,6 +43,10 @@ pub enum ExprStmtKind {
         name: String,
         expr: Box<ExprStmt>,
     },
+    StructGet {
+        expr: Box<Self>,
+        field_name: String,
+    },
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]

@@ -45,8 +45,7 @@
 <term>        := <factor> (("+" | "-") <factor>)*
 <factor>      := <unary> (("*" | "/") <unary>)*
 <unary>       := ("!" | "-") <unary> | <primary_suffix>
-<primary_suffix> := <primary> (<ident_op> | <struct_init>)?
-<ident_op>    := ("(" <args>? ")" | "[" <expr> "]" | "." <ident>)*
+<primary_suffix> := <primary> (("(" <args>? ")" | "[" <expr> "]" | "." <ident>)+ | <struct_init>)?
 <struct_init> := "{" <ident> ":" <expr> ("," <ident> ":" <expr>)* "}"
 <primary>     := "true" | "false" | <ident> | <num> | <str> | "(" <expr> ")"
 
