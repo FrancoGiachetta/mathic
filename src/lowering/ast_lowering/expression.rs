@@ -5,7 +5,7 @@ use crate::{
     lowering::ir::{
         basic_block::Terminator,
         function::{FunctionBuilder, LocalKind},
-        instruction::{InitInstruc, LValInstruct, RValInstruct, RValueKind},
+        instruction::{InitInstruc, LValInstruct, RValInstruct, RValueKind, ValueModifier},
         types::{FloatTy, MathicType, SintTy, UintTy, lower_inner_ast_type},
         value::{ConstExpr, NumericConst, Value},
     },
@@ -35,24 +35,10 @@ pub fn lower_expr(
         ExprStmtKind::Logical { lhs, op, rhs } => lower_logical_op(func, lhs, *op, rhs, expr.span)?,
         ExprStmtKind::StructInit { name, fields } => lower_adt_init(func, name, fields, expr.span)?,
         ExprStmtKind::Index { .. } => todo!(),
-        ExprStmtKind::StructGet { expr, field_name } => {
-            let (struct_expr, struct_ty) = lower_expr(func, expr, ty_hint)?;
-            let struct_adt = func
-                .get_adt_body(struct_ty, expr.span)?
-                .get_field_index(field_name)
-                .ok_or(LoweringError::UndeclaredStructField {
-                    found: field_name.to_string(),
-                    span: expr.span,
-                });
-
-            RValInstruct {
-                kind: RValueKind::Use {
-                    value: struct_expr,
-                    span: (),
-                },
-                ty: (),
-            }
-        }
+        ExprStmtKind::StructGet {
+            expr: struct_expr,
+            field_name,
+        } => lower_struct_get(func, struct_expr, field_name, expr.span, ty_hint)?,
     };
 
     Ok((
@@ -90,6 +76,7 @@ fn lower_assignment(
     Ok(RValInstruct {
         kind: RValueKind::Use {
             value: Value::Const(ConstExpr::Void),
+            modifier: None,
             span: None,
         },
         ty: MathicType::Void,
@@ -158,6 +145,7 @@ fn lower_call(
     Ok(RValInstruct {
         kind: RValueKind::Use {
             value: Value::InMemory(local_idx),
+            modifier: None,
             span: None,
         },
         ty: MathicType::Sint(SintTy::I64),
@@ -311,6 +299,50 @@ fn lower_adt_init(
     })
 }
 
+fn lower_struct_get(
+    func: &mut FunctionBuilder,
+    expr: &ExprStmt,
+    field_name: &str,
+    span: Span,
+    ty_hint: Option<MathicType>,
+) -> Result<RValInstruct, LoweringError> {
+    let (struct_expr, struct_ty) = lower_expr(func, expr, ty_hint)?;
+    let struct_adt = func.get_adt_body(struct_ty, expr.span)?;
+    let field_index =
+        struct_adt
+            .get_field_index(field_name)
+            .ok_or(LoweringError::UndeclaredStructField {
+                found: field_name.to_string(),
+                span: expr.span,
+            })?;
+    let field_ty =
+        struct_adt
+            .get_field_ty(field_name)
+            .ok_or(LoweringError::UndeclaredStructField {
+                found: field_name.to_string(),
+                span: expr.span,
+            })?;
+
+    let temp_local_idx = func
+        .sym_table
+        .add_local(None, struct_ty, None, LocalKind::Temp)?;
+
+    func.push_instruction(LValInstruct::Assign {
+        local_idx: temp_local_idx,
+        value: struct_expr,
+        span: None,
+    });
+
+    Ok(RValInstruct {
+        kind: RValueKind::Use {
+            value: Value::InMemory(temp_local_idx),
+            modifier: Some(ValueModifier::Field(field_index)),
+            span: Some(span),
+        },
+        ty: field_ty,
+    })
+}
+
 fn lower_primary_value(
     func: &mut FunctionBuilder,
     expr: &PrimaryExpr,
@@ -392,6 +424,7 @@ fn lower_primary_value(
     Ok(RValInstruct {
         kind: RValueKind::Use {
             value,
+            modifier: None,
             span: Some(span),
         },
         ty,
@@ -432,7 +465,7 @@ fn lower_expression_type(
         ExprStmtKind::Assign { expr, .. } => lower_expression_type(func, &expr.kind, None, span)?,
         ExprStmtKind::StructInit { name, .. } => func.get_user_def_type(name, span)?,
         ExprStmtKind::StructGet { expr, field_name } => {
-            let adt_ty = lower_expression_type(func, expr, ty_hint, span)?;
+            let adt_ty = lower_expression_type(func, &expr.kind, ty_hint, span)?;
             let adt = func.get_adt_body(adt_ty, span)?;
 
             adt.get_field_ty(field_name).unwrap()

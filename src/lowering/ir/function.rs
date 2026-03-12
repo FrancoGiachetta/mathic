@@ -138,7 +138,7 @@ impl<'ir> FunctionBuilder<'ir> {
         };
 
         let adt = if is_local {
-            self.sym_table.adts.get(index)
+            self.sym_table.get_adt(index)
         } else {
             self.ir_builder.adts.get(index)
         };

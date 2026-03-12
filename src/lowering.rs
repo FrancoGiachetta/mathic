@@ -114,7 +114,7 @@ fn lower_top_level_struct(
     let mut adt = StructAdt {
         name: name.clone(),
         fields: Vec::new(),
-        span: *span,
+        _span: *span,
     };
 
     for field in fields {

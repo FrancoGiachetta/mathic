@@ -136,6 +136,7 @@ pub fn lower_for(
             lhs: Box::new(RValInstruct {
                 kind: RValueKind::Use {
                     value: Value::InMemory(loop_tracker_idx),
+                    modifier: None,
                     span: None,
                 },
                 ty: start_ty,
@@ -154,6 +155,7 @@ pub fn lower_for(
                 lhs: Box::new(RValInstruct {
                     kind: RValueKind::Use {
                         value: Value::InMemory(loop_tracker_idx),
+                        modifier: None,
                         span: None,
                     },
                     ty: start_ty,
@@ -161,6 +163,7 @@ pub fn lower_for(
                 rhs: Box::new(RValInstruct {
                     kind: RValueKind::Use {
                         value: 1i32.into(),
+                        modifier: None,
                         span: None,
                     },
                     ty: start_ty,

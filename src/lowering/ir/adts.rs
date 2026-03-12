@@ -9,7 +9,7 @@ pub enum Adt {
 pub struct StructAdt {
     pub name: String,
     pub fields: Vec<StructField>,
-    pub span: Span,
+    pub _span: Span,
 }
 
 #[derive(Debug, Clone)]

@@ -30,6 +30,7 @@ pub enum LValInstruct {
 pub enum RValueKind {
     Use {
         value: Value,
+        modifier: Option<ValueModifier>,
         span: Option<Span>,
     },
     Init(InitInstruc),
@@ -50,6 +51,11 @@ pub enum RValueKind {
         rhs: Box<RValInstruct>,
         span: Span,
     },
+}
+
+#[derive(Debug, Clone)]
+pub enum ValueModifier {
+    Field(usize),
 }
 
 #[derive(Debug, Clone)]

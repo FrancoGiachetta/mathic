@@ -276,11 +276,11 @@ impl<'a> MathicParser<'a> {
                     let ident = self.consume_token(Token::Ident)?;
 
                     expr = ExprStmt {
+                        span: expr.span,
                         kind: ExprStmtKind::StructGet {
-                            expr: Box::new(expr.kind),
+                            expr: Box::new(expr),
                             field_name: ident.lexeme.to_string(),
                         },
-                        span: expr.span,
                     }
                 }
                 Token::LBrace => expr = self.parse_struct_init(&expr, ident_lookahead)?,

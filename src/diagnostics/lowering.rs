@@ -101,7 +101,7 @@ pub fn format_lowering_error<'err>(
             span,
         ),
         LoweringError::UndeclaredStructField { span, .. } => {
-            ("S009", format!("check struct declaration"), span)
+            ("S009", "check struct declaration".to_string(), span)
         }
         LoweringError::MissingStructFields { missing, span } => (
             "S010",
