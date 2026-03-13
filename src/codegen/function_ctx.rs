@@ -2,18 +2,20 @@ use melior::{
     dialect::func,
     helpers::{BuiltinBlockExt, LlvmBlockExt},
     ir::{
-        Attribute, Block, BlockLike, BlockRef, Identifier, Region, RegionLike, Type, TypeLike,
-        Value, ValueLike,
+        Attribute, Block, BlockLike, BlockRef, Identifier, Region, RegionLike, Value, ValueLike,
         attribute::{StringAttribute, TypeAttribute},
         r#type::FunctionType,
     },
 };
-use mlir_sys::{MlirType, MlirValue};
+use mlir_sys::MlirValue;
 
 use crate::{
     codegen::{MathicCodeGen, compiler_helper::CompilerHelper},
     diagnostics::CodegenError,
-    lowering::ir::function::{Function, LocalKind},
+    lowering::ir::{
+        function::{Function, LocalKind},
+        types::MathicType,
+    },
 };
 
 /// Helper struct to store the current context of the function being compiled.
@@ -23,7 +25,7 @@ use crate::{
 /// **locals**: variables defined within the function context.
 /// **mlir_blocks**: the MLIR Blocks that the function will use.
 pub struct FunctionCtx<'ctx, 'this> {
-    locals: Vec<(MlirValue, MlirType)>,
+    locals: Vec<(MlirValue, MathicType)>,
     mlir_blocks: &'this [BlockRef<'ctx, 'this>],
     ir_func: &'this Function,
 }
@@ -37,15 +39,15 @@ impl<'ctx, 'this> FunctionCtx<'ctx, 'this> {
         }
     }
 
-    pub fn define_local(&mut self, value: Value, ty: Type) {
-        self.locals.push((value.to_raw(), ty.to_raw()));
+    pub fn define_local(&mut self, value: Value, ty: MathicType) {
+        self.locals.push((value.to_raw(), ty));
     }
 
-    pub fn get_local(&self, idx: usize) -> Option<(Value<'ctx, '_>, Type<'ctx>)> {
+    pub fn get_local(&self, idx: usize) -> Option<(Value<'ctx, '_>, MathicType)> {
         self.locals
             .get(idx)
             .copied()
-            .map(|(v, t)| unsafe { (Value::from_raw(v), Type::from_raw(t)) })
+            .map(|(v, t)| (unsafe { Value::from_raw(v) }, t))
     }
 
     pub fn get_block(&self, idx: usize) -> BlockRef<'_, '_> {
@@ -117,10 +119,7 @@ impl MathicCodeGen<'_> {
 
                 entry_block.store(self.ctx, location, ptr, value)?;
 
-                inner_fn_ctx.define_local(
-                    ptr,
-                    self.get_compiled_type(inner_func, inner_func.params_tys[i]),
-                );
+                inner_fn_ctx.define_local(ptr, inner_func.params_tys[i]);
             }
         }
 

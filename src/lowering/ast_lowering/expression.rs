@@ -335,9 +335,9 @@ fn lower_struct_get(
         .sym_table
         .add_local(None, struct_ty, None, LocalKind::Temp)?;
 
-    func.push_instruction(LValInstruct::Assign {
+    func.push_instruction(LValInstruct::Let {
         local_idx: temp_local_idx,
-        value: struct_expr,
+        init: struct_expr,
         span: None,
     });
 

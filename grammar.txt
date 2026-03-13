@@ -15,7 +15,7 @@ declaration     → func_decl
 
 func_decl       → "df" ident "(" params? ")" type? block ;
 struct_decl     → "struct" ident "{" struct_fields? "}" ;
-var_decl        → "let" ident ":" type "=" expr ";" ;
+var_decl        → "let" ident ":" type "=" expr struct_init? ";" ;
 sym_decl        → "sym" ident "=" ident ";" ;
 
 for_stmt        → "for" ident "in" expr ".." expr block
@@ -35,7 +35,8 @@ equality        → inequality (("==" | "!=") inequality)* ;
 inequality      → term ((">" | ">=" | "<" | "<=") term)* ;
 term            → factor (("+" | "-") factor)* ;
 factor          → unary (("*" | "/") unary)* ;
-unary           → ("!" | "-") unary | primary_suffix ;
+unary           → ("!" | "-") unary | call ;
+call            → primary ("(" args? ")" | "[" expr "]" | "." ident)*
 struct_init     → "{" ident ":" expr ("," ident ":" expr)* "}" ;
 primary         → "true" | "false" | ident | number | string | "(" expr ")" ;
 

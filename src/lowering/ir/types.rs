@@ -2,7 +2,13 @@ use std::fmt;
 
 use crate::{
     diagnostics::LoweringError,
-    lowering::{ast_lowering::declaration::lower_inner_struct, ir::function::FunctionBuilder},
+    lowering::{
+        ast_lowering::declaration::lower_inner_struct,
+        ir::{
+            Ir,
+            function::{Function, FunctionBuilder},
+        },
+    },
     parser::{Span, ast::declaration::AstType},
 };
 
@@ -120,7 +126,7 @@ impl MathicType {
         }
     }
 
-    pub fn align(&self) -> usize {
+    pub fn align(&self, ir: &Ir, func: &Function) -> usize {
         match self {
             Self::Sint(ty) => match ty {
                 SintTy::I8 => 8,
@@ -144,8 +150,20 @@ impl MathicType {
             Self::Str => 8,
             Self::Char => 8,
             Self::Void => 0,
-            Self::Adt { .. } => {
-                todo!()
+            Self::Adt { index, is_local } => {
+                let adt = if *is_local {
+                    func.sym_table.get_adt(*index).unwrap()
+                } else {
+                    ir.adts.get(*index).unwrap()
+                };
+                let adt_fields_tys = adt.get_fields_tys();
+                let mut align = 0;
+
+                for ty in adt_fields_tys.iter() {
+                    align = align.max(ty.align(ir, func));
+                }
+
+                align
             }
         }
     }

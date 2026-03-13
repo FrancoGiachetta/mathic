@@ -1,6 +1,6 @@
 use melior::{
     dialect::{arith::CmpiPredicate, llvm, ods},
-    helpers::{ArithBlockExt, BuiltinBlockExt, GepIndex, LlvmBlockExt},
+    helpers::{ArithBlockExt, BuiltinBlockExt, LlvmBlockExt},
     ir::{Block, Value, ValueLike, attribute::StringAttribute, r#type::IntegerType},
 };
 
@@ -8,6 +8,7 @@ use crate::{
     codegen::{MathicCodeGen, compiler_helper::CompilerHelper, function_ctx::FunctionCtx},
     diagnostics::CodegenError,
     lowering::ir::{
+        adts::Adt,
         instruction::{InitInstruct, RValInstruct, RValueKind},
         types::MathicType,
         value::{ConstExpr, NumericConst, Value as IRValue, ValueModifier},
@@ -231,23 +232,42 @@ impl MathicCodeGen<'_> {
                 let (local_ptr, local_ty) =
                     fn_ctx.get_local(*local_idx).expect("Invalid local idx");
 
-                let mut ptr = block.load(self.ctx, location, local_ptr, local_ty)?;
+                let mut val = block.load(
+                    self.ctx,
+                    location,
+                    local_ptr,
+                    self.get_compiled_type(fn_ctx.get_ir_func(), local_ty),
+                )?;
 
                 if let Some(m) = modifier {
                     match m {
-                        ValueModifier::Field(idx) => {
-                            ptr = block.gep(
-                                self.ctx,
-                                location,
-                                ptr,
-                                &[GepIndex::Const(*idx as i32)],
-                                local_ty,
-                            )?;
-                        }
+                        ValueModifier::Field(idx) => match local_ty {
+                            MathicType::Adt { index, is_local } => {
+                                let adt = if is_local {
+                                    fn_ctx.get_ir_func().sym_table.adts.get(index)
+                                } else {
+                                    self.ir.adts.get(index)
+                                }
+                                .unwrap();
+
+                                match adt {
+                                    Adt::Struct(struct_adt) => {
+                                        let field_ty = self.get_compiled_type(
+                                            fn_ctx.get_ir_func(),
+                                            struct_adt.fields[*idx].ty,
+                                        );
+                                        val = block.extract_value(
+                                            self.ctx, location, val, field_ty, *idx,
+                                        )?;
+                                    }
+                                }
+                            }
+                            _ => unreachable!(),
+                        },
                     }
                 }
 
-                ptr
+                val
             }
             IRValue::Const(const_expr) => match const_expr {
                 ConstExpr::Numeric(num_const) => match num_const {

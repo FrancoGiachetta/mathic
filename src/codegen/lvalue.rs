@@ -1,7 +1,7 @@
 use melior::{
     dialect::{cf, func, llvm},
     helpers::{BuiltinBlockExt, LlvmBlockExt},
-    ir::{Block, BlockLike, Location, attribute::FlatSymbolRefAttribute, r#type::IntegerType},
+    ir::{Block, BlockLike, Location, attribute::FlatSymbolRefAttribute},
 };
 
 use crate::{
@@ -31,11 +31,16 @@ impl MathicCodeGen<'_> {
 
                 let init_val = self.compile_rvalue(fn_ctx, block, init, helper)?;
                 let init_ty = self.get_compiled_type(fn_ctx.get_ir_func(), init.ty);
-                let ptr = block.alloca1(self.ctx, location, init_ty, init.ty.align())?;
+                let ptr = block.alloca1(
+                    self.ctx,
+                    location,
+                    init_ty,
+                    init.ty.align(self.ir, fn_ctx.get_ir_func()),
+                )?;
 
                 block.store(self.ctx, location, ptr, init_val)?;
 
-                fn_ctx.define_local(ptr, init_ty);
+                fn_ctx.define_local(ptr, init.ty);
             }
             LValInstruct::Assign {
                 local_idx,
@@ -119,7 +124,7 @@ impl MathicCodeGen<'_> {
                     self.ctx,
                     unknown_location,
                     mlir_return_ty,
-                    return_ty.align(),
+                    return_ty.align(self.ir, fn_ctx.get_ir_func()),
                 )?;
                 let return_value = block.append_op_result(func::call(
                     self.ctx,
@@ -131,7 +136,7 @@ impl MathicCodeGen<'_> {
 
                 block.store(self.ctx, unknown_location, return_ptr, return_value)?;
 
-                fn_ctx.define_local(return_ptr, IntegerType::new(self.ctx, 64).into());
+                fn_ctx.define_local(return_ptr, *return_ty);
 
                 block.append_operation(cf::br(
                     &fn_ctx.get_block(*dest_block),
