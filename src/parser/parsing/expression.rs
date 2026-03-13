@@ -16,11 +16,7 @@ impl<'a> MathicParser<'a> {
     }
 
     fn parse_assignment(&self) -> ParserResult<ExprStmt> {
-        let Some(lookahead) = self.peek()? else {
-            return Err(ParseError::Syntax(SyntaxError::UnexpectedEnd {
-                span: self.current_span(),
-            }));
-        };
+        let lookahead = self.peek_not_none()?;
         let lhs = self.parse_logic_or()?;
 
         if self.match_token(Token::Eq)?.is_some() {
@@ -31,7 +27,14 @@ impl<'a> MathicParser<'a> {
                 }));
             };
 
-            let rhs = self.parse_logic_or()?;
+            let lookahead = self.peek_not_none()?;
+
+            let mut rhs = self.parse_logic_or()?;
+
+            if self.match_token(Token::LBrace)?.is_some() {
+                rhs = self.parse_struct_init(lookahead)?;
+            }
+
             let span = Span::from_merged_spans(lhs.span, rhs.span);
 
             return Ok(ExprStmt {
@@ -247,75 +250,21 @@ impl<'a> MathicParser<'a> {
             });
         }
 
-        self.parse_primary_prefix()
+        self.parse_call()
     }
 
-    fn parse_primary_prefix(&self) -> ParserResult<ExprStmt> {
-        let Some(ident_lookahead) = self.peek()? else {
-            return Err(ParseError::Syntax(SyntaxError::UnexpectedEnd {
-                span: self.current_span(),
-            }));
-        };
-        let mut expr = self.parse_primary_expr()?;
-
-        let Some(lookahead) = self.peek()? else {
-            return Err(ParseError::Syntax(SyntaxError::UnexpectedEnd {
-                span: self.current_span(),
-            }));
-        };
-
-        while ident_lookahead.token == Token::Ident
-            && self.check_any_next(&[
-                Token::LParen,
-                Token::LSquareBracket,
-                Token::LBrace,
-                Token::Dot,
-            ])?
-        {
-            let next_tok = self.next()?;
-
-            match next_tok.token {
-                Token::LParen => {
-                    expr = self.parse_call(&expr, lookahead)?;
-                }
-                Token::LSquareBracket => todo!(),
-                Token::Dot => {
-                    let ident = self.consume_token(Token::Ident)?;
-
-                    expr = ExprStmt {
-                        span: expr.span,
-                        kind: ExprStmtKind::StructGet {
-                            expr: Box::new(expr),
-                            field_name: ident.lexeme.to_string(),
-                        },
-                    }
-                }
-                Token::LBrace => expr = self.parse_struct_init(&expr, ident_lookahead)?,
-                _ => {}
-            }
-        }
-
-        Ok(expr)
-    }
-
-    fn parse_struct_init(
-        &self,
-        expr: &ExprStmt,
-        lookahead: SpannedToken,
-    ) -> ParserResult<ExprStmt> {
+    fn parse_struct_init(&self, lookahead: SpannedToken) -> ParserResult<ExprStmt> {
         let fields = self.parse_struct_init_fields()?;
 
         self.consume_token(Token::RBrace)?;
 
-        let span = Span::from_merged_spans(expr.span, self.current_span());
-
-        let expr = if let ExprStmtKind::Primary(PrimaryExpr::Ident(name)) = &expr.kind {
+        let expr = if let Token::Ident = lookahead.token {
             ExprStmt {
                 kind: ExprStmtKind::StructInit {
-                    name: name.to_string(),
+                    name: lookahead.lexeme.to_string(),
                     fields,
                 },
-                span,
+                span: lookahead.span,
             }
         } else {
             return Err(ParseError::Syntax(SyntaxError::UnexpectedToken {
@@ -327,28 +276,31 @@ impl<'a> MathicParser<'a> {
         Ok(expr)
     }
 
-    fn parse_call(&self, expr: &ExprStmt, lookahead: SpannedToken) -> ParserResult<ExprStmt> {
-        let args = self.parse_call_args()?;
+    fn parse_call(&self) -> ParserResult<ExprStmt> {
+        let lookahead = self.peek_not_none()?;
+        let mut expr = self.parse_primary_expr()?;
 
-        self.consume_token(Token::RParen)?;
+        while self.match_token(Token::LParen)?.is_some() {
+            let args = self.parse_call_args()?;
 
-        let span = Span::from_merged_spans(expr.span, self.current_span());
+            self.consume_token(Token::RParen)?;
 
-        Ok(match &expr.kind {
-            ExprStmtKind::Primary(PrimaryExpr::Ident(callee)) => ExprStmt {
-                kind: ExprStmtKind::Call {
-                    callee: callee.to_string(),
-                    args,
-                },
-                span,
-            },
-            _ => {
+            let span = Span::from_merged_spans(expr.span, self.current_span());
+
+            if let ExprStmtKind::Primary(PrimaryExpr::Ident(callee)) = expr.kind {
+                expr = ExprStmt {
+                    kind: ExprStmtKind::Call { callee, args },
+                    span,
+                };
+            } else {
                 return Err(ParseError::Syntax(SyntaxError::UnexpectedToken {
                     found: lookahead.into(),
                     expected: ExpectedToken::Identifier,
                 }));
             }
-        })
+        }
+
+        Ok(expr)
     }
 
     fn parse_primary_expr(&self) -> ParserResult<ExprStmt> {

@@ -1,4 +1,3 @@
-use crate::diagnostics::parse::{ParseError, SyntaxError};
 use crate::parser::{
     MathicParser, ParserResult, Span,
     ast::{
@@ -11,11 +10,7 @@ use crate::parser::{
 
 impl<'a> MathicParser<'a> {
     pub fn parse_stmt(&self) -> ParserResult<Stmt> {
-        let Ok(Some(lookahead)) = self.peek() else {
-            return Err(ParseError::Syntax(SyntaxError::UnexpectedEnd {
-                span: self.current_span(),
-            }));
-        };
+        let lookahead = self.peek_not_none()?;
 
         let start_span = lookahead.span;
 

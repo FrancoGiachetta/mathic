@@ -114,6 +114,18 @@ impl<'a> MathicParser<'a> {
             .map_err(|(e, span)| ParseError::Lexical(e, span))
     }
 
+    /// Does the same as [peek](MathicParser::peek) except it fails in case
+    /// it returns `None`.
+    fn peek_not_none(&self) -> ParserResult<LexerOutput<'a>> {
+        self.lexer
+            .borrow_mut()
+            .peek()
+            .map_err(|(e, span)| ParseError::Lexical(e, span))?
+            .ok_or(ParseError::Syntax(SyntaxError::UnexpectedEnd {
+                span: self.current_span(),
+            }))
+    }
+
     /// Returns the current position in the source.
     ///
     /// This is convenient when returning errors which depend on the code.
@@ -169,14 +181,6 @@ impl<'a> MathicParser<'a> {
     fn check_next(&self, expected: Token) -> ParserResult<bool> {
         Ok(if let Ok(Some(res)) = self.peek() {
             res.token == expected
-        } else {
-            false
-        })
-    }
-
-    fn check_any_next(&self, expected: &[Token]) -> ParserResult<bool> {
-        Ok(if let Ok(Some(res)) = self.peek() {
-            expected.iter().any(|t| t == &res.token)
         } else {
             false
         })

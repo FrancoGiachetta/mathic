@@ -102,7 +102,7 @@ impl MathicCodeGen<'_> {
             mlir_blocks.push(region.append_block(Block::new(&[])));
         }
 
-        let mut inner_fn_ctx = FunctionCtx::new(&mlir_blocks, &inner_func);
+        let mut inner_fn_ctx = FunctionCtx::new(&mlir_blocks, inner_func);
         let function_params = inner_func
             .sym_table
             .locals
