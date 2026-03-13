@@ -256,17 +256,12 @@ impl<'a> MathicParser<'a> {
         let lookahead = self.peek_not_none()?;
         let mut expr = self.parse_primary_expr()?;
 
-        while let Some(t) = self.match_any_token(&[Token::LParen, Token::Dot])? {
+        while let Some(t) = self.match_any_token(&[Token::LParen, Token::Dot])?
+            && lookahead.token == Token::Ident
+        {
             match t.token {
                 Token::LParen => {
-                    if let ExprStmtKind::Primary(PrimaryExpr::Ident(callee)) = expr.kind {
-                        expr = self.finish_call(callee, expr.span)?;
-                    } else {
-                        return Err(ParseError::Syntax(SyntaxError::UnexpectedToken {
-                            found: lookahead.into(),
-                            expected: ExpectedToken::Identifier,
-                        }));
-                    }
+                    expr = self.finish_call(lookahead.lexeme.to_string(), expr.span)?;
                 }
                 Token::Dot => {
                     let field_name = self.consume_token(Token::Ident)?.lexeme.to_string();
