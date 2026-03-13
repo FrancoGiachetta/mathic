@@ -1,6 +1,6 @@
 use melior::{
     dialect::{arith::CmpiPredicate, llvm, ods},
-    helpers::{ArithBlockExt, BuiltinBlockExt, LlvmBlockExt},
+    helpers::{ArithBlockExt, BuiltinBlockExt, GepIndex, LlvmBlockExt},
     ir::{Block, Value, ValueLike, attribute::StringAttribute, r#type::IntegerType},
 };
 
@@ -8,8 +8,9 @@ use crate::{
     codegen::{MathicCodeGen, compiler_helper::CompilerHelper, function_ctx::FunctionCtx},
     diagnostics::CodegenError,
     lowering::ir::{
-        instruction::{RValInstruct, RValueKind},
-        value::{ConstExpr, NumericConst, Value as IRValue},
+        instruction::{InitInstruct, RValInstruct, RValueKind},
+        types::MathicType,
+        value::{ConstExpr, NumericConst, Value as IRValue, ValueModifier},
     },
     parser::{
         Span,
@@ -39,7 +40,36 @@ impl MathicCodeGen<'_> {
             RValueKind::Logical {
                 op, lhs, rhs, span, ..
             } => self.compile_logical(fn_ctx, block, lhs, *op, rhs, *span, helper),
-            RValueKind::Init(_) => todo!(),
+            RValueKind::Init { init_inst, span } => {
+                self.compile_init_op(fn_ctx, block, init_inst, rvalue.ty, *span, helper)
+            }
+        }
+    }
+
+    fn compile_init_op<'ctx, 'func>(
+        &'func self,
+        fn_ctx: &mut FunctionCtx<'ctx, 'func>,
+        block: &'func Block<'ctx>,
+        init_inst: &InitInstruct,
+        adt_ty: MathicType,
+        span: Span,
+        helper: &mut CompilerHelper,
+    ) -> Result<Value<'ctx, 'func>, CodegenError>
+    where
+        'func: 'ctx,
+    {
+        let location = self.get_location(Some(span))?;
+        match init_inst {
+            InitInstruct::StructInit { fields } => {
+                let struct_ty = self.get_compiled_type(fn_ctx.get_ir_func(), adt_ty);
+                let empty_struct = block.append_op_result(llvm::undef(struct_ty, location))?;
+                let fields_values = fields
+                    .iter()
+                    .map(|rv| self.compile_rvalue(fn_ctx, block, rv, helper))
+                    .collect::<Result<Vec<_>, _>>()?;
+
+                Ok(block.insert_values(self.ctx, location, empty_struct, &fields_values)?)
+            }
         }
     }
 
@@ -194,11 +224,30 @@ impl MathicCodeGen<'_> {
         let location = self.get_location(None)?;
 
         Ok(match value {
-            IRValue::InMemory(local_idx) => {
+            IRValue::InMemory {
+                local_idx,
+                modifier,
+            } => {
                 let (local_ptr, local_ty) =
                     fn_ctx.get_local(*local_idx).expect("Invalid local idx");
 
-                block.load(self.ctx, location, local_ptr, local_ty)?
+                let mut ptr = block.load(self.ctx, location, local_ptr, local_ty)?;
+
+                if let Some(m) = modifier {
+                    match m {
+                        ValueModifier::Field(idx) => {
+                            ptr = block.gep(
+                                self.ctx,
+                                location,
+                                ptr,
+                                &[GepIndex::Const(*idx as i32)],
+                                local_ty,
+                            )?;
+                        }
+                    }
+                }
+
+                ptr
             }
             IRValue::Const(const_expr) => match const_expr {
                 ConstExpr::Numeric(num_const) => match num_const {

@@ -5,8 +5,9 @@ use crate::{
     lowering::ir::{
         basic_block::Terminator,
         function::{FunctionBuilder, LocalKind},
-        instruction::{InitInstruc, LValInstruct, RValInstruct, RValueKind, ValueModifier},
+        instruction::{InitInstruct, LValInstruct, RValInstruct, RValueKind},
         types::{FloatTy, MathicType, SintTy, UintTy, lower_inner_ast_type},
+        value::ValueModifier,
         value::{ConstExpr, NumericConst, Value},
     },
     parser::{
@@ -76,7 +77,6 @@ fn lower_assignment(
     Ok(RValInstruct {
         kind: RValueKind::Use {
             value: Value::Const(ConstExpr::Void),
-            modifier: None,
             span: None,
         },
         ty: MathicType::Void,
@@ -135,7 +135,10 @@ fn lower_call(
         callee,
         args: arg_values,
         span: Some(span),
-        return_dest: Value::InMemory(local_idx),
+        return_dest: Value::InMemory {
+            local_idx,
+            modifier: None,
+        },
         return_ty,
         dest_block: dest_block_idx,
     };
@@ -144,8 +147,10 @@ fn lower_call(
 
     Ok(RValInstruct {
         kind: RValueKind::Use {
-            value: Value::InMemory(local_idx),
-            modifier: None,
+            value: Value::InMemory {
+                local_idx,
+                modifier: None,
+            },
             span: None,
         },
         ty: MathicType::Sint(SintTy::I64),
@@ -292,9 +297,12 @@ fn lower_adt_init(
     }
 
     Ok(RValInstruct {
-        kind: RValueKind::Init(InitInstruc::StructInit {
-            fields: init_fields,
-        }),
+        kind: RValueKind::Init {
+            init_inst: InitInstruct::StructInit {
+                fields: init_fields,
+            },
+            span,
+        },
         ty: adt_ty,
     })
 }
@@ -335,8 +343,10 @@ fn lower_struct_get(
 
     Ok(RValInstruct {
         kind: RValueKind::Use {
-            value: Value::InMemory(temp_local_idx),
-            modifier: Some(ValueModifier::Field(field_index)),
+            value: Value::InMemory {
+                local_idx: temp_local_idx,
+                modifier: Some(ValueModifier::Field(field_index)),
+            },
             span: Some(span),
         },
         ty: field_ty,
@@ -352,7 +362,13 @@ fn lower_primary_value(
     let (value, ty) = match expr {
         PrimaryExpr::Ident(name) => {
             let local = func.sym_table.get_local_from_name(name, span)?;
-            (Value::InMemory(local.local_idx), local.ty)
+            (
+                Value::InMemory {
+                    local_idx: local.local_idx,
+                    modifier: None,
+                },
+                local.ty,
+            )
         }
         PrimaryExpr::Num(n) => match ty_hint {
             Some(ty) => (
@@ -424,7 +440,6 @@ fn lower_primary_value(
     Ok(RValInstruct {
         kind: RValueKind::Use {
             value,
-            modifier: None,
             span: Some(span),
         },
         ty,

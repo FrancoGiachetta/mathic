@@ -25,13 +25,15 @@ use crate::{
 pub struct FunctionCtx<'ctx, 'this> {
     locals: Vec<(MlirValue, MlirType)>,
     mlir_blocks: &'this [BlockRef<'ctx, 'this>],
+    ir_func: &'this Function,
 }
 
 impl<'ctx, 'this> FunctionCtx<'ctx, 'this> {
-    pub fn new(mlir_blocks: &'this [BlockRef<'ctx, 'this>]) -> Self {
+    pub fn new(mlir_blocks: &'this [BlockRef<'ctx, 'this>], ir_func: &'this Function) -> Self {
         Self {
             locals: Vec::new(),
             mlir_blocks,
+            ir_func,
         }
     }
 
@@ -49,6 +51,10 @@ impl<'ctx, 'this> FunctionCtx<'ctx, 'this> {
     pub fn get_block(&self, idx: usize) -> BlockRef<'_, '_> {
         *self.mlir_blocks.get(idx).expect("invalid block index")
     }
+
+    pub fn get_ir_func(&self) -> &Function {
+        self.ir_func
+    }
 }
 
 impl MathicCodeGen<'_> {
@@ -63,14 +69,14 @@ impl MathicCodeGen<'_> {
     {
         let location = self.get_location(None)?;
 
-        let return_ty = inner_func.return_ty.get_compiled_type(self.ctx);
+        let return_ty = self.get_compiled_type(inner_func, inner_func.return_ty);
         let mut params_types = Vec::with_capacity(inner_func.params_tys.len());
         let mut block_params = Vec::with_capacity(inner_func.params_tys.len());
 
         // Prepare the function's params' types and the entry block params as
         // well.
         for param_ty in inner_func.params_tys.iter() {
-            let mlir_ty = param_ty.get_compiled_type(self.ctx);
+            let mlir_ty = self.get_compiled_type(inner_func, *param_ty);
 
             params_types.push(mlir_ty);
             block_params.push((mlir_ty, location));
@@ -96,7 +102,7 @@ impl MathicCodeGen<'_> {
             mlir_blocks.push(region.append_block(Block::new(&[])));
         }
 
-        let mut inner_fn_ctx = FunctionCtx::new(&mlir_blocks);
+        let mut inner_fn_ctx = FunctionCtx::new(&mlir_blocks, &inner_func);
         let function_params = inner_func
             .sym_table
             .locals
@@ -111,8 +117,10 @@ impl MathicCodeGen<'_> {
 
                 entry_block.store(self.ctx, location, ptr, value)?;
 
-                inner_fn_ctx
-                    .define_local(ptr, inner_func.params_tys[i].get_compiled_type(self.ctx));
+                inner_fn_ctx.define_local(
+                    ptr,
+                    self.get_compiled_type(inner_func, inner_func.params_tys[i]),
+                );
             }
         }
 

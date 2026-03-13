@@ -1,11 +1,5 @@
 use std::fmt;
 
-use melior::{
-    Context,
-    dialect::llvm,
-    ir::{Type, r#type::IntegerType},
-};
-
 use crate::{
     diagnostics::LoweringError,
     lowering::{ast_lowering::declaration::lower_inner_struct, ir::function::FunctionBuilder},
@@ -99,23 +93,6 @@ pub fn lower_inner_ast_type(
 }
 
 impl MathicType {
-    pub fn get_compiled_type<'func>(&'func self, ctx: &'func Context) -> Type<'func> {
-        match self {
-            Self::Uint(_) | Self::Sint(_) => IntegerType::new(ctx, self.bit_width() as u32).into(),
-            MathicType::Float(float_ty) => match float_ty {
-                FloatTy::F32 => Type::float32(ctx),
-                FloatTy::F64 => Type::float64(ctx),
-            },
-            MathicType::Bool => IntegerType::new(ctx, 1).into(),
-            MathicType::Char => IntegerType::new(ctx, 8).into(),
-            MathicType::Str => llvm::r#type::pointer(ctx, 0),
-            MathicType::Void => Type::none(ctx),
-            MathicType::Adt { .. } => {
-                todo!()
-            }
-        }
-    }
-
     pub fn bit_width(&self) -> usize {
         match self {
             Self::Sint(ty) => match ty {

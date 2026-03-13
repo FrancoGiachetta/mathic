@@ -3,9 +3,18 @@ use std::fmt::{self, Display, Formatter};
 #[derive(Debug, Clone, PartialEq)]
 pub enum Value {
     // Holds the index to find the associated local
-    InMemory(usize),
+    InMemory {
+        local_idx: usize,
+        modifier: Option<ValueModifier>,
+    },
+
     // Holds the value as-is
     Const(ConstExpr),
+}
+
+#[derive(Debug, Clone, PartialEq)]
+pub enum ValueModifier {
+    Field(usize),
 }
 
 /// Constant expressions
@@ -95,7 +104,7 @@ impl Display for ConstExpr {
 impl Display for Value {
     fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
         match self {
-            Self::InMemory(idx) => write!(f, "%{}", idx),
+            Self::InMemory { local_idx, .. } => write!(f, "%{}", local_idx),
             Self::Const(c) => write!(f, "{}", c),
         }
     }

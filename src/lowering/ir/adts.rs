@@ -43,6 +43,12 @@ impl Adt {
             Adt::Struct(s) => s.fields.iter().find(|f| f.name == name).map(|f| f.ty),
         }
     }
+
+    pub fn get_fields_tys(&self) -> Vec<MathicType> {
+        match self {
+            Adt::Struct(s) => s.fields.iter().map(|f| f.ty).collect(),
+        }
+    }
 }
 
 pub fn write_adt_ir<W: std::fmt::Write>(adt: &Adt, f: &mut W, indent: usize) -> std::fmt::Result {

@@ -20,7 +20,6 @@ pub mod value;
 pub struct Ir {
     pub functions: Vec<Function>,
     pub adts: Vec<Adt>,
-    pub types: Vec<MathicType>,
 }
 
 /// Helper struct to build the IR.
@@ -69,7 +68,6 @@ impl IrBuilder {
         Ir {
             functions: self.functions.into_values().collect(),
             adts: self.adts,
-            types: Vec::new(),
         }
     }
 }

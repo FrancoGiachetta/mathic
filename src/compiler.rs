@@ -95,10 +95,10 @@ impl MathicCompiler {
         let mut module = ffi::create_module(&self.ctx, opt_lvl)?;
 
         {
-            let codegen = MathicCodeGen::new(&self.ctx, &module, file_path);
+            let codegen = MathicCodeGen::new(&self.ctx, &ir, &module, file_path);
             let mut helper = CompilerHelper::new();
 
-            codegen.generate_module(&ir, &mut helper)?;
+            codegen.generate_module(&mut helper)?;
         }
 
         if let Ok(v) = std::env::var("MATHIC_DBG_DUMP") {

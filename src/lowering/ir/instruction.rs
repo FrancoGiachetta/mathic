@@ -30,10 +30,12 @@ pub enum LValInstruct {
 pub enum RValueKind {
     Use {
         value: Value,
-        modifier: Option<ValueModifier>,
         span: Option<Span>,
     },
-    Init(InitInstruc),
+    Init {
+        init_inst: InitInstruct,
+        span: Span,
+    },
     Binary {
         op: BinaryOp,
         lhs: Box<RValInstruct>,
@@ -54,12 +56,7 @@ pub enum RValueKind {
 }
 
 #[derive(Debug, Clone)]
-pub enum ValueModifier {
-    Field(usize),
-}
-
-#[derive(Debug, Clone)]
-pub enum InitInstruc {
+pub enum InitInstruct {
     StructInit { fields: Vec<RValInstruct> },
 }
 
@@ -117,7 +114,10 @@ impl Display for RValueKind {
     fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
         match self {
             Self::Use { value, .. } => write!(f, "{}", value),
-            Self::Init(InitInstruc::StructInit { fields, .. }) => {
+            Self::Init {
+                init_inst: InitInstruct::StructInit { fields, .. },
+                ..
+            } => {
                 writeln!(f, "struct {{")?;
 
                 for (i, field) in fields.iter().enumerate() {

@@ -30,16 +30,12 @@ impl MathicCodeGen<'_> {
                 let location = self.get_location(*span)?;
 
                 let init_val = self.compile_rvalue(fn_ctx, block, init, helper)?;
-                let ptr = block.alloca1(
-                    self.ctx,
-                    location,
-                    init.ty.get_compiled_type(self.ctx),
-                    init.ty.align(),
-                )?;
+                let init_ty = self.get_compiled_type(fn_ctx.get_ir_func(), init.ty);
+                let ptr = block.alloca1(self.ctx, location, init_ty, init.ty.align())?;
 
                 block.store(self.ctx, location, ptr, init_val)?;
 
-                fn_ctx.define_local(ptr, init.ty.get_compiled_type(self.ctx));
+                fn_ctx.define_local(ptr, init_ty);
             }
             LValInstruct::Assign {
                 local_idx,
@@ -118,7 +114,7 @@ impl MathicCodeGen<'_> {
                     args_vals.push(self.compile_rvalue(fn_ctx, block, arg, helper)?);
                 }
 
-                let mlir_return_ty = return_ty.get_compiled_type(self.ctx);
+                let mlir_return_ty = self.get_compiled_type(fn_ctx.get_ir_func(), *return_ty);
                 let return_ptr = block.alloca1(
                     self.ctx,
                     unknown_location,
