@@ -256,9 +256,10 @@ impl<'a> MathicParser<'a> {
         let lookahead = self.peek_not_none()?;
         let mut expr = self.parse_primary_expr()?;
 
-        while let Some(t) = self.match_any_token(&[Token::LParen, Token::Dot])?
-            && lookahead.token == Token::Ident
+        while lookahead.token == Token::Ident
+            && (self.check_next(Token::LParen)? || self.check_next(Token::Dot)?)
         {
+            let t = self.next()?; // consume Dot.
             match t.token {
                 Token::LParen => {
                     expr = self.finish_call(lookahead.lexeme.to_string(), expr.span)?;
@@ -278,7 +279,7 @@ impl<'a> MathicParser<'a> {
             }
         }
 
-        Ok(expr)
+        Ok(dbg!(expr))
     }
 
     fn finish_call(&self, callee: String, span: Span) -> ParserResult<ExprStmt> {
