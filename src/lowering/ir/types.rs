@@ -8,6 +8,7 @@ use crate::{
             Ir,
             function::{Function, FunctionBuilder},
         },
+        lower_top_level_struct,
     },
     parser::{Span, ast::declaration::AstType},
 };
@@ -69,7 +70,7 @@ pub fn lower_inner_ast_type(
             "char" => MathicType::Char,
             "bool" => MathicType::Bool,
             other => {
-                if let Some(ty) = func_builder.ir_builder.get_user_def_type(other) {
+                if let Ok(ty) = func_builder.get_user_def_type(other, span) {
                     return Ok(ty);
                 }
 
@@ -80,8 +81,8 @@ pub fn lower_inner_ast_type(
                     .cloned()
                 {
                     Some(d) => MathicType::Adt {
-                        index: lower_inner_struct(func_builder, &d)?,
-                        is_local: true,
+                        index: lower_top_level_struct(func_builder.ir_builder, &d)?,
+                        is_local: false,
                     },
                     None => match func_builder.decl_table.get_struct_decl(other).cloned() {
                         Some(d) => MathicType::Adt {

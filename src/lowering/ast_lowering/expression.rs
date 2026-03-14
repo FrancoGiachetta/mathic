@@ -261,8 +261,7 @@ fn lower_adt_init(
 ) -> Result<RValInstruct, LoweringError> {
     let adt_ty = func.get_user_def_type(name, span)?;
     let adt_body = func.get_adt_body(adt_ty, span)?.clone();
-    let mut init_fields = Vec::with_capacity(fields.len());
-
+    let mut init_fields = vec![None; fields.len()];
     if fields.len() != adt_body.fields_len() {
         let adt_fields_names = adt_body.get_field_names();
         let missing = adt_fields_names
@@ -299,13 +298,13 @@ fn lower_adt_init(
                     span,
                 })?;
 
-        init_fields.insert(field_idx, rvalue);
+        init_fields[field_idx] = Some(rvalue);
     }
 
     Ok(RValInstruct {
         kind: RValueKind::Init {
             init_inst: InitInstruct::StructInit {
-                fields: init_fields,
+                fields: init_fields.into_iter().map(Option::unwrap).collect(),
             },
             span,
         },

@@ -56,8 +56,8 @@ impl MathicCodeGen<'_> {
                 let val = self.compile_rvalue(fn_ctx, block, value, helper)?;
                 let (ptr, local_ty) = fn_ctx.get_local(*local_idx).expect("invalid local idx");
 
-                if let Some(m) = modifier {
-                    match m {
+                let val = match modifier {
+                    Some(m) => match m {
                         ValueModifier::Field(idx) => match local_ty {
                             MathicType::Adt { index, is_local } => {
                                 let adt = if is_local {
@@ -77,16 +77,17 @@ impl MathicCodeGen<'_> {
                                         )?;
                                         block.insert_value(
                                             self.ctx, location, struct_val, val, *idx,
-                                        )?;
+                                        )?
                                     }
                                 }
                             }
                             _ => unreachable!(),
                         },
-                    }
-                } else {
-                    block.store(self.ctx, location, ptr, val)?;
-                }
+                    },
+                    None => val,
+                };
+
+                block.store(self.ctx, location, ptr, val)?;
             }
         }
 
