@@ -1,10 +1,13 @@
-use std::collections::HashMap;
-
 use super::basic_block::{BasicBlock, BlockId, write_block_ir};
 use crate::{
     diagnostics::LoweringError,
     lowering::ir::{
-        DeclTable, IrBuilder, basic_block::Terminator, instruction::LValInstruct, types::MathicType,
+        DeclTable, IrBuilder,
+        adts::{Adt, write_adt_ir},
+        basic_block::Terminator,
+        instruction::LValInstruct,
+        symbols::SymbolTable,
+        types::{MathicType, lower_inner_ast_type},
     },
     parser::{
         Span,
@@ -32,7 +35,7 @@ pub struct FunctionBuilder<'ir> {
     pub params_tys: Vec<MathicType>,
     pub basic_blocks: Vec<BasicBlock>,
     pub return_ty: MathicType,
-    pub ir_builder: &'ir IrBuilder,
+    pub ir_builder: &'ir mut IrBuilder,
     pub span: Span,
 }
 
@@ -52,54 +55,45 @@ pub struct Local {
     pub debug_name: Option<String>,
 }
 
-/// Symbol Table.
-///
-/// Stores locals and function declared within the function's context.
-#[derive(Debug, Clone, Default)]
-pub struct SymbolTable {
-    pub locals: Vec<Local>,
-    pub local_indexes: HashMap<String, usize>,
-    pub functions: HashMap<String, Function>,
-}
-
 impl<'ir> FunctionBuilder<'ir> {
     /// Create a new function
     pub fn new(
         name: String,
         params: &[Param],
         return_ty: MathicType,
-        ir_builder: &'ir IrBuilder,
+        ir_builder: &'ir mut IrBuilder,
         span: Span,
-    ) -> Self {
-        let mut func = Self {
+    ) -> Result<Self, LoweringError> {
+        let mut func_builder = Self {
             name,
             decl_table: DeclTable::default(),
             sym_table: Default::default(),
             basic_blocks: vec![BasicBlock::new(0, Terminator::Return(None, None), None)],
-            params_tys: Vec::with_capacity(params.len()),
+            params_tys: Vec::new(),
             return_ty,
             ir_builder,
             span,
         };
 
         for (param_idx, param) in params.iter().enumerate() {
-            let param_ty: MathicType = (&param.ty).into();
+            let param_ty: MathicType =
+                lower_inner_ast_type(&mut func_builder, &param.ty, param.span)?;
 
-            func.params_tys.push(param_ty);
+            func_builder.params_tys.push(param_ty);
 
-            func.sym_table.locals.push(Local {
+            func_builder.sym_table.locals.push(Local {
                 local_idx: param_idx,
                 kind: LocalKind::Param,
                 ty: param_ty,
                 debug_name: Some(param.name.clone()),
             });
-
-            func.sym_table
+            func_builder
+                .sym_table
                 .local_indexes
                 .insert(param.name.clone(), param_idx);
         }
 
-        func
+        Ok(func_builder)
     }
 
     /// Build the function and add it to the IR builder
@@ -114,63 +108,10 @@ impl<'ir> FunctionBuilder<'ir> {
         }
     }
 
-    /// Add a function declaration to the declaration table
-    pub fn add_func_decl(&mut self, func: crate::parser::ast::declaration::FuncDecl) {
-        self.decl_table.functions.insert(func.name.clone(), func);
-    }
-
-    /// Adds a user-defined local.
-    pub fn add_local(
-        &mut self,
-        debug_name: Option<String>,
-        ty: MathicType,
-        span: Option<Span>,
-        kind: LocalKind,
-    ) -> Result<usize, LoweringError> {
-        if let Some(name) = &debug_name
-            && self.sym_table.local_indexes.contains_key(name)
-        {
-            return Err(LoweringError::DuplicateDeclaration {
-                name: name.clone(),
-                span: span.unwrap(),
-            });
-        }
-
-        let idx = self.sym_table.locals.len();
-
-        self.sym_table.locals.push(Local {
-            local_idx: idx,
-            kind,
-            ty,
-            debug_name: debug_name.clone(),
-        });
-
-        if let Some(name) = debug_name {
-            self.sym_table.local_indexes.insert(name, idx);
-        }
-
-        Ok(idx)
-    }
-
-    pub fn add_function(&mut self, func: Function) {
-        self.sym_table.functions.insert(func.name.clone(), func);
-    }
-
-    pub fn get_local_from_name(&self, name: &str, span: Span) -> Result<Local, LoweringError> {
-        let local_idx = self.sym_table.local_indexes.get(name).copied().ok_or(
-            LoweringError::UndeclaredVariable {
-                name: name.to_string(),
-                span,
-            },
-        )?;
-
-        Ok(self.sym_table.locals[local_idx].clone())
-    }
-
     pub fn get_function_decl(&self, name: &str, span: Span) -> Result<FuncDecl, LoweringError> {
-        match self.decl_table.functions.get(name).cloned() {
+        match self.decl_table.get_function_decl(name).cloned() {
             Some(f) => Ok(f),
-            None => match self.ir_builder.get_function_decl(name).cloned() {
+            None => match self.ir_builder.decl_table.get_function_decl(name).cloned() {
                 Some(f) => Ok(f),
                 None => Err(LoweringError::UndeclaredFunction {
                     name: name.to_string(),
@@ -178,6 +119,31 @@ impl<'ir> FunctionBuilder<'ir> {
                 }),
             },
         }
+    }
+
+    pub fn get_user_def_type(&self, name: &str, span: Span) -> Result<MathicType, LoweringError> {
+        if let Some(ty) = self.sym_table.get_user_def_type(name) {
+            return Ok(ty);
+        }
+        if let Some(ty) = self.ir_builder.get_user_def_type(name) {
+            return Ok(ty);
+        }
+
+        Err(LoweringError::UndeclaredType { span })
+    }
+
+    pub fn get_adt_body(&self, adt_ty: MathicType, span: Span) -> Result<&Adt, LoweringError> {
+        let MathicType::Adt { index, is_local } = adt_ty else {
+            panic!()
+        };
+
+        let adt = if is_local {
+            self.sym_table.get_adt(index)
+        } else {
+            self.ir_builder.adts.get(index)
+        };
+
+        adt.ok_or(LoweringError::UndeclaredType { span })
     }
 
     pub fn add_block(&mut self, terminator: Terminator, span: Option<Span>) -> BlockId {
@@ -224,6 +190,10 @@ pub fn write_function_ir<W: std::fmt::Write>(
         .join(", ");
 
     writeln!(f, "{}df {}({}) -> i64 {{", indent_str, func.name, params)?;
+
+    for nested_adt in func.sym_table.adts.iter() {
+        write_adt_ir(nested_adt, f, indent + 4)?;
+    }
 
     for (_, nested_func) in func.sym_table.functions.iter() {
         write_function_ir(nested_func, f, indent + 4)?;

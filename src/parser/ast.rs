@@ -1,4 +1,4 @@
-use super::ast::declaration::{FuncDecl, StructDecl};
+use super::ast::declaration::TopLevelItem;
 
 pub mod control_flow;
 pub mod declaration;
@@ -7,6 +7,5 @@ pub mod statement;
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Program {
-    pub structs: Vec<StructDecl>,
-    pub funcs: Vec<FuncDecl>,
+    pub items: Vec<TopLevelItem>,
 }

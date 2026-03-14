@@ -1,3 +1,5 @@
+use std::collections::HashMap;
+
 use crate::parser::{Span, token::Token};
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -14,6 +16,10 @@ pub enum ExprStmtKind {
         lhs: Box<ExprStmt>,
         op: BinaryOp,
         rhs: Box<ExprStmt>,
+    },
+    StructInit {
+        name: String,
+        fields: HashMap<String, ExprStmt>,
     },
     Call {
         callee: String,
@@ -36,6 +42,15 @@ pub enum ExprStmtKind {
     Assign {
         name: String,
         expr: Box<ExprStmt>,
+    },
+    StructGet {
+        expr: Box<ExprStmt>,
+        field_name: String,
+    },
+    StructSet {
+        lhs: Box<ExprStmt>,
+        field_name: String,
+        rhs: Box<ExprStmt>,
     },
 }
 

@@ -67,6 +67,8 @@ pub enum Token {
     For,
     #[token("struct")]
     Struct,
+    #[token("pub")]
+    Pub,
     #[token("sym")]
     Sym,
     #[token("df")]
@@ -87,7 +89,7 @@ pub enum Token {
     // Literals.
     #[regex(r#""[^"]*""#)]
     Str,
-    #[regex(r"(?:0|[1-9]\d*)(?:\.\d+)?")]
+    #[regex(r"0|[1-9]\d*(\.\d+)?")]
     Num,
     #[regex(r"[\p{XID_Start}_]\p{XID_Continue}*")]
     Ident,

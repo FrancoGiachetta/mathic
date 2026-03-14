@@ -2,18 +2,20 @@ use melior::{
     dialect::func,
     helpers::{BuiltinBlockExt, LlvmBlockExt},
     ir::{
-        Attribute, Block, BlockLike, BlockRef, Identifier, Region, RegionLike, Type, TypeLike,
-        Value, ValueLike,
+        Attribute, Block, BlockLike, BlockRef, Identifier, Region, RegionLike, Value, ValueLike,
         attribute::{StringAttribute, TypeAttribute},
         r#type::FunctionType,
     },
 };
-use mlir_sys::{MlirType, MlirValue};
+use mlir_sys::MlirValue;
 
 use crate::{
     codegen::{MathicCodeGen, compiler_helper::CompilerHelper},
     diagnostics::CodegenError,
-    lowering::ir::function::{Function, LocalKind},
+    lowering::ir::{
+        function::{Function, LocalKind},
+        types::MathicType,
+    },
 };
 
 /// Helper struct to store the current context of the function being compiled.
@@ -23,31 +25,37 @@ use crate::{
 /// **locals**: variables defined within the function context.
 /// **mlir_blocks**: the MLIR Blocks that the function will use.
 pub struct FunctionCtx<'ctx, 'this> {
-    locals: Vec<(MlirValue, MlirType)>,
+    locals: Vec<(MlirValue, MathicType)>,
     mlir_blocks: &'this [BlockRef<'ctx, 'this>],
+    ir_func: &'this Function,
 }
 
 impl<'ctx, 'this> FunctionCtx<'ctx, 'this> {
-    pub fn new(mlir_blocks: &'this [BlockRef<'ctx, 'this>]) -> Self {
+    pub fn new(mlir_blocks: &'this [BlockRef<'ctx, 'this>], ir_func: &'this Function) -> Self {
         Self {
             locals: Vec::new(),
             mlir_blocks,
+            ir_func,
         }
     }
 
-    pub fn define_local(&mut self, value: Value, ty: Type) {
-        self.locals.push((value.to_raw(), ty.to_raw()));
+    pub fn define_local(&mut self, value: Value, ty: MathicType) {
+        self.locals.push((value.to_raw(), ty));
     }
 
-    pub fn get_local(&self, idx: usize) -> Option<(Value<'ctx, '_>, Type<'ctx>)> {
+    pub fn get_local(&self, idx: usize) -> Option<(Value<'ctx, '_>, MathicType)> {
         self.locals
             .get(idx)
             .copied()
-            .map(|(v, t)| unsafe { (Value::from_raw(v), Type::from_raw(t)) })
+            .map(|(v, t)| (unsafe { Value::from_raw(v) }, t))
     }
 
     pub fn get_block(&self, idx: usize) -> BlockRef<'_, '_> {
         *self.mlir_blocks.get(idx).expect("invalid block index")
+    }
+
+    pub fn get_ir_func(&self) -> &Function {
+        self.ir_func
     }
 }
 
@@ -63,14 +71,14 @@ impl MathicCodeGen<'_> {
     {
         let location = self.get_location(None)?;
 
-        let return_ty = inner_func.return_ty.get_compiled_type(self.ctx);
+        let return_ty = self.get_compiled_type(inner_func, inner_func.return_ty);
         let mut params_types = Vec::with_capacity(inner_func.params_tys.len());
         let mut block_params = Vec::with_capacity(inner_func.params_tys.len());
 
         // Prepare the function's params' types and the entry block params as
         // well.
         for param_ty in inner_func.params_tys.iter() {
-            let mlir_ty = param_ty.get_compiled_type(self.ctx);
+            let mlir_ty = self.get_compiled_type(inner_func, *param_ty);
 
             params_types.push(mlir_ty);
             block_params.push((mlir_ty, location));
@@ -96,7 +104,7 @@ impl MathicCodeGen<'_> {
             mlir_blocks.push(region.append_block(Block::new(&[])));
         }
 
-        let mut inner_fn_ctx = FunctionCtx::new(&mlir_blocks);
+        let mut inner_fn_ctx = FunctionCtx::new(&mlir_blocks, inner_func);
         let function_params = inner_func
             .sym_table
             .locals
@@ -111,8 +119,7 @@ impl MathicCodeGen<'_> {
 
                 entry_block.store(self.ctx, location, ptr, value)?;
 
-                inner_fn_ctx
-                    .define_local(ptr, inner_func.params_tys[i].get_compiled_type(self.ctx));
+                inner_fn_ctx.define_local(ptr, inner_func.params_tys[i]);
             }
         }
 

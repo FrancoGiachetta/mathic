@@ -2,9 +2,12 @@ use std::fmt::{self, Display, Formatter};
 
 use super::types::MathicType;
 use super::value::Value;
-use crate::parser::{
-    Span,
-    ast::expression::{ArithOp, BinaryOp, CmpOp, LogicalOp, UnaryOp},
+use crate::{
+    lowering::ir::value::ValueModifier,
+    parser::{
+        Span,
+        ast::expression::{ArithOp, BinaryOp, CmpOp, LogicalOp, UnaryOp},
+    },
 };
 
 /// MATHIR's representation of LValue instruction.
@@ -21,6 +24,7 @@ pub enum LValInstruct {
     Assign {
         local_idx: usize,
         value: RValInstruct,
+        modifier: Option<ValueModifier>,
         span: Option<Span>,
     },
 }
@@ -31,6 +35,10 @@ pub enum RValueKind {
     Use {
         value: Value,
         span: Option<Span>,
+    },
+    Init {
+        init_inst: InitInstruct,
+        span: Span,
     },
     Binary {
         op: BinaryOp,
@@ -49,6 +57,11 @@ pub enum RValueKind {
         rhs: Box<RValInstruct>,
         span: Span,
     },
+}
+
+#[derive(Debug, Clone)]
+pub enum InitInstruct {
+    StructInit { fields: Vec<RValInstruct> },
 }
 
 /// MATHIR's representation of RValue instruction.
@@ -105,6 +118,18 @@ impl Display for RValueKind {
     fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
         match self {
             Self::Use { value, .. } => write!(f, "{}", value),
+            Self::Init {
+                init_inst: InitInstruct::StructInit { fields, .. },
+                ..
+            } => {
+                writeln!(f, "struct {{")?;
+
+                for (i, field) in fields.iter().enumerate() {
+                    writeln!(f, "    %{i}: {}", field)?;
+                }
+
+                writeln!(f, "    }}")
+            }
             Self::Binary { op, lhs, rhs, .. } => write!(f, "{} {} {}", lhs, op, rhs),
             Self::Unary { op, rhs, .. } => write!(f, "{}{}", op, rhs),
             Self::Logical { op, lhs, rhs, .. } => write!(f, "{} {} {}", lhs, op, rhs),

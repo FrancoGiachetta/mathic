@@ -1,13 +1,16 @@
 use melior::{
     dialect::{cf, func, llvm},
     helpers::{BuiltinBlockExt, LlvmBlockExt},
-    ir::{Block, BlockLike, Location, attribute::FlatSymbolRefAttribute, r#type::IntegerType},
+    ir::{Block, BlockLike, Location, attribute::FlatSymbolRefAttribute},
 };
 
 use crate::{
     codegen::{MathicCodeGen, compiler_helper::CompilerHelper, function_ctx::FunctionCtx},
     diagnostics::CodegenError,
-    lowering::ir::{basic_block::Terminator, instruction::LValInstruct},
+    lowering::ir::{
+        adts::Adt, basic_block::Terminator, instruction::LValInstruct, types::MathicType,
+        value::ValueModifier,
+    },
 };
 
 impl MathicCodeGen<'_> {
@@ -30,26 +33,59 @@ impl MathicCodeGen<'_> {
                 let location = self.get_location(*span)?;
 
                 let init_val = self.compile_rvalue(fn_ctx, block, init, helper)?;
+                let init_ty = self.get_compiled_type(fn_ctx.get_ir_func(), init.ty);
                 let ptr = block.alloca1(
                     self.ctx,
                     location,
-                    init.ty.get_compiled_type(self.ctx),
-                    init.ty.align(),
+                    init_ty,
+                    init.ty.align(self.ir, fn_ctx.get_ir_func()),
                 )?;
 
                 block.store(self.ctx, location, ptr, init_val)?;
 
-                fn_ctx.define_local(ptr, init.ty.get_compiled_type(self.ctx));
+                fn_ctx.define_local(ptr, init.ty);
             }
             LValInstruct::Assign {
                 local_idx,
                 value,
+                modifier,
                 span,
             } => {
                 let location = self.get_location(*span)?;
 
                 let val = self.compile_rvalue(fn_ctx, block, value, helper)?;
-                let (ptr, _) = fn_ctx.get_local(*local_idx).expect("invalid local idx");
+                let (ptr, local_ty) = fn_ctx.get_local(*local_idx).expect("invalid local idx");
+
+                let val = match modifier {
+                    Some(m) => match m {
+                        ValueModifier::Field(idx) => match local_ty {
+                            MathicType::Adt { index, is_local } => {
+                                let adt = if is_local {
+                                    fn_ctx.get_ir_func().sym_table.adts.get(index)
+                                } else {
+                                    self.ir.adts.get(index)
+                                }
+                                .unwrap();
+
+                                match adt {
+                                    Adt::Struct(_) => {
+                                        let struct_val = block.load(
+                                            self.ctx,
+                                            location,
+                                            ptr,
+                                            self.get_compiled_type(fn_ctx.get_ir_func(), local_ty),
+                                        )?;
+                                        block.insert_value(
+                                            self.ctx, location, struct_val, val, *idx,
+                                        )?
+                                    }
+                                }
+                            }
+                            _ => unreachable!(),
+                        },
+                    },
+                    None => val,
+                };
 
                 block.store(self.ctx, location, ptr, val)?;
             }
@@ -118,12 +154,12 @@ impl MathicCodeGen<'_> {
                     args_vals.push(self.compile_rvalue(fn_ctx, block, arg, helper)?);
                 }
 
-                let mlir_return_ty = return_ty.get_compiled_type(self.ctx);
+                let mlir_return_ty = self.get_compiled_type(fn_ctx.get_ir_func(), *return_ty);
                 let return_ptr = block.alloca1(
                     self.ctx,
                     unknown_location,
                     mlir_return_ty,
-                    return_ty.align(),
+                    return_ty.align(self.ir, fn_ctx.get_ir_func()),
                 )?;
                 let return_value = block.append_op_result(func::call(
                     self.ctx,
@@ -135,7 +171,7 @@ impl MathicCodeGen<'_> {
 
                 block.store(self.ctx, unknown_location, return_ptr, return_value)?;
 
-                fn_ctx.define_local(return_ptr, IntegerType::new(self.ctx, 64).into());
+                fn_ctx.define_local(return_ptr, *return_ty);
 
                 block.append_operation(cf::br(
                     &fn_ctx.get_block(*dest_block),

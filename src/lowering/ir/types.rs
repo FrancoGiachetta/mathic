@@ -1,14 +1,19 @@
 use std::fmt;
 
-use melior::{
-    Context,
-    dialect::llvm,
-    ir::{Type, r#type::IntegerType},
+use crate::{
+    diagnostics::LoweringError,
+    lowering::{
+        ast_lowering::declaration::lower_inner_struct,
+        ir::{
+            Ir,
+            function::{Function, FunctionBuilder},
+        },
+        lower_top_level_struct,
+    },
+    parser::{Span, ast::declaration::AstType},
 };
 
-use crate::parser::ast::declaration::AstType;
-
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub enum UintTy {
     U8,
     U16,
@@ -17,7 +22,7 @@ pub enum UintTy {
     U128,
 }
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub enum SintTy {
     I8,
     I16,
@@ -26,14 +31,15 @@ pub enum SintTy {
     I128,
 }
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub enum FloatTy {
     F32,
     F64,
 }
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub enum MathicType {
+    Adt { index: usize, is_local: bool },
     Bool,
     Char,
     Float(FloatTy),
@@ -43,21 +49,57 @@ pub enum MathicType {
     Void,
 }
 
-impl MathicType {
-    pub fn get_compiled_type<'func>(&'func self, ctx: &'func Context) -> Type<'func> {
-        match self {
-            Self::Uint(_) | Self::Sint(_) => IntegerType::new(ctx, self.bit_width() as u32).into(),
-            MathicType::Float(float_ty) => match float_ty {
-                FloatTy::F32 => Type::float32(ctx),
-                FloatTy::F64 => Type::float64(ctx),
-            },
-            MathicType::Bool => IntegerType::new(ctx, 1).into(),
-            MathicType::Char => IntegerType::new(ctx, 8).into(),
-            MathicType::Str => llvm::r#type::pointer(ctx, 0),
-            MathicType::Void => Type::none(ctx),
-        }
-    }
+pub fn lower_inner_ast_type(
+    func_builder: &mut FunctionBuilder,
+    ty: &AstType,
+    span: Span,
+) -> Result<MathicType, LoweringError> {
+    Ok(match ty {
+        AstType::Type(name) => match name.as_str() {
+            "i8" => MathicType::Sint(SintTy::I8),
+            "i16" => MathicType::Sint(SintTy::I16),
+            "i32" => MathicType::Sint(SintTy::I32),
+            "i64" => MathicType::Sint(SintTy::I64),
+            "i128" => MathicType::Sint(SintTy::I128),
+            "u8" => MathicType::Uint(UintTy::U8),
+            "u16" => MathicType::Uint(UintTy::U16),
+            "u32" => MathicType::Uint(UintTy::U32),
+            "u64" => MathicType::Uint(UintTy::U64),
+            "u128" => MathicType::Uint(UintTy::U128),
+            "str" => MathicType::Str,
+            "char" => MathicType::Char,
+            "bool" => MathicType::Bool,
+            other => {
+                if let Ok(ty) = func_builder.get_user_def_type(other, span) {
+                    return Ok(ty);
+                }
 
+                match func_builder
+                    .ir_builder
+                    .decl_table
+                    .get_struct_decl(other)
+                    .cloned()
+                {
+                    Some(d) => MathicType::Adt {
+                        index: lower_top_level_struct(func_builder.ir_builder, &d)?,
+                        is_local: false,
+                    },
+                    None => match func_builder.decl_table.get_struct_decl(other).cloned() {
+                        Some(d) => MathicType::Adt {
+                            index: lower_inner_struct(func_builder, &d)?,
+                            is_local: true,
+                        },
+                        None => {
+                            return Err(LoweringError::UndeclaredType { span });
+                        }
+                    },
+                }
+            }
+        },
+    })
+}
+
+impl MathicType {
     pub fn bit_width(&self) -> usize {
         match self {
             Self::Sint(ty) => match ty {
@@ -80,12 +122,12 @@ impl MathicType {
             },
             Self::Bool => 1,
             Self::Char => 8,
-            Self::Str => todo!(),
             Self::Void => 0,
+            Self::Str | Self::Adt { .. } => todo!(),
         }
     }
 
-    pub fn align(&self) -> usize {
+    pub fn align(&self, ir: &Ir, func: &Function) -> usize {
         match self {
             Self::Sint(ty) => match ty {
                 SintTy::I8 => 8,
@@ -109,6 +151,21 @@ impl MathicType {
             Self::Str => 8,
             Self::Char => 8,
             Self::Void => 0,
+            Self::Adt { index, is_local } => {
+                let adt = if *is_local {
+                    func.sym_table.get_adt(*index).unwrap()
+                } else {
+                    ir.adts.get(*index).unwrap()
+                };
+                let adt_fields_tys = adt.get_fields_tys();
+                let mut align = 0;
+
+                for ty in adt_fields_tys.iter() {
+                    align = align.max(ty.align(ir, func));
+                }
+
+                align
+            }
         }
     }
 
@@ -130,54 +187,6 @@ impl MathicType {
     #[inline(always)]
     pub fn is_bool(&self) -> bool {
         matches!(self, Self::Bool)
-    }
-}
-
-impl From<&AstType> for MathicType {
-    fn from(value: &AstType) -> Self {
-        match value {
-            AstType::Str => MathicType::Str,
-            AstType::Char => MathicType::Char,
-            AstType::Bool => MathicType::Bool,
-            AstType::Void => MathicType::Void,
-            AstType::I8 => MathicType::Sint(SintTy::I8),
-            AstType::I16 => MathicType::Sint(SintTy::I16),
-            AstType::I32 => MathicType::Sint(SintTy::I32),
-            AstType::I64 => MathicType::Sint(SintTy::I64),
-            AstType::I128 => MathicType::Sint(SintTy::I128),
-            AstType::U8 => MathicType::Uint(UintTy::U8),
-            AstType::U16 => MathicType::Uint(UintTy::U16),
-            AstType::U32 => MathicType::Uint(UintTy::U32),
-            AstType::U64 => MathicType::Uint(UintTy::U64),
-            AstType::U128 => MathicType::Uint(UintTy::U128),
-            AstType::F32 => MathicType::Float(FloatTy::F32),
-            AstType::F64 => MathicType::Float(FloatTy::F64),
-            AstType::Adt(name) => todo!("Adt({name})"),
-        }
-    }
-}
-
-impl From<AstType> for MathicType {
-    fn from(value: AstType) -> Self {
-        match value {
-            AstType::Str => MathicType::Str,
-            AstType::Char => MathicType::Char,
-            AstType::Bool => MathicType::Bool,
-            AstType::Void => MathicType::Void,
-            AstType::I8 => MathicType::Sint(SintTy::I8),
-            AstType::I16 => MathicType::Sint(SintTy::I16),
-            AstType::I32 => MathicType::Sint(SintTy::I32),
-            AstType::I64 => MathicType::Sint(SintTy::I64),
-            AstType::I128 => MathicType::Sint(SintTy::I128),
-            AstType::U8 => MathicType::Uint(UintTy::U8),
-            AstType::U16 => MathicType::Uint(UintTy::U16),
-            AstType::U32 => MathicType::Uint(UintTy::U32),
-            AstType::U64 => MathicType::Uint(UintTy::U64),
-            AstType::U128 => MathicType::Uint(UintTy::U128),
-            AstType::F32 => MathicType::Float(FloatTy::F32),
-            AstType::F64 => MathicType::Float(FloatTy::F64),
-            AstType::Adt(name) => todo!("Adt({name})"),
-        }
     }
 }
 
@@ -224,6 +233,7 @@ impl fmt::Display for MathicType {
             MathicType::Str => write!(f, "str"),
             MathicType::Char => write!(f, "char"),
             MathicType::Void => write!(f, "void"),
+            MathicType::Adt { index, .. } => write!(f, "Adt({index})"),
         }
     }
 }
