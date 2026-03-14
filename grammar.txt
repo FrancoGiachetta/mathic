@@ -1,7 +1,6 @@
 program        → (func_decl | struct_decl)+ ;
 
 ==== STATEMENTS ====
-
 statement       → declaration
                 | for_stmt
                 | while_stmt
@@ -11,7 +10,6 @@ statement       → declaration
                 | block ;
 
 ==== DECLARATIONS ====
-
 declaration     → func_decl
                 | struct_decl
                 | var_decl
@@ -19,22 +17,23 @@ declaration     → func_decl
 
 func_decl       → "df" ident "(" params? ")" type? block ;
 struct_decl     → "struct" ident "{" struct_fields? "}" ;
-var_decl        → "let" ident ":" type "=" expr struct_init? ";" ;
+var_decl        → "let" ident ":" type "=" initializer ";" ;
 sym_decl        → "sym" ident "=" ident ";" ;
 
-for_stmt        → "for" ident "in" expr ".." expr block
-                | "for" ident "in" expr block ;
-while_stmt      → "while" expr block ;
-if_stmt         → "if" expr block ("else" block)? ;
+for_stmt        → "for" ident "in" expr_no_init ".." expr_no_init block
+                | "for" ident "in" expr_no_init block ;
+while_stmt      → "while" expr_no_init block ;
+if_stmt         → "if" expr_no_init block ("else" block)? ;
 return_stmt     → "return" expr ";" ;
 block           → "{" statement* "}" ;
 expr_stmt       → expr ";" ;
 
 ==== EXPRESSIONS ====
-
 expr            → assignment ;
-assignment      → ident ("." ident)* "=" logic_or struct_init?
-                | logic_or ;
+assignment      → ident ("." ident)* "=" initializer
+                | initializer ;
+initializer     → logic_or struct_init? ;
+expr_no_init    → logic_or ;
 logic_or        → logic_and ("or" logic_and)* ;
 logic_and       → equality ("and" equality)* ;
 equality        → inequality (("==" | "!=") inequality)* ;
@@ -42,12 +41,11 @@ inequality      → term ((">" | ">=" | "<" | "<=") term)* ;
 term            → factor (("+" | "-") factor)* ;
 factor          → unary (("*" | "/") unary)* ;
 unary           → ("!" | "-") unary | call ;
-call            → primary ("(" args? ")" | "[" expr "]" | "." ident)*
+call            → primary ("(" args? ")" | "[" expr "]" | "." ident)* ;
 struct_init     → "{" ident ":" expr ("," ident ":" expr)* "}" ;
 primary         → "true" | "false" | ident | number | string | "(" expr ")" ;
 
 ==== LITERALS ====
-
 ident           → letter (letter | digit | "_")* ;
 type            → ident ;
 string          → "\"" [^"]* "\"" ;
@@ -56,7 +54,6 @@ letter          → [a-zA-Z] ;
 digit           → [0-9] ;
 
 ==== UTILITIES ====
-
-params          → ident ":" type ("," ident ":")* ;
+params          → ident ":" type ("," ident ":" type)* ;
 struct_fields   → ("pub")? ident ":" type ("," ("pub")? ident ":" type)* ;
 args            → expr ("," expr)* ;

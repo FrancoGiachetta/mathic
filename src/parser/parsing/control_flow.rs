@@ -8,7 +8,7 @@ impl<'a> MathicParser<'a> {
     pub fn parse_if_stmt(&self) -> ParserResult<IfStmt> {
         self.next()?; // consume If.
 
-        let condition = self.parse_expr()?;
+        let condition = self.parse_expr_no_init()?;
 
         let then_block = self.parse_block()?;
 
@@ -29,7 +29,7 @@ impl<'a> MathicParser<'a> {
     pub fn parse_while_stmt(&self) -> ParserResult<WhileStmt> {
         self.next()?; // consume While.
 
-        let condition = self.parse_expr()?;
+        let condition = self.parse_expr_no_init()?;
 
         let body = self.parse_block()?;
 
@@ -43,12 +43,12 @@ impl<'a> MathicParser<'a> {
 
         self.consume_token(Token::In)?;
 
-        let start = self.parse_expr()?;
+        let start = self.parse_expr_no_init()?;
 
         self.consume_token(Token::Dot)?;
         self.consume_token(Token::Dot)?;
 
-        let end = self.parse_expr()?;
+        let end = self.parse_expr_no_init()?;
 
         let body = self.parse_block()?;
 

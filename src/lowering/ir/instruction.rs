@@ -152,10 +152,14 @@ impl Display for LValInstruct {
                 write!(f, "let %{} = {}", local_idx, init)
             }
             Self::Assign {
-                local_idx, value, ..
-            } => {
-                write!(f, "%{} = {}", local_idx, value)
-            }
+                local_idx,
+                value,
+                modifier,
+                ..
+            } => match modifier {
+                Some(m) => write!(f, "%{}{} = {}", local_idx, m, value),
+                None => write!(f, "%{} = {}", local_idx, value),
+            },
         }
     }
 }

@@ -64,12 +64,7 @@ impl<'a> MathicParser<'a> {
 
         self.consume_token(Token::Eq)?;
 
-        let lookahead = self.peek_not_none()?;
-        let mut expr = self.parse_expr()?;
-
-        if self.match_token(Token::LBrace)?.is_some() {
-            expr = self.parse_struct_init(lookahead)?;
-        }
+        let expr = self.parse_initializer()?;
 
         self.consume_token(Token::Semicolon)?;
 

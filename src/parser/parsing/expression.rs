@@ -15,18 +15,16 @@ impl<'a> MathicParser<'a> {
         self.parse_assignment()
     }
 
+    pub fn parse_expr_no_init(&self) -> ParserResult<ExprStmt> {
+        self.parse_logic_or()
+    }
+
     fn parse_assignment(&self) -> ParserResult<ExprStmt> {
-        let lhs_lookahead = self.peek_not_none()?;
+        let lookahead = self.peek_not_none()?;
         let lhs = self.parse_logic_or()?;
 
         if self.match_token(Token::Eq)?.is_some() {
-            let lookahead = self.peek_not_none()?;
-            let mut rhs = self.parse_logic_or()?;
-
-            if self.match_token(Token::LBrace)?.is_some() {
-                rhs = self.parse_struct_init(lookahead)?;
-            }
-
+            let rhs = self.parse_initializer()?;
             let span = Span::from_merged_spans(lhs.span, rhs.span);
 
             match lhs.kind {
@@ -54,7 +52,7 @@ impl<'a> MathicParser<'a> {
                 }
                 _ => {
                     return Err(ParseError::Syntax(SyntaxError::UnexpectedToken {
-                        found: lhs_lookahead.into(),
+                        found: lookahead.into(),
                         expected: ExpectedToken::Identifier,
                     }));
                 }
@@ -62,6 +60,17 @@ impl<'a> MathicParser<'a> {
         }
 
         Ok(lhs)
+    }
+
+    pub fn parse_initializer(&self) -> ParserResult<ExprStmt> {
+        let lookahead = self.peek_not_none()?;
+        let mut expr = self.parse_logic_or()?;
+
+        if self.match_token(Token::LBrace)?.is_some() {
+            expr = self.parse_struct_init(lookahead)?;
+        }
+
+        Ok(expr)
     }
 
     fn parse_logic_or(&self) -> ParserResult<ExprStmt> {

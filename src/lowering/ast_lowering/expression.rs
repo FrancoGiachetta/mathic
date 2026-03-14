@@ -320,6 +320,14 @@ fn lower_struct_get(
     ty_hint: Option<MathicType>,
 ) -> Result<RValInstruct, LoweringError> {
     let (struct_expr, struct_ty) = lower_expr(func, expr, ty_hint)?;
+
+    let RValueKind::Use { value, .. } = struct_expr.kind else {
+        unreachable!()
+    };
+    let Value::InMemory { local_idx, .. } = value else {
+        unreachable!()
+    };
+
     let struct_adt = func.get_adt_body(struct_ty, expr.span)?;
     let field_index =
         struct_adt
@@ -336,20 +344,10 @@ fn lower_struct_get(
                 span: expr.span,
             })?;
 
-    let temp_local_idx = func
-        .sym_table
-        .add_local(None, struct_ty, None, LocalKind::Temp)?;
-
-    func.push_instruction(LValInstruct::Let {
-        local_idx: temp_local_idx,
-        init: struct_expr,
-        span: None,
-    });
-
     Ok(RValInstruct {
         kind: RValueKind::Use {
             value: Value::InMemory {
-                local_idx: temp_local_idx,
+                local_idx,
                 modifier: Some(ValueModifier::Field(field_index)),
             },
             span: Some(span),

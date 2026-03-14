@@ -104,8 +104,22 @@ impl Display for ConstExpr {
 impl Display for Value {
     fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
         match self {
-            Self::InMemory { local_idx, .. } => write!(f, "%{}", local_idx),
+            Self::InMemory {
+                local_idx,
+                modifier,
+            } => match modifier {
+                Some(m) => write!(f, "%{}{}", local_idx, m),
+                None => write!(f, "%{}", local_idx),
+            },
             Self::Const(c) => write!(f, "{}", c),
+        }
+    }
+}
+
+impl Display for ValueModifier {
+    fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
+        match self {
+            Self::Field(idx) => write!(f, ".{}", idx),
         }
     }
 }
