@@ -47,6 +47,11 @@ pub enum ExprStmtKind {
         expr: Box<ExprStmt>,
         field_name: String,
     },
+    StructSet {
+        lhs: Box<ExprStmt>,
+        field_name: String,
+        rhs: Box<ExprStmt>,
+    },
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]

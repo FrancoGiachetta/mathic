@@ -2,9 +2,12 @@ use std::fmt::{self, Display, Formatter};
 
 use super::types::MathicType;
 use super::value::Value;
-use crate::parser::{
-    Span,
-    ast::expression::{ArithOp, BinaryOp, CmpOp, LogicalOp, UnaryOp},
+use crate::{
+    lowering::ir::value::ValueModifier,
+    parser::{
+        Span,
+        ast::expression::{ArithOp, BinaryOp, CmpOp, LogicalOp, UnaryOp},
+    },
 };
 
 /// MATHIR's representation of LValue instruction.
@@ -21,6 +24,7 @@ pub enum LValInstruct {
     Assign {
         local_idx: usize,
         value: RValInstruct,
+        modifier: Option<ValueModifier>,
         span: Option<Span>,
     },
 }

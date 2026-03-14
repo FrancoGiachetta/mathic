@@ -7,7 +7,10 @@ use melior::{
 use crate::{
     codegen::{MathicCodeGen, compiler_helper::CompilerHelper, function_ctx::FunctionCtx},
     diagnostics::CodegenError,
-    lowering::ir::{basic_block::Terminator, instruction::LValInstruct},
+    lowering::ir::{
+        adts::Adt, basic_block::Terminator, instruction::LValInstruct, types::MathicType,
+        value::ValueModifier,
+    },
 };
 
 impl MathicCodeGen<'_> {
@@ -45,14 +48,45 @@ impl MathicCodeGen<'_> {
             LValInstruct::Assign {
                 local_idx,
                 value,
+                modifier,
                 span,
             } => {
                 let location = self.get_location(*span)?;
 
                 let val = self.compile_rvalue(fn_ctx, block, value, helper)?;
-                let (ptr, _) = fn_ctx.get_local(*local_idx).expect("invalid local idx");
+                let (ptr, local_ty) = fn_ctx.get_local(*local_idx).expect("invalid local idx");
 
-                block.store(self.ctx, location, ptr, val)?;
+                if let Some(m) = modifier {
+                    match m {
+                        ValueModifier::Field(idx) => match local_ty {
+                            MathicType::Adt { index, is_local } => {
+                                let adt = if is_local {
+                                    fn_ctx.get_ir_func().sym_table.adts.get(index)
+                                } else {
+                                    self.ir.adts.get(index)
+                                }
+                                .unwrap();
+
+                                match adt {
+                                    Adt::Struct(_) => {
+                                        let struct_val = block.load(
+                                            self.ctx,
+                                            location,
+                                            ptr,
+                                            self.get_compiled_type(fn_ctx.get_ir_func(), local_ty),
+                                        )?;
+                                        block.insert_value(
+                                            self.ctx, location, struct_val, val, *idx,
+                                        )?;
+                                    }
+                                }
+                            }
+                            _ => unreachable!(),
+                        },
+                    }
+                } else {
+                    block.store(self.ctx, location, ptr, val)?;
+                }
             }
         }
 

@@ -40,6 +40,11 @@ pub fn lower_expr(
             expr: struct_expr,
             field_name,
         } => lower_struct_get(func, struct_expr, field_name, expr.span, ty_hint)?,
+        ExprStmtKind::StructSet {
+            lhs,
+            field_name,
+            rhs,
+        } => lower_struct_set(func, lhs, field_name, rhs, expr.span)?,
     };
 
     Ok((
@@ -71,6 +76,7 @@ fn lower_assignment(
         .push(LValInstruct::Assign {
             local_idx: local.local_idx,
             value,
+            modifier: None,
             span: Some(span),
         });
 
@@ -353,6 +359,56 @@ fn lower_struct_get(
     })
 }
 
+fn lower_struct_set(
+    func: &mut FunctionBuilder,
+    lhs: &ExprStmt,
+    field_name: &str,
+    rhs: &ExprStmt,
+    span: Span,
+) -> Result<RValInstruct, LoweringError> {
+    let struct_field_value = lower_struct_get(func, lhs, field_name, span, None)?;
+    let (local_idx, modifier) = {
+        let RValueKind::Use { value, .. } = struct_field_value.kind else {
+            unreachable!()
+        };
+        let Value::InMemory {
+            local_idx,
+            modifier,
+        } = value
+        else {
+            unreachable!()
+        };
+
+        (local_idx, modifier)
+    };
+    let (value, value_ty) = lower_expr(func, rhs, Some(struct_field_value.ty))?;
+
+    if value_ty != struct_field_value.ty {
+        return Err(LoweringError::MismatchedType {
+            expected: struct_field_value.ty,
+            found: value_ty,
+            span,
+        });
+    }
+
+    func.get_basic_block_mut(func.last_block_idx())
+        .instructions
+        .push(LValInstruct::Assign {
+            local_idx,
+            value,
+            modifier,
+            span: Some(span),
+        });
+
+    Ok(RValInstruct {
+        kind: RValueKind::Use {
+            value: Value::Const(ConstExpr::Void),
+            span: None,
+        },
+        ty: MathicType::Void,
+    })
+}
+
 fn lower_primary_value(
     func: &mut FunctionBuilder,
     expr: &PrimaryExpr,
@@ -477,7 +533,9 @@ fn lower_expression_type(
         ExprStmtKind::Index { .. } => todo!(),
         ExprStmtKind::Logical { .. } => MathicType::Bool,
         ExprStmtKind::Unary { rhs, .. } => lower_expression_type(func, &rhs.kind, None, span)?,
-        ExprStmtKind::Assign { expr, .. } => lower_expression_type(func, &expr.kind, None, span)?,
+        ExprStmtKind::Assign { expr, .. } | ExprStmtKind::StructSet { rhs: expr, .. } => {
+            lower_expression_type(func, &expr.kind, None, span)?
+        }
         ExprStmtKind::StructInit { name, .. } => func.get_user_def_type(name, span)?,
         ExprStmtKind::StructGet { expr, field_name } => {
             let adt_ty = lower_expression_type(func, &expr.kind, ty_hint, span)?;

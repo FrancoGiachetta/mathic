@@ -16,17 +16,10 @@ impl<'a> MathicParser<'a> {
     }
 
     fn parse_assignment(&self) -> ParserResult<ExprStmt> {
-        let lookahead = self.peek_not_none()?;
+        let lhs_lookahead = self.peek_not_none()?;
         let lhs = self.parse_logic_or()?;
 
         if self.match_token(Token::Eq)?.is_some() {
-            let ExprStmtKind::Primary(PrimaryExpr::Ident(name)) = lhs.kind else {
-                return Err(ParseError::Syntax(SyntaxError::UnexpectedToken {
-                    found: lookahead.into(),
-                    expected: ExpectedToken::Identifier,
-                }));
-            };
-
             let lookahead = self.peek_not_none()?;
             let mut rhs = self.parse_logic_or()?;
 
@@ -36,13 +29,36 @@ impl<'a> MathicParser<'a> {
 
             let span = Span::from_merged_spans(lhs.span, rhs.span);
 
-            return Ok(ExprStmt {
-                kind: ExprStmtKind::Assign {
-                    name,
-                    expr: Box::new(rhs),
-                },
-                span,
-            });
+            match lhs.kind {
+                ExprStmtKind::StructGet {
+                    expr: lhs,
+                    field_name,
+                } => {
+                    return Ok(ExprStmt {
+                        kind: ExprStmtKind::StructSet {
+                            lhs,
+                            field_name,
+                            rhs: Box::new(rhs),
+                        },
+                        span,
+                    });
+                }
+                ExprStmtKind::Primary(PrimaryExpr::Ident(name)) => {
+                    return Ok(ExprStmt {
+                        kind: ExprStmtKind::Assign {
+                            name,
+                            expr: Box::new(rhs),
+                        },
+                        span,
+                    });
+                }
+                _ => {
+                    return Err(ParseError::Syntax(SyntaxError::UnexpectedToken {
+                        found: lhs_lookahead.into(),
+                        expected: ExpectedToken::Identifier,
+                    }));
+                }
+            }
         }
 
         Ok(lhs)
@@ -279,7 +295,7 @@ impl<'a> MathicParser<'a> {
             }
         }
 
-        Ok(dbg!(expr))
+        Ok(expr)
     }
 
     fn finish_call(&self, callee: String, span: Span) -> ParserResult<ExprStmt> {

@@ -90,8 +90,6 @@ fn lower_top_level_function(
         if let StmtKind::Decl(DeclStmt::Func(f)) = &stmt.kind {
             func_builder.decl_table.add_func_decl(f.clone());
         }
-
-        // FUTURE: do the same for structs, enums, etc
     }
 
     for stmt in body {
