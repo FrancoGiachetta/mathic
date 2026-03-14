@@ -89,7 +89,7 @@ pub enum Token {
     // Literals.
     #[regex(r#""[^"]*""#)]
     Str,
-    #[regex(r"\d+(?:\.\d+)?")]
+    #[regex(r"0|[1-9]\d*(\.\d+)?")]
     Num,
     #[regex(r"[\p{XID_Start}_]\p{XID_Continue}*")]
     Ident,
