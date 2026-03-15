@@ -505,7 +505,7 @@ fn lower_primary_value(
 /// as numeric constants, whose type depend on the bit width declared. In such
 /// cases, if no **ty_hint** was provided, the default type will be returned.
 fn lower_expression_type(
-    func: &FunctionBuilder,
+    func: &mut FunctionBuilder,
     expr: &ExprStmtKind,
     ty_hint: Option<MathicType>,
     span: Span,
@@ -525,7 +525,13 @@ fn lower_expression_type(
             BinaryOp::Compare(_) => MathicType::Bool,
             BinaryOp::Arithmetic(_) => lower_expression_type(func, &lhs.kind, None, span)?,
         },
-        ExprStmtKind::Call { callee: _, .. } => MathicType::Sint(SintTy::I64),
+        ExprStmtKind::Call { callee, .. } => {
+            let func_decl = func.get_function_decl(callee, span)?;
+            match func_decl.return_ty {
+                Some(ty) => lower_inner_ast_type(func, &ty, span)?,
+                None => MathicType::Void,
+            }
+        }
         ExprStmtKind::Group(expr_stmt) => lower_expression_type(func, &expr_stmt.kind, None, span)?,
         ExprStmtKind::Index { .. } => todo!(),
         ExprStmtKind::Logical { .. } => MathicType::Bool,

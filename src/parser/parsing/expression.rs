@@ -21,7 +21,7 @@ impl<'a> MathicParser<'a> {
 
     fn parse_assignment(&self) -> ParserResult<ExprStmt> {
         let lookahead = self.peek_not_none()?;
-        let lhs = self.parse_logic_or()?;
+        let lhs = self.parse_initializer()?;
 
         if self.match_token(Token::Eq)?.is_some() {
             let rhs = self.parse_initializer()?;
