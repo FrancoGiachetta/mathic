@@ -159,7 +159,7 @@ fn lower_call(
             },
             span: None,
         },
-        ty: MathicType::Sint(SintTy::I64),
+        ty: return_ty,
     })
 }
 

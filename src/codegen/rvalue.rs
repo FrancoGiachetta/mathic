@@ -262,7 +262,7 @@ impl MathicCodeGen<'_> {
                                     }
                                 }
                             }
-                            _ => unreachable!(),
+                            other => unreachable!("{}", other),
                         },
                     }
                 }

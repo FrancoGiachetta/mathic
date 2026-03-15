@@ -1,0 +1,38 @@
+struct Point {
+    x: i64,
+    y: i64
+}
+
+struct Rectangle {
+    origin: Point,
+    width: i64,
+    height: i64
+}
+
+df create_point(x: i64, y: i64) Point {
+    return Point { x: x, y: y };
+}
+
+df create_rectangle(p: Point, w: i64, h: i64) Rectangle {
+    return Rectangle { origin: p, width: w, height: h };
+}
+
+df area(r: Rectangle) i64 {
+    return r.width * r.height;
+}
+
+df main() i64 {
+    let a: i64 = 5;
+    let b: i64 = 10;
+    
+    let p: Point = create_point(a + 5, b + 20);
+    let r: Rectangle = create_rectangle(p, 10, 20);
+    
+    let result: i64 = area(r);
+    
+    if result > 0 {
+        return result;
+    }
+    
+    return r.origin.x;
+}
