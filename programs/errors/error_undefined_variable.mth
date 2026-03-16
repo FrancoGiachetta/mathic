@@ -1,6 +1,0 @@
-df main() {
-    let x: i64 = 10;
-    let y: i64 = x + z;
-
-    return y;
-}

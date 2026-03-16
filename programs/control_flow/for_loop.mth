@@ -1,9 +1,0 @@
-df main() i64 {
-    let sum: i64 = 0;
-
-    for i in 1..11 {
-        sum = sum + i;
-    }
-
-    return sum;
-}

@@ -10,49 +10,59 @@
 ```
 src/
 ├── bin/
-│   └── euler.rs           # Binary entry point
-├── codegen.rs             # MLIR Generation
+│   └── euler.rs              # Binary entry point
+├── codegen.rs                # MLIR Generation
 ├── codegen/
-│   ├── function_ctx.rs
-│   ├── rvalue.rs
-│   └── statement.rs
-├── compiler.rs            # Compiler driver
-├── diagnostics.rs         # Error handling entry point
-├── diagnostics/           # Unified diagnostics
-│   ├── codegen.rs        # Codegen errors
-│   ├── lowering.rs       # Semantic errors
-│   └── parse.rs          # Lexical and syntactic errors
-├── executor.rs            # JIT execution
-├── ffi.rs                 # MLIR/LLVM FFI bindings
-├── lowering.rs            # Lowerer entry point
-├── lowering/              # AST → IR lowering
-│   ├── ast_lowering.rs   # Lowerings entry point
-│   ├── ir.rs             # Ir struct definition
-│   ├── ir/               # IR definitions
-│   │   ├── basic_block.rs
-│   │   ├── function.rs
-│   │   ├── instruction.rs
-│   │   └── value.rs
-│   └── ast_lowering/     # AST → MATHIR transformation
+│   ├── compiler_helper.rs    # Compiler utilities
+│   ├── compiler_helper/
+│   │   └── debugging.rs      # Debug helpers
+│   ├── function_ctx.rs       # Function context
+│   ├── lvalue.rs             # Statement compilation (let, assign, struct set)
+│   └── rvalue.rs             # Expression compilation
+├── compiler.rs               # Compiler driver
+├── diagnostics.rs            # Error handling entry point
+├── diagnostics/              # Unified diagnostics
+│   ├── codegen.rs           # Codegen errors
+│   ├── lowering.rs          # Semantic errors
+│   └── parse.rs             # Lexical and syntactic errors
+├── executor.rs               # JIT execution
+├── ffi.rs                    # MLIR/LLVM FFI bindings
+├── lowering.rs               # Lowerer entry point
+├── lowering/                 # AST → IR lowering
+│   ├── ast_lowering.rs      # Lowerings entry point
+│   ├── ir.rs                # Ir struct definition
+│   ├── ir/                  # IR definitions
+│   │   ├── adts.rs          # ADT definitions (StructAdt)
+│   │   ├── basic_block.rs    # Basic block definitions
+│   │   ├── function.rs       # Function definitions
+│   │   ├── instruction.rs    # Instructions (RValInstruct, LValInstruct)
+│   │   ├── ir_walk.rs       # IR traversal helpers
+│   │   ├── symbols.rs       # Symbol and Declaration tables
+│   │   ├── types.rs         # Type definitions (MathicType, etc.)
+│   │   └── value.rs         # Value definitions
+│   └── ast_lowering/        # AST → MATHIR transformation
 │       ├── control_flow.rs
 │       ├── declaration.rs
 │       ├── expression.rs
 │       └── statement.rs
-├── parser.rs              # Parser entry point
-└── parser/                # Frontend: Lexing and Parsing
-    ├── ast.rs             # Program definition
-    ├── ast/               # AST nodes
-    │   ├── control_flow.rs
-    │   ├── declaration.rs
-    │   ├── expression.rs
-    │   └── statement.rs
-    ├── lexer.rs           # Lexer definition
-    ├── parsing/           # Recursive descent parser
-    │   ├── control_flow.rs
-    │   ├── declaration.rs
-    │   ├── expression.rs
-    │   └── statement.rs
-    └── token.rs           # Token enum
+├── parser.rs                 # Parser entry point
+├── parser/                   # Frontend: Lexing and Parsing
+│   ├── ast.rs               # Program definition
+│   ├── ast/                 # AST nodes
+│   │   ├── control_flow.rs
+│   │   ├── declaration.rs
+│   │   ├── expression.rs
+│   │   └── statement.rs
+│   ├── lexer.rs            # Lexer definition
+│   ├── parsing.rs           # Parsing submodule re-exports
+│   ├── parsing/             # Recursive descent parser
+│   │   ├── control_flow.rs
+│   │   ├── declaration.rs
+│   │   ├── expression.rs
+│   │   └── statement.rs
+│   └── token.rs            # Token enum
+├── test_utils.rs            # Test utilities
+└── lib.rs                   # Library entry point
 ```
 
 ## Pipeline
