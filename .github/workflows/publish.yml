@@ -13,33 +13,22 @@ jobs:
   release:
     runs-on: ubuntu-24.04
     env:
-        MLIR_SYS_190_PREFIX: /usr/lib/llvm-19/
-        LLVM_SYS_191_PREFIX: /usr/lib/llvm-19/
-        TABLEGEN_190_PREFIX: /usr/lib/llvm-19/
+        MLIR_SYS_210_PREFIX: /usr/lib/llvm-21/
+        LLVM_SYS_211_PREFIX: /usr/lib/llvm-21/
+        TABLEGEN_210_PREFIX: /usr/lib/llvm-21/
         CRATES_TOKEN: ${{ secrets.CARGO_REGISTRY_TOKEN }}
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
-      - name: free HDD space
-        run: |
-          # deleting space
-          sudo rm -rf /usr/share/dotnet/
-          sudo rm -rf /usr/local/lib/android
-      - name: Setup rust env
+        uses: actions/checkout@v6
+
+      - name: Install Rust env
         uses: dtolnay/rust-toolchain@1.94.0
-      - name: Retreive cached dependecies
+
+      - name: Rust Cache
         uses: Swatinem/rust-cache@v2
-      - name: add llvm deb repository
-        uses: myci-actions/add-deb-repo@11
-        with:
-          repo: deb http://apt.llvm.org/jammy/ llvm-toolchain-jammy-19 main
-          repo-name: llvm-repo
-          keys-asc: https://apt.llvm.org/llvm-snapshot.gpg.key
-      - name: Install LLVM
-        run: sudo apt-get install llvm-19 llvm-19-dev llvm-19-runtime clang-19 clang-tools-19 lld-19 libpolly-19-dev libmlir-19-dev mlir-19-tools
-      - name: publish sierra emu
-        run: cargo publish --token ${CRATES_TOKEN} --all-features -p sierra-emu
-      - name: publish cairo native
-        run: cargo publish --token ${CRATES_TOKEN} --all-features -p cairo-native
-      - name: publish starknet-native-compile
-        run: cargo publish --token ${CRATES_TOKEN} --all-features -p starknet-native-compile
+
+      - name: Install LLVM Dependencies
+        uses: ./.github/actions/install-llvm-deps
+
+      - name: Publish Mathic
+        run: cargo publish --token ${CRATES_TOKEN} --all-features
