@@ -1,5 +1,3 @@
-use std::fmt::{self, Display, Formatter};
-
 use super::instruction::LValInstruct;
 use super::value::Value;
 use crate::lowering::ir::instruction::RValInstruct;
@@ -62,69 +60,4 @@ pub enum Terminator {
         return_ty: MathicType,
         dest_block: usize,
     },
-}
-
-pub fn write_block_ir<W: std::fmt::Write>(
-    block: &BasicBlock,
-    f: &mut W,
-    indent: usize,
-) -> std::fmt::Result {
-    let inner_indent = " ".repeat(indent + 4);
-
-    writeln!(f, "{}block{}: {{", " ".repeat(indent), block.id)?;
-    for inst in &block.instructions {
-        writeln!(f, "{}{}", inner_indent, inst)?;
-    }
-    writeln!(f, "{}{}", inner_indent, block.terminator)?;
-    writeln!(f, "{}}}", " ".repeat(indent))
-}
-
-impl Display for Terminator {
-    fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
-        match self {
-            Self::Return(Some(v), _) => write!(f, "return {}", v),
-            Self::Return(None, _) => write!(f, "return"),
-            Self::Branch { target, .. } => {
-                write!(f, "br block{} ", target)
-            }
-            Self::CondBranch {
-                condition,
-                true_block,
-                false_block,
-                ..
-            } => {
-                write!(
-                    f,
-                    "cond_br ({}) then block{} else block{}",
-                    condition, true_block, false_block
-                )
-            }
-            Self::Unreachable(_) => write!(f, "unreachable"),
-            Self::Call {
-                callee,
-                args,
-                return_dest,
-                dest_block,
-                ..
-            } => {
-                let args_str = args
-                    .iter()
-                    .map(|a| a.to_string())
-                    .collect::<Vec<_>>()
-                    .join(", ");
-
-                write!(
-                    f,
-                    "{} = call {}({}) block{}",
-                    return_dest, callee, args_str, dest_block
-                )
-            }
-        }
-    }
-}
-
-impl Display for BasicBlock {
-    fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
-        write_block_ir(self, f, 0)
-    }
 }

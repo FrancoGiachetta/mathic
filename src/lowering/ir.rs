@@ -1,8 +1,8 @@
-use std::{collections::HashMap, fmt};
+use std::collections::HashMap;
 
 use crate::lowering::ir::{
-    adts::{Adt, write_adt_ir},
-    function::{Function, write_function_ir},
+    adts::Adt,
+    function::Function,
     symbols::DeclTable,
     types::MathicType,
 };
@@ -11,6 +11,7 @@ pub mod adts;
 pub mod basic_block;
 pub mod function;
 pub mod instruction;
+pub mod ir_walk;
 pub mod symbols;
 pub mod types;
 pub mod value;
@@ -69,19 +70,5 @@ impl IrBuilder {
             functions: self.functions.into_values().collect(),
             adts: self.adts,
         }
-    }
-}
-
-impl fmt::Display for Ir {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        for adt in &self.adts {
-            write_adt_ir(adt, f, 0)?;
-        }
-
-        for func in &self.functions {
-            write_function_ir(func, f, 0)?;
-        }
-
-        Ok(())
     }
 }

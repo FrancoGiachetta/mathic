@@ -1,17 +1,17 @@
-use super::basic_block::{BasicBlock, BlockId, write_block_ir};
+use super::basic_block::{BasicBlock, BlockId};
 use crate::{
     diagnostics::LoweringError,
     lowering::ir::{
-        DeclTable, IrBuilder,
-        adts::{Adt, write_adt_ir},
+        adts::Adt,
         basic_block::Terminator,
         instruction::LValInstruct,
         symbols::SymbolTable,
-        types::{MathicType, lower_inner_ast_type},
+        types::{lower_inner_ast_type, MathicType},
+        DeclTable, IrBuilder,
     },
     parser::{
-        Span,
         ast::declaration::{FuncDecl, Param},
+        Span,
     },
 };
 
@@ -171,37 +171,4 @@ impl<'ir> FunctionBuilder<'ir> {
     pub fn last_block_idx(&self) -> BlockId {
         self.basic_blocks.len() - 1
     }
-}
-
-pub fn write_function_ir<W: std::fmt::Write>(
-    func: &Function,
-    f: &mut W,
-    indent: usize,
-) -> std::fmt::Result {
-    let indent_str = " ".repeat(indent);
-
-    let params = func
-        .sym_table
-        .locals
-        .iter()
-        .filter(|local| matches!(local.kind, LocalKind::Param))
-        .map(|p| format!("%{}", p.local_idx))
-        .collect::<Vec<_>>()
-        .join(", ");
-
-    writeln!(f, "{}df {}({}) -> i64 {{", indent_str, func.name, params)?;
-
-    for nested_adt in func.sym_table.adts.iter() {
-        write_adt_ir(nested_adt, f, indent + 4)?;
-    }
-
-    for (_, nested_func) in func.sym_table.functions.iter() {
-        write_function_ir(nested_func, f, indent + 4)?;
-    }
-
-    for block in func.basic_blocks.iter() {
-        write_block_ir(block, f, indent + 4)?;
-    }
-
-    writeln!(f, "{}}}\n", indent_str)
 }
