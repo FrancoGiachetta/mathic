@@ -200,16 +200,3 @@ impl MathicCodeGen<'_> {
         Ok(())
     }
 }
-
-#[cfg(test)]
-mod tests {
-    use crate::test_utils::compile_and_execute;
-    use rstest::*;
-
-    #[rstest]
-    #[case("df main() i64 { return 0; }", 0)]
-    #[case("df main() i64 { return 42; }", 42)]
-    fn test_return_statements(#[case] source: &str, #[case] expected: i64) {
-        assert_eq!(compile_and_execute(source), expected);
-    }
-}

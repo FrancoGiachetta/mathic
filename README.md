@@ -17,7 +17,7 @@
 
 There are many ways of installing LLVM. Choose the one that fits your needs.
 
-#### MacOS (Homebrew)
+#### MacOS and Linux (Homebrew)
 
 ```bash
 brew install llvm@21
@@ -85,13 +85,11 @@ export TABLEGEN_210_PREFIX=<path-to-install-prefix>
 
 ## Installing Mathic
 
-You can install mathic using cargo. If the installation fails due to disk quota issues (common when /tmp is limited), change the target directory:
+You can install mathic using cargo
 
 ```shell
-CARGO_TARGET_DIR=<custom-path> cargo install mathic
+cargo install mathic
 ```
-
-Once the binary has been built, you can delete that directory.
 
 > Note: Ensure the required environment variables are set, otherwise the build will fail.
 
