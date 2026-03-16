@@ -1,11 +1,18 @@
-use std::fmt::{self, Display, Formatter};
-
 #[derive(Debug, Clone, PartialEq)]
 pub enum Value {
     // Holds the index to find the associated local
-    InMemory(usize),
+    InMemory {
+        local_idx: usize,
+        modifier: Vec<ValueModifier>,
+    },
+
     // Holds the value as-is
     Const(ConstExpr),
+}
+
+#[derive(Debug, Clone, PartialEq)]
+pub enum ValueModifier {
+    Field(usize),
 }
 
 /// Constant expressions
@@ -38,25 +45,6 @@ pub enum NumericConst {
     F64(f64),
 }
 
-impl Display for NumericConst {
-    fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
-        match self {
-            Self::I8(n) => write!(f, "{}", n),
-            NumericConst::I16(n) => write!(f, "{}", n),
-            NumericConst::I32(n) => write!(f, "{}", n),
-            NumericConst::I64(n) => write!(f, "{}", n),
-            NumericConst::I128(n) => write!(f, "{}", n),
-            NumericConst::U8(n) => write!(f, "{}", n),
-            NumericConst::U16(n) => write!(f, "{}", n),
-            NumericConst::U32(n) => write!(f, "{}", n),
-            NumericConst::U64(n) => write!(f, "{}", n),
-            NumericConst::U128(n) => write!(f, "{}", n),
-            NumericConst::F32(n) => write!(f, "{}", n),
-            NumericConst::F64(n) => write!(f, "{}", n),
-        }
-    }
-}
-
 macro_rules! numeric_const_value_from_int {
     ($variant:tt, $int_ty:ty) => {
         impl From<$int_ty> for Value {
@@ -79,24 +67,3 @@ numeric_const_value_from_int!(U64, u64);
 numeric_const_value_from_int!(U128, u128);
 numeric_const_value_from_int!(F32, f32);
 numeric_const_value_from_int!(F64, f64);
-
-impl Display for ConstExpr {
-    fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
-        match self {
-            Self::Str(s) => write!(f, "{}", &s),
-            Self::Char(c) => write!(f, "{}", c),
-            Self::Numeric(n) => write!(f, "{}", n),
-            Self::Bool(b) => write!(f, "{}", b),
-            Self::Void => write!(f, "void"),
-        }
-    }
-}
-
-impl Display for Value {
-    fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
-        match self {
-            Self::InMemory(idx) => write!(f, "%{}", idx),
-            Self::Const(c) => write!(f, "{}", c),
-        }
-    }
-}

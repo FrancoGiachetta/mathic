@@ -6,6 +6,7 @@ use lexer::{MathicLexer, SpannedToken};
 use token::Token;
 
 use crate::diagnostics::parse::{ExpectedToken, FoundToken, ParseError, SyntaxError};
+use crate::parser::ast::declaration::TopLevelItem;
 use crate::parser::lexer::LexerOutput;
 use tracing::instrument;
 
@@ -63,8 +64,7 @@ impl<'a> MathicParser<'a> {
     #[instrument(target = "parsing", skip(self))]
     pub fn parse(&self) -> ParserResult<Program> {
         tracing::debug!("Starting parsing");
-        let mut funcs = Vec::new();
-        let mut _structs = Vec::new();
+        let mut items = Vec::new();
 
         while let Ok(Some(SpannedToken {
             token,
@@ -73,8 +73,8 @@ impl<'a> MathicParser<'a> {
         })) = self.peek()
         {
             match token {
-                Token::Df => funcs.push(self.parse_func()?),
-                Token::Struct => todo!("parse struct"),
+                Token::Df => items.push(TopLevelItem::Func(self.parse_func()?)),
+                Token::Struct => items.push(TopLevelItem::Struct(self.parse_struct()?)),
                 _ => {
                     return Err(ParseError::Syntax(SyntaxError::UnexpectedToken {
                         found: FoundToken {
@@ -89,10 +89,7 @@ impl<'a> MathicParser<'a> {
             }
         }
 
-        Ok(Program {
-            funcs,
-            structs: _structs,
-        })
+        Ok(Program { items })
     }
 
     /// Returns the next token, advancing the lexer.
@@ -115,6 +112,18 @@ impl<'a> MathicParser<'a> {
             .borrow_mut()
             .peek()
             .map_err(|(e, span)| ParseError::Lexical(e, span))
+    }
+
+    /// Does the same as [peek](MathicParser::peek) except it fails in case
+    /// it returns `None`.
+    fn peek_not_none(&self) -> ParserResult<LexerOutput<'a>> {
+        self.lexer
+            .borrow_mut()
+            .peek()
+            .map_err(|(e, span)| ParseError::Lexical(e, span))?
+            .ok_or(ParseError::Syntax(SyntaxError::UnexpectedEnd {
+                span: self.current_span(),
+            }))
     }
 
     /// Returns the current position in the source.

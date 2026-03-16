@@ -1,0 +1,8 @@
+struct Counter {
+    value: i64
+}
+
+df main() i64 {
+    let counter: Counter = Counter { value: 0 };
+    return 0;
+}

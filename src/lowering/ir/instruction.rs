@@ -1,10 +1,11 @@
-use std::fmt::{self, Display, Formatter};
-
 use super::types::MathicType;
 use super::value::Value;
-use crate::parser::{
-    Span,
-    ast::expression::{ArithOp, BinaryOp, CmpOp, LogicalOp, UnaryOp},
+use crate::{
+    lowering::ir::value::ValueModifier,
+    parser::{
+        Span,
+        ast::expression::{BinaryOp, LogicalOp, UnaryOp},
+    },
 };
 
 /// MATHIR's representation of LValue instruction.
@@ -21,6 +22,7 @@ pub enum LValInstruct {
     Assign {
         local_idx: usize,
         value: RValInstruct,
+        modifier: Vec<ValueModifier>,
         span: Option<Span>,
     },
 }
@@ -31,6 +33,10 @@ pub enum RValueKind {
     Use {
         value: Value,
         span: Option<Span>,
+    },
+    Init {
+        init_inst: InitInstruct,
+        span: Span,
     },
     Binary {
         op: BinaryOp,
@@ -51,6 +57,11 @@ pub enum RValueKind {
     },
 }
 
+#[derive(Debug, Clone)]
+pub enum InitInstruct {
+    StructInit { fields: Vec<RValInstruct> },
+}
+
 /// MATHIR's representation of RValue instruction.
 ///
 /// An RValue instruction represents the evaluation of an expression used as
@@ -59,78 +70,4 @@ pub enum RValueKind {
 pub struct RValInstruct {
     pub kind: RValueKind,
     pub ty: MathicType,
-}
-
-impl Display for BinaryOp {
-    fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
-        match self {
-            BinaryOp::Arithmetic(arith) => match arith {
-                ArithOp::Add => write!(f, "+"),
-                ArithOp::Sub => write!(f, "-"),
-                ArithOp::Mul => write!(f, "*"),
-                ArithOp::Div => write!(f, "/"),
-                ArithOp::Mod => write!(f, "%"),
-            },
-            BinaryOp::Compare(cmp) => match cmp {
-                CmpOp::Eq => write!(f, "=="),
-                CmpOp::Ne => write!(f, "!="),
-                CmpOp::Lt => write!(f, "<"),
-                CmpOp::Le => write!(f, "<="),
-                CmpOp::Gt => write!(f, ">"),
-                CmpOp::Ge => write!(f, ">="),
-            },
-        }
-    }
-}
-
-impl Display for UnaryOp {
-    fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
-        match self {
-            Self::Neg => write!(f, "-"),
-            Self::Not => write!(f, "!"),
-        }
-    }
-}
-
-impl Display for LogicalOp {
-    fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
-        match self {
-            LogicalOp::And => write!(f, "and"),
-            LogicalOp::Or => write!(f, "or"),
-        }
-    }
-}
-
-impl Display for RValueKind {
-    fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
-        match self {
-            Self::Use { value, .. } => write!(f, "{}", value),
-            Self::Binary { op, lhs, rhs, .. } => write!(f, "{} {} {}", lhs, op, rhs),
-            Self::Unary { op, rhs, .. } => write!(f, "{}{}", op, rhs),
-            Self::Logical { op, lhs, rhs, .. } => write!(f, "{} {} {}", lhs, op, rhs),
-        }
-    }
-}
-
-impl Display for RValInstruct {
-    fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
-        write!(f, "{}", self.kind)
-    }
-}
-
-impl Display for LValInstruct {
-    fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
-        match self {
-            Self::Let {
-                local_idx, init, ..
-            } => {
-                write!(f, "let %{} = {}", local_idx, init)
-            }
-            Self::Assign {
-                local_idx, value, ..
-            } => {
-                write!(f, "%{} = {}", local_idx, value)
-            }
-        }
-    }
 }

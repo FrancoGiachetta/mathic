@@ -1,0 +1,12 @@
+struct Point {
+    x: i64,
+    y: i64
+}
+
+df make_point() Point {
+    return Point { x: 10, y: 20 };
+}
+
+df main() i64 {
+    return make_point().x;
+}

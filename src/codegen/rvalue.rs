@@ -8,8 +8,10 @@ use crate::{
     codegen::{MathicCodeGen, compiler_helper::CompilerHelper, function_ctx::FunctionCtx},
     diagnostics::CodegenError,
     lowering::ir::{
-        instruction::{RValInstruct, RValueKind},
-        value::{ConstExpr, NumericConst, Value as IRValue},
+        adts::Adt,
+        instruction::{InitInstruct, RValInstruct, RValueKind},
+        types::MathicType,
+        value::{ConstExpr, NumericConst, Value as IRValue, ValueModifier},
     },
     parser::{
         Span,
@@ -39,6 +41,36 @@ impl MathicCodeGen<'_> {
             RValueKind::Logical {
                 op, lhs, rhs, span, ..
             } => self.compile_logical(fn_ctx, block, lhs, *op, rhs, *span, helper),
+            RValueKind::Init { init_inst, span } => {
+                self.compile_init_op(fn_ctx, block, init_inst, rvalue.ty, *span, helper)
+            }
+        }
+    }
+
+    fn compile_init_op<'ctx, 'func>(
+        &'func self,
+        fn_ctx: &mut FunctionCtx<'ctx, 'func>,
+        block: &'func Block<'ctx>,
+        init_inst: &InitInstruct,
+        adt_ty: MathicType,
+        span: Span,
+        helper: &mut CompilerHelper,
+    ) -> Result<Value<'ctx, 'func>, CodegenError>
+    where
+        'func: 'ctx,
+    {
+        let location = self.get_location(Some(span))?;
+        match init_inst {
+            InitInstruct::StructInit { fields } => {
+                let struct_ty = self.get_compiled_type(fn_ctx.get_ir_func(), adt_ty);
+                let empty_struct = block.append_op_result(llvm::undef(struct_ty, location))?;
+                let fields_values = fields
+                    .iter()
+                    .map(|rv| self.compile_rvalue(fn_ctx, block, rv, helper))
+                    .collect::<Result<Vec<_>, _>>()?;
+
+                Ok(block.insert_values(self.ctx, location, empty_struct, &fields_values)?)
+            }
         }
     }
 
@@ -193,11 +225,47 @@ impl MathicCodeGen<'_> {
         let location = self.get_location(None)?;
 
         Ok(match value {
-            IRValue::InMemory(local_idx) => {
-                let (local_ptr, local_ty) =
-                    fn_ctx.get_local(*local_idx).expect("Invalid local idx");
+            IRValue::InMemory {
+                local_idx,
+                modifier,
+            } => {
+                let (ptr, mut ty) = fn_ctx.get_local(*local_idx).expect("Invalid local idx");
 
-                block.load(self.ctx, location, local_ptr, local_ty)?
+                let mut val = block.load(
+                    self.ctx,
+                    location,
+                    ptr,
+                    self.get_compiled_type(fn_ctx.get_ir_func(), ty),
+                )?;
+
+                for m in modifier {
+                    val = match m {
+                        ValueModifier::Field(idx) => match ty {
+                            MathicType::Adt { index, is_local } => {
+                                let adt = if is_local {
+                                    fn_ctx.get_ir_func().sym_table.adts.get(index)
+                                } else {
+                                    self.ir.adts.get(index)
+                                }
+                                .unwrap();
+
+                                match adt {
+                                    Adt::Struct(struct_adt) => {
+                                        let field_ty = struct_adt.fields[*idx].ty;
+                                        ty = field_ty;
+                                        let mlir_ty =
+                                            self.get_compiled_type(fn_ctx.get_ir_func(), ty);
+                                        block
+                                            .extract_value(self.ctx, location, val, mlir_ty, *idx)?
+                                    }
+                                }
+                            }
+                            other => unreachable!("{}", other),
+                        },
+                    }
+                }
+
+                val
             }
             IRValue::Const(const_expr) => match const_expr {
                 ConstExpr::Numeric(num_const) => match num_const {
