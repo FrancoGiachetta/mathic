@@ -3,7 +3,7 @@ pub enum Value {
     // Holds the index to find the associated local
     InMemory {
         local_idx: usize,
-        modifier: Option<ValueModifier>,
+        modifier: Vec<ValueModifier>,
     },
 
     // Holds the value as-is

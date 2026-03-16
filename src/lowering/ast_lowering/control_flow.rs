@@ -137,7 +137,7 @@ pub fn lower_for(
                 kind: RValueKind::Use {
                     value: Value::InMemory {
                         local_idx: loop_tracker_idx,
-                        modifier: None,
+                        modifier: vec![],
                     },
                     span: None,
                 },
@@ -158,7 +158,7 @@ pub fn lower_for(
                     kind: RValueKind::Use {
                         value: Value::InMemory {
                             local_idx: loop_tracker_idx,
-                            modifier: None,
+                            modifier: vec![],
                         },
                         span: None,
                     },
@@ -175,7 +175,7 @@ pub fn lower_for(
             },
             ty: start_ty,
         },
-        modifier: None,
+        modifier: vec![],
         span: None,
     }];
 

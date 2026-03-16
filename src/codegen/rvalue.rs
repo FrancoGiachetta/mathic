@@ -229,19 +229,18 @@ impl MathicCodeGen<'_> {
                 local_idx,
                 modifier,
             } => {
-                let (local_ptr, local_ty) =
-                    fn_ctx.get_local(*local_idx).expect("Invalid local idx");
+                let (ptr, mut ty) = fn_ctx.get_local(*local_idx).expect("Invalid local idx");
 
                 let mut val = block.load(
                     self.ctx,
                     location,
-                    local_ptr,
-                    self.get_compiled_type(fn_ctx.get_ir_func(), local_ty),
+                    ptr,
+                    self.get_compiled_type(fn_ctx.get_ir_func(), ty),
                 )?;
 
-                if let Some(m) = modifier {
-                    match m {
-                        ValueModifier::Field(idx) => match local_ty {
+                for m in modifier {
+                    val = match m {
+                        ValueModifier::Field(idx) => match ty {
                             MathicType::Adt { index, is_local } => {
                                 let adt = if is_local {
                                     fn_ctx.get_ir_func().sym_table.adts.get(index)
@@ -252,13 +251,12 @@ impl MathicCodeGen<'_> {
 
                                 match adt {
                                     Adt::Struct(struct_adt) => {
-                                        let field_ty = self.get_compiled_type(
-                                            fn_ctx.get_ir_func(),
-                                            struct_adt.fields[*idx].ty,
-                                        );
-                                        val = block.extract_value(
-                                            self.ctx, location, val, field_ty, *idx,
-                                        )?;
+                                        let field_ty = struct_adt.fields[*idx].ty;
+                                        ty = field_ty;
+                                        let mlir_ty =
+                                            self.get_compiled_type(fn_ctx.get_ir_func(), ty);
+                                        block
+                                            .extract_value(self.ctx, location, val, mlir_ty, *idx)?
                                     }
                                 }
                             }

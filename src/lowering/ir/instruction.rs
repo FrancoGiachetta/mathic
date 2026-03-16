@@ -3,8 +3,8 @@ use super::value::Value;
 use crate::{
     lowering::ir::value::ValueModifier,
     parser::{
-        ast::expression::{BinaryOp, LogicalOp, UnaryOp},
         Span,
+        ast::expression::{BinaryOp, LogicalOp, UnaryOp},
     },
 };
 
@@ -22,7 +22,7 @@ pub enum LValInstruct {
     Assign {
         local_idx: usize,
         value: RValInstruct,
-        modifier: Option<ValueModifier>,
+        modifier: Vec<ValueModifier>,
         span: Option<Span>,
     },
 }

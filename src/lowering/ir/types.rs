@@ -3,12 +3,12 @@ use crate::{
     lowering::{
         ast_lowering::declaration::lower_inner_struct,
         ir::{
-            function::{Function, FunctionBuilder},
             Ir,
+            function::{Function, FunctionBuilder},
         },
         lower_top_level_struct,
     },
-    parser::{ast::declaration::AstType, Span},
+    parser::{Span, ast::declaration::AstType},
 };
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]

@@ -2,16 +2,16 @@ use super::basic_block::{BasicBlock, BlockId};
 use crate::{
     diagnostics::LoweringError,
     lowering::ir::{
+        DeclTable, IrBuilder,
         adts::Adt,
         basic_block::Terminator,
         instruction::LValInstruct,
         symbols::SymbolTable,
-        types::{lower_inner_ast_type, MathicType},
-        DeclTable, IrBuilder,
+        types::{MathicType, lower_inner_ast_type},
     },
     parser::{
-        ast::declaration::{FuncDecl, Param},
         Span,
+        ast::declaration::{FuncDecl, Param},
     },
 };
 

@@ -1,11 +1,6 @@
 use std::collections::HashMap;
 
-use crate::lowering::ir::{
-    adts::Adt,
-    function::Function,
-    symbols::DeclTable,
-    types::MathicType,
-};
+use crate::lowering::ir::{adts::Adt, function::Function, symbols::DeclTable, types::MathicType};
 
 pub mod adts;
 pub mod basic_block;

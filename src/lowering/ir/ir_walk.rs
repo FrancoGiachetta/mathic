@@ -42,10 +42,14 @@ pub mod value {
                 Self::InMemory {
                     local_idx,
                     modifier,
-                } => match modifier {
-                    Some(m) => write!(f, "%{}{}", local_idx, m),
-                    None => write!(f, "%{}", local_idx),
-                },
+                } => {
+                    let modifier_str = modifier
+                        .iter()
+                        .map(|m| m.to_string())
+                        .collect::<Vec<_>>()
+                        .join(".");
+                    write!(f, "%{}{}", local_idx, modifier_str)
+                }
                 Self::Const(c) => write!(f, "{}", c),
             }
         }
@@ -54,7 +58,7 @@ pub mod value {
     impl Display for ValueModifier {
         fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
             match self {
-                Self::Field(idx) => write!(f, ".{}", idx),
+                Self::Field(idx) => write!(f, "{}", idx),
             }
         }
     }
@@ -180,11 +184,14 @@ pub mod instructions {
                 modifier,
                 ..
             } => {
+                let modifier_str = modifier
+                    .iter()
+                    .map(|m| m.to_string())
+                    .collect::<Vec<_>>()
+                    .join(".");
                 write!(f, "{}%{}", inner_indent, local_idx)?;
-                if let Some(m) = modifier {
-                    write!(f, "{}", m)?;
-                }
                 write!(f, " = ")?;
+                write!(f, "%{}{}", local_idx, modifier_str)?;
                 write_rval_instruct(value, f, indent)
             }
         }

@@ -76,7 +76,7 @@ fn lower_assignment(
         .push(LValInstruct::Assign {
             local_idx: local.local_idx,
             value,
-            modifier: None,
+            modifier: vec![],
             span: Some(span),
         });
 
@@ -143,7 +143,7 @@ fn lower_call(
         span: Some(span),
         return_dest: Value::InMemory {
             local_idx,
-            modifier: None,
+            modifier: vec![],
         },
         return_ty,
         dest_block: dest_block_idx,
@@ -155,7 +155,7 @@ fn lower_call(
         kind: RValueKind::Use {
             value: Value::InMemory {
                 local_idx,
-                modifier: None,
+                modifier: vec![],
             },
             span: None,
         },
@@ -324,7 +324,11 @@ fn lower_struct_get(
     let RValueKind::Use { value, .. } = struct_expr.kind else {
         unreachable!()
     };
-    let Value::InMemory { local_idx, .. } = value else {
+    let Value::InMemory {
+        local_idx,
+        mut modifier,
+    } = value
+    else {
         unreachable!()
     };
 
@@ -344,11 +348,13 @@ fn lower_struct_get(
                 span: expr.span,
             })?;
 
+    modifier.push(ValueModifier::Field(field_index));
+
     Ok(RValInstruct {
         kind: RValueKind::Use {
             value: Value::InMemory {
                 local_idx,
-                modifier: Some(ValueModifier::Field(field_index)),
+                modifier,
             },
             span: Some(span),
         },
@@ -418,7 +424,7 @@ fn lower_primary_value(
             (
                 Value::InMemory {
                     local_idx: local.local_idx,
-                    modifier: None,
+                    modifier: vec![],
                 },
                 local.ty,
             )
