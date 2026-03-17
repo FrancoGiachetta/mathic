@@ -32,7 +32,7 @@ expr_stmt       → expr ";" ;
 expr            → assignment ;
 assignment      → ident ("." ident)* "=" initializer
                 | initializer ;
-initializer     → logic_or struct_init? ;
+initializer     → logic_or struct_init? | array_init ;
 expr_no_init    → logic_or ;
 logic_or        → logic_and ("or" logic_and)* ;
 logic_and       → equality ("and" equality)* ;
@@ -42,16 +42,22 @@ term            → factor (("+" | "-") factor)* ;
 factor          → unary (("*" | "/") unary)* ;
 unary           → ("!" | "-") unary | call ;
 call            → primary ("(" args? ")" | "[" expr "]" | "." ident)* ;
-struct_init     → "{" ident ":" expr ("," ident ":" expr)* "}" ;
 primary         → "true" | "false" | ident | number | string | "(" expr ")" ;
+
+=== INITIALIZERS ===
+struct_init     → "{" ident ":" expr ("," ident ":" expr)* "}" ;
+array_init      → "[" (initializer "," )* "]"
 
 ==== LITERALS ====
 ident           → letter (letter | digit | "_")* ;
-type            → ident ;
 string          → "\"" [^"]* "\"" ;
 number          → "0" | [1-9] digit* ("." digit+)? ;
 letter          → [a-zA-Z] ;
 digit           → [0-9] ;
+
+==== TYPES ====
+type            → ident | array_type;
+array_type      → ("[" number "]")+ ident
 
 ==== UTILITIES ====
 params          → ident ":" type ("," ident ":" type)* ;
