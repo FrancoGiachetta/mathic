@@ -7,12 +7,13 @@ use crate::{
         function::{FunctionBuilder, LocalKind},
         instruction::{InitInstruct, LValInstruct, RValInstruct, RValueKind},
         types::{FloatTy, MathicType, SintTy, UintTy, lower_inner_ast_type},
-        value::ValueModifier,
-        value::{ConstExpr, NumericConst, Value},
+        value::{ConstExpr, NumericConst, Value, ValueModifier},
     },
     parser::{
         Span,
-        ast::expression::{BinaryOp, ExprStmt, ExprStmtKind, LogicalOp, PrimaryExpr, UnaryOp},
+        ast::expression::{
+            BinaryOp, ExprStmt, ExprStmtKind, InitExpr, LogicalOp, PrimaryExpr, UnaryOp,
+        },
     },
 };
 
@@ -34,7 +35,7 @@ pub fn lower_expr(
             expr: assign_expr,
         } => lower_assignment(func, name, assign_expr, expr.span)?,
         ExprStmtKind::Logical { lhs, op, rhs } => lower_logical_op(func, lhs, *op, rhs, expr.span)?,
-        ExprStmtKind::StructInit { name, fields } => lower_adt_init(func, name, fields, expr.span)?,
+        ExprStmtKind::Init(init_expr) => lower_init_expr(func, init_expr, expr.span)?,
         ExprStmtKind::Index { .. } => todo!(),
         ExprStmtKind::StructGet {
             expr: struct_expr,
@@ -251,6 +252,17 @@ fn lower_unary_op(
         },
         ty: rhs_ty,
     })
+}
+
+fn lower_init_expr(
+    func: &mut FunctionBuilder,
+    init: &InitExpr,
+    span: Span,
+) -> Result<RValInstruct, LoweringError> {
+    match init {
+        InitExpr::StructInit { name, fields } => lower_adt_init(func, name, fields, span),
+        InitExpr::ArrayInit { elements } => todo!(),
+    }
 }
 
 fn lower_adt_init(
@@ -545,7 +557,10 @@ fn lower_expression_type(
         ExprStmtKind::Assign { expr, .. } | ExprStmtKind::StructSet { rhs: expr, .. } => {
             lower_expression_type(func, &expr.kind, None, span)?
         }
-        ExprStmtKind::StructInit { name, .. } => func.get_user_def_type(name, span)?,
+        ExprStmtKind::Init(init_expr) => match init_expr {
+            InitExpr::StructInit { name, .. } => func.get_user_def_type(name, span)?,
+            InitExpr::ArrayInit { elements } => todo!(),
+        },
         ExprStmtKind::StructGet { expr, field_name } => {
             let adt_ty = lower_expression_type(func, &expr.kind, ty_hint, span)?;
             let adt = func.get_adt_body(adt_ty, span)?;

@@ -164,5 +164,6 @@ pub fn lower_top_level_ast_type(
                 }
             }
         },
+        AstType::Array { inner, length } => todo!(),
     })
 }

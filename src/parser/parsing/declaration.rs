@@ -9,9 +9,18 @@ use crate::parser::{
 
 impl<'a> MathicParser<'a> {
     pub fn parse_type(&self) -> ParserResult<AstType> {
-        let ident = self.consume_token(Token::Ident)?;
+        let ty = if self.match_token(Token::LSquareBracket)?.is_some() {
+            let number = self.consume_token(Token::Num)?;
 
-        let ty = AstType::Type(ident.lexeme.to_string());
+            AstType::Array {
+                inner: Box::new(self.parse_type()?),
+                length: number.lexeme.parse::<u32>().unwrap(),
+            }
+        } else {
+            let ident = self.consume_token(Token::Ident)?;
+
+            AstType::Type(ident.lexeme.to_string())
+        };
 
         Ok(ty)
     }

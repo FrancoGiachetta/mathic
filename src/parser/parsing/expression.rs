@@ -1,6 +1,7 @@
 use std::collections::HashMap;
 
 use crate::diagnostics::parse::{ExpectedToken, ParseError, SyntaxError};
+use crate::parser::ast::expression::InitExpr;
 use crate::parser::lexer::SpannedToken;
 use crate::parser::{
     MathicParser, ParserResult, Span,
@@ -64,13 +65,18 @@ impl<'a> MathicParser<'a> {
 
     pub fn parse_initializer(&self) -> ParserResult<ExprStmt> {
         let lookahead = self.peek_not_none()?;
-        let mut expr = self.parse_logic_or()?;
 
-        if self.match_token(Token::LBrace)?.is_some() {
-            expr = self.parse_struct_init(lookahead)?;
+        if self.match_token(Token::LSquareBracket)?.is_some() {
+            self.parse_array_init()
+        } else {
+            let mut expr = self.parse_logic_or()?;
+
+            if self.match_token(Token::LBrace)?.is_some() {
+                expr = self.parse_struct_init(lookahead)?;
+            }
+
+            Ok(expr)
         }
-
-        Ok(expr)
     }
 
     fn parse_logic_or(&self) -> ParserResult<ExprStmt> {
@@ -320,6 +326,25 @@ impl<'a> MathicParser<'a> {
         })
     }
 
+    pub fn parse_array_init(&self) -> ParserResult<ExprStmt> {
+        let elements = if self.check_next(Token::RSquareBracket)? {
+            Vec::with_capacity(0)
+        } else {
+            let mut elements = vec![self.parse_expr()?];
+
+            while self.match_token(Token::Comma)?.is_some() {
+                elements.push(self.parse_expr()?);
+            }
+
+            elements
+        };
+
+        Ok(ExprStmt {
+            kind: ExprStmtKind::Init(InitExpr::ArrayInit { elements }),
+            span: self.current_span(),
+        })
+    }
+
     pub fn parse_struct_init(&self, lookahead: SpannedToken) -> ParserResult<ExprStmt> {
         let fields = self.parse_struct_init_fields()?;
 
@@ -327,10 +352,10 @@ impl<'a> MathicParser<'a> {
 
         let expr = if let Token::Ident = lookahead.token {
             ExprStmt {
-                kind: ExprStmtKind::StructInit {
+                kind: ExprStmtKind::Init(InitExpr::StructInit {
                     name: lookahead.lexeme.to_string(),
                     fields,
-                },
+                }),
                 span: lookahead.span,
             }
         } else {

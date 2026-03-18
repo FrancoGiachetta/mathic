@@ -94,6 +94,7 @@ pub fn lower_inner_ast_type(
                 }
             }
         },
+        AstType::Array { inner, length } => todo!(),
     })
 }
 
