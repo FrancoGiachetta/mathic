@@ -35,9 +35,10 @@ pub enum FloatTy {
     F64,
 }
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub enum MathicType {
     Adt { index: usize, is_local: bool },
+    Array { inner_ty: Box<Self>, length: u32 },
     Bool,
     Char,
     Float(FloatTy),
@@ -94,7 +95,10 @@ pub fn lower_inner_ast_type(
                 }
             }
         },
-        AstType::Array { inner, length } => todo!(),
+        AstType::Array { inner, length } => MathicType::Array {
+            inner_ty: Box::new(lower_inner_ast_type(func_builder, inner, span)?),
+            length: *length,
+        },
     })
 }
 
@@ -122,7 +126,7 @@ impl MathicType {
             Self::Bool => 1,
             Self::Char => 8,
             Self::Void => 0,
-            Self::Str | Self::Adt { .. } => todo!(),
+            Self::Str | Self::Adt { .. } | MathicType::Array { .. } => todo!(),
         }
     }
 
@@ -165,6 +169,7 @@ impl MathicType {
 
                 align
             }
+            Self::Array { inner_ty, .. } => inner_ty.align(ir, func),
         }
     }
 

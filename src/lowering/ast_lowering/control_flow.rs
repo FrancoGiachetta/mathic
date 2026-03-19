@@ -126,7 +126,7 @@ pub fn lower_for(
 
     let loop_tracker_idx = func.sym_table.add_local(
         Some(variable.clone()),
-        start_ty,
+        start_ty.clone(),
         Some(span),
         LocalKind::Temp,
     )?;
@@ -141,7 +141,7 @@ pub fn lower_for(
                     },
                     span: None,
                 },
-                ty: start_ty,
+                ty: start_ty.clone(),
             }),
             rhs: Box::new(end_val),
             span: Span::from(start.span.start..end.span.end),
@@ -162,18 +162,18 @@ pub fn lower_for(
                         },
                         span: None,
                     },
-                    ty: start_ty,
+                    ty: start_ty.clone(),
                 }),
                 rhs: Box::new(RValInstruct {
                     kind: RValueKind::Use {
                         value: 1i32.into(),
                         span: None,
                     },
-                    ty: start_ty,
+                    ty: start_ty.clone(),
                 }),
                 span: Span::from(start.span.start..end.span.end),
             },
-            ty: start_ty,
+            ty: start_ty.clone(),
         },
         modifier: vec![],
         span: None,

@@ -322,6 +322,7 @@ pub mod types {
                 MathicType::Char => write!(f, "char"),
                 MathicType::Void => write!(f, "void"),
                 MathicType::Adt { index, .. } => write!(f, "Adt({index})"),
+                MathicType::Array { .. } => write!(f, "Array"),
             }
         }
     }

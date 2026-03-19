@@ -40,13 +40,17 @@ impl Adt {
 
     pub fn get_field_ty(&self, name: &str) -> Option<MathicType> {
         match self {
-            Adt::Struct(s) => s.fields.iter().find(|f| f.name == name).map(|f| f.ty),
+            Adt::Struct(s) => s
+                .fields
+                .iter()
+                .find(|f| f.name == name)
+                .map(|f| f.ty.clone()),
         }
     }
 
     pub fn get_fields_tys(&self) -> Vec<MathicType> {
         match self {
-            Adt::Struct(s) => s.fields.iter().map(|f| f.ty).collect(),
+            Adt::Struct(s) => s.fields.iter().map(|f| f.ty.clone()).collect(),
         }
     }
 }

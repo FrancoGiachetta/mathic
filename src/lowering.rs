@@ -164,6 +164,9 @@ pub fn lower_top_level_ast_type(
                 }
             }
         },
-        AstType::Array { inner, length } => todo!(),
+        AstType::Array { inner, length } => MathicType::Array {
+            inner_ty: Box::new(lower_top_level_ast_type(ir_builder, inner, span)?),
+            length: *length,
+        },
     })
 }

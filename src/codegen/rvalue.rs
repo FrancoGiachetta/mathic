@@ -42,7 +42,7 @@ impl MathicCodeGen<'_> {
                 op, lhs, rhs, span, ..
             } => self.compile_logical(fn_ctx, block, lhs, *op, rhs, *span, helper),
             RValueKind::Init { init_inst, span } => {
-                self.compile_init_op(fn_ctx, block, init_inst, rvalue.ty, *span, helper)
+                self.compile_init_op(fn_ctx, block, init_inst, rvalue.ty.clone(), *span, helper)
             }
         }
     }
@@ -229,18 +229,18 @@ impl MathicCodeGen<'_> {
                 local_idx,
                 modifier,
             } => {
-                let (ptr, mut ty) = fn_ctx.get_local(*local_idx).expect("Invalid local idx");
+                let (ptr, ty) = fn_ctx.get_local(*local_idx).expect("Invalid local idx");
 
                 let mut val = block.load(
                     self.ctx,
                     location,
                     ptr,
-                    self.get_compiled_type(fn_ctx.get_ir_func(), ty),
+                    self.get_compiled_type(fn_ctx.get_ir_func(), ty.clone()),
                 )?;
 
                 for m in modifier {
                     val = match m {
-                        ValueModifier::Field(idx) => match ty {
+                        ValueModifier::Field(idx) => match ty.clone() {
                             MathicType::Adt { index, is_local } => {
                                 let adt = if is_local {
                                     fn_ctx.get_ir_func().sym_table.adts.get(index)
@@ -251,10 +251,11 @@ impl MathicCodeGen<'_> {
 
                                 match adt {
                                     Adt::Struct(struct_adt) => {
-                                        let field_ty = struct_adt.fields[*idx].ty;
-                                        ty = field_ty;
-                                        let mlir_ty =
-                                            self.get_compiled_type(fn_ctx.get_ir_func(), ty);
+                                        let field_ty = &struct_adt.fields[*idx].ty;
+                                        let mlir_ty = self.get_compiled_type(
+                                            fn_ctx.get_ir_func(),
+                                            field_ty.clone(),
+                                        );
                                         block
                                             .extract_value(self.ctx, location, val, mlir_ty, *idx)?
                                     }
