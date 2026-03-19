@@ -12,6 +12,8 @@ impl<'a> MathicParser<'a> {
         let ty = if self.match_token(Token::LSquareBracket)?.is_some() {
             let number = self.consume_token(Token::Num)?;
 
+            self.consume_token(Token::RSquareBracket)?;
+
             AstType::Array {
                 inner: Box::new(self.parse_type()?),
                 length: number.lexeme.parse::<u32>().unwrap(),

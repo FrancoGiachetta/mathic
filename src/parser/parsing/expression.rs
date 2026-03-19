@@ -66,7 +66,7 @@ impl<'a> MathicParser<'a> {
     pub fn parse_initializer(&self) -> ParserResult<ExprStmt> {
         let lookahead = self.peek_not_none()?;
 
-        if self.match_token(Token::LSquareBracket)?.is_some() {
+        if self.check_next(Token::LSquareBracket)? {
             self.parse_array_init()
         } else {
             let mut expr = self.parse_logic_or()?;
@@ -327,6 +327,8 @@ impl<'a> MathicParser<'a> {
     }
 
     pub fn parse_array_init(&self) -> ParserResult<ExprStmt> {
+        let start_span = self.consume_token(Token::LSquareBracket)?.span;
+
         let elements = if self.check_next(Token::RSquareBracket)? {
             Vec::with_capacity(0)
         } else {
@@ -339,13 +341,17 @@ impl<'a> MathicParser<'a> {
             elements
         };
 
+        self.consume_token(Token::RSquareBracket)?;
+
         Ok(ExprStmt {
             kind: ExprStmtKind::Init(InitExpr::ArrayInit { elements }),
-            span: self.current_span(),
+            span: Span::from_merged_spans(start_span, self.current_span()),
         })
     }
 
     pub fn parse_struct_init(&self, lookahead: SpannedToken) -> ParserResult<ExprStmt> {
+        let start_span = self.consume_token(Token::LBrace)?.span;
+
         let fields = self.parse_struct_init_fields()?;
 
         self.consume_token(Token::RBrace)?;
@@ -356,7 +362,7 @@ impl<'a> MathicParser<'a> {
                     name: lookahead.lexeme.to_string(),
                     fields,
                 }),
-                span: lookahead.span,
+                span: Span::from_merged_spans(start_span, self.current_span()),
             }
         } else {
             return Err(ParseError::Syntax(SyntaxError::UnexpectedToken {

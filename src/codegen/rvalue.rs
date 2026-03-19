@@ -71,6 +71,7 @@ impl MathicCodeGen<'_> {
 
                 Ok(block.insert_values(self.ctx, location, empty_struct, &fields_values)?)
             }
+            InitInstruct::ArrayInit { elements } => todo!(),
         }
     }
 

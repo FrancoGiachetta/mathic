@@ -133,7 +133,7 @@ impl<'ctx> MathicCodeGen<'ctx> {
 
                 llvm::r#type::r#struct(self.ctx, &fields_tys, false)
             }
-            MathicType::Array { .. } => todo!(),
+            MathicType::Array { inner_ty, length } => todo!(),
         }
     }
 }

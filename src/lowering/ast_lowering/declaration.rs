@@ -29,12 +29,12 @@ pub fn lower_var_declaration(
         ty: var_ty,
     } = stmt;
     let var_ty = lower_inner_ast_type(func, var_ty, span)?;
-    let (init, expr_ty) = expression::lower_expr(func, expr, Some(var_ty.clone()))?;
+    let init = expression::lower_expr(func, expr, Some(var_ty.clone()))?;
 
-    if expr_ty != var_ty {
+    if init.ty != var_ty {
         return Err(LoweringError::MismatchedType {
             expected: var_ty,
-            found: expr_ty,
+            found: init.ty,
             span,
         });
     }

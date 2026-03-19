@@ -11,12 +11,12 @@ use crate::{
         },
     },
     parser::{
-        Span,
         ast::{
             control_flow::{ForStmt, IfStmt, WhileStmt},
             expression::{ArithOp, BinaryOp, CmpOp},
             statement::BlockStmt,
         },
+        Span,
     },
 };
 
@@ -27,12 +27,12 @@ pub fn lower_if(func: &mut FunctionBuilder, stmt: &IfStmt) -> Result<(), Lowerin
         else_block,
     } = stmt;
 
-    let (condition_val, condition_ty) = expression::lower_expr(func, condition, None)?;
+    let condition_val = expression::lower_expr(func, condition, None)?;
 
-    if !condition_ty.is_bool() {
+    if !condition_val.ty.is_bool() {
         return Err(LoweringError::MismatchedType {
             expected: MathicType::Bool,
-            found: condition_ty,
+            found: condition_val.ty.clone(),
             span: condition.span,
         });
     }
@@ -96,12 +96,12 @@ pub fn lower_while(
 ) -> Result<(), LoweringError> {
     let WhileStmt { condition, body } = stmt;
 
-    let (loop_breaker_condition, condition_ty) = expression::lower_expr(func, condition, None)?;
+    let loop_breaker_condition = expression::lower_expr(func, condition, None)?;
 
-    if !condition_ty.is_bool() {
+    if !loop_breaker_condition.ty.is_bool() {
         return Err(LoweringError::MismatchedType {
             expected: MathicType::Bool,
-            found: condition_ty,
+            found: loop_breaker_condition.ty.clone(),
             span: condition.span,
         });
     }
@@ -121,12 +121,12 @@ pub fn lower_for(
         body,
     } = stmt;
 
-    let (start_val, start_ty) = expression::lower_expr(func, start, None)?;
-    let (end_val, _) = expression::lower_expr(func, end, None)?;
+    let start_val = expression::lower_expr(func, start, None)?;
+    let end_val = expression::lower_expr(func, end, None)?;
 
     let loop_tracker_idx = func.sym_table.add_local(
         Some(variable.clone()),
-        start_ty.clone(),
+        start_val.ty.clone(),
         Some(span),
         LocalKind::Temp,
     )?;
@@ -141,7 +141,7 @@ pub fn lower_for(
                     },
                     span: None,
                 },
-                ty: start_ty.clone(),
+                ty: start_val.ty.clone(),
             }),
             rhs: Box::new(end_val),
             span: Span::from(start.span.start..end.span.end),
@@ -162,18 +162,18 @@ pub fn lower_for(
                         },
                         span: None,
                     },
-                    ty: start_ty.clone(),
+                    ty: start_val.ty.clone(),
                 }),
                 rhs: Box::new(RValInstruct {
                     kind: RValueKind::Use {
                         value: 1i32.into(),
                         span: None,
                     },
-                    ty: start_ty.clone(),
+                    ty: start_val.ty.clone(),
                 }),
                 span: Span::from(start.span.start..end.span.end),
             },
-            ty: start_ty.clone(),
+            ty: start_val.ty.clone(),
         },
         modifier: vec![],
         span: None,

@@ -8,11 +8,11 @@ use crate::{
         },
     },
     parser::{
-        Span,
         ast::{
             declaration::DeclStmt,
             statement::{BlockStmt, Stmt, StmtKind},
         },
+        Span,
     },
 };
 
@@ -25,12 +25,12 @@ pub fn lower_stmt(func: &mut FunctionBuilder, stmt: &Stmt) -> Result<(), Lowerin
         StmtKind::Decl(decl) => lower_declaration(func, decl, &stmt.span)?,
         StmtKind::Return(expr) => {
             let return_ty = func.return_ty.clone();
-            let (value, value_ty) = lower_expr(func, expr, Some(return_ty.clone()))?;
+            let value = lower_expr(func, expr, Some(return_ty.clone()))?;
 
-            if value_ty != return_ty {
+            if value.ty != return_ty {
                 return Err(LoweringError::MismatchedReturnType {
                     expected: return_ty,
-                    found: value_ty,
+                    found: value.ty,
                     span: stmt.span,
                 });
             }
