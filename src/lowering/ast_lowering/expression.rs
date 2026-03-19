@@ -181,6 +181,7 @@ fn lower_binary_op(
             span,
         });
     }
+
     let inst_ty = match op {
         BinaryOp::Compare(_) => MathicType::Bool,
         BinaryOp::Arithmetic(_) => lhs_ty,
@@ -453,7 +454,6 @@ fn lower_primary_value(
                         }
                     },
                     MathicType::Sint(uint_ty) => match uint_ty {
-
                         SintTy::Isize => {
                             ConstExpr::Numeric(NumericConst::Isize(n.parse::<isize>().unwrap()))
                         }
