@@ -244,7 +244,7 @@ fn lower_loop(
             target: start_block_idx,
             span: None,
         },
-    );
+    )?;
 
     // Instructions to execute before verifying the condition.
     for i in extra_instructions {
