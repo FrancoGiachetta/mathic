@@ -128,11 +128,12 @@ impl<'ctx> MathicCodeGen<'ctx> {
                 let fields_tys = adt
                     .get_fields_tys()
                     .iter()
-                    .map(|ty| self.get_compiled_type(func, *ty))
+                    .map(|ty| self.get_compiled_type(func, ty.clone()))
                     .collect::<Vec<_>>();
 
                 llvm::r#type::r#struct(self.ctx, &fields_tys, false)
             }
+            MathicType::Array { inner_ty, length } => todo!(),
         }
     }
 }

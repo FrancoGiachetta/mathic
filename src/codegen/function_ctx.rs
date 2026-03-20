@@ -46,8 +46,7 @@ impl<'ctx, 'this> FunctionCtx<'ctx, 'this> {
     pub fn get_local(&self, idx: usize) -> Option<(Value<'ctx, '_>, MathicType)> {
         self.locals
             .get(idx)
-            .copied()
-            .map(|(v, t)| (unsafe { Value::from_raw(v) }, t))
+            .map(|(v, t)| (unsafe { Value::from_raw(*v) }, t.clone()))
     }
 
     pub fn get_block(&self, idx: usize) -> BlockRef<'_, '_> {
@@ -71,14 +70,14 @@ impl MathicCodeGen<'_> {
     {
         let location = self.get_location(None)?;
 
-        let return_ty = self.get_compiled_type(inner_func, inner_func.return_ty);
+        let return_ty = self.get_compiled_type(inner_func, inner_func.return_ty.clone());
         let mut params_types = Vec::with_capacity(inner_func.params_tys.len());
         let mut block_params = Vec::with_capacity(inner_func.params_tys.len());
 
         // Prepare the function's params' types and the entry block params as
         // well.
         for param_ty in inner_func.params_tys.iter() {
-            let mlir_ty = self.get_compiled_type(inner_func, *param_ty);
+            let mlir_ty = self.get_compiled_type(inner_func, (*param_ty).clone());
 
             params_types.push(mlir_ty);
             block_params.push((mlir_ty, location));
@@ -119,7 +118,7 @@ impl MathicCodeGen<'_> {
 
                 entry_block.store(self.ctx, location, ptr, value)?;
 
-                inner_fn_ctx.define_local(ptr, inner_func.params_tys[i]);
+                inner_fn_ctx.define_local(ptr, inner_func.params_tys[i].clone());
             }
         }
 

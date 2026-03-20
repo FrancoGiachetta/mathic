@@ -16,6 +16,26 @@ use crate::{
     parser::Span,
 };
 
+macro_rules! report {
+    ($code:expr, $error_type: expr, $error_msg: expr, $span: expr, $($help:expr),*) => {
+        {
+        Report::build(ReportKind::Error, $span.clone())
+            .with_code($code)
+            .with_message($error_type)
+            .with_label(
+                ariadne::Label::new($span)
+                    .with_color(ariadne::Color::Red)
+                    .with_message($error_msg),
+            )
+            $(
+                .with_help($help)
+            )*
+        }
+    }
+}
+
+pub(crate) use report;
+
 #[derive(Debug, Error)]
 pub enum MathicError {
     #[error(transparent)]

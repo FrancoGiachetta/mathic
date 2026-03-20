@@ -7,7 +7,7 @@ use ariadne::{Report, ReportBuilder, ReportKind};
 use thiserror::Error;
 
 use crate::{
-    diagnostics::ReportSpan,
+    diagnostics::{ReportSpan, report},
     parser::{Span, lexer::SpannedToken, token::Token},
 };
 
@@ -74,19 +74,17 @@ impl ExpectedToken {
     }
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, thiserror::Error)]
 pub enum SyntaxError {
+    #[error("Unexpected token")]
     UnexpectedToken {
         found: FoundToken,
         expected: ExpectedToken,
     },
-    UnexpectedEnd {
-        span: Span,
-    },
-    MissingToken {
-        expected: Token,
-        span: Span,
-    },
+    #[error("Unexpected end of file")]
+    UnexpectedEnd { span: Span },
+    #[error("Missing token")]
+    MissingToken { expected: Token, span: Span },
 }
 
 #[derive(Debug, Error)]
@@ -119,14 +117,30 @@ impl LexError {
     }
 }
 
+fn get_report_span(error: &ParseError, path: String) -> ReportSpan {
+    match error {
+        ParseError::Lexical(_, span) => ReportSpan { path, span: *span },
+        ParseError::Syntax(syntax_error) => match syntax_error {
+            SyntaxError::UnexpectedToken { found, .. } => ReportSpan {
+                path,
+                span: found.span,
+            },
+            SyntaxError::UnexpectedEnd { span } | SyntaxError::MissingToken { span, .. } => {
+                ReportSpan { path, span: *span }
+            }
+        },
+    }
+}
+
 pub fn format_parse_error<'err>(
     file_path: &Path,
     error: &ParseError,
 ) -> ReportBuilder<'err, ReportSpan> {
     let path = file_path.display().to_string();
+    let report_span = get_report_span(error, path);
 
-    let (code, msg, span, help) = match error {
-        ParseError::Lexical(lex_error, span) => {
+    match error {
+        ParseError::Lexical(lex_error, ..) => {
             let (code, msg) = match lex_error {
                 LexError::TokenError => ("L001", "unknown token".to_string()),
                 LexError::InvalidCharacter(c) => ("L002", format!("invalid character: '{}'", c)),
@@ -134,39 +148,32 @@ pub fn format_parse_error<'err>(
                 LexError::UnterminatedComment => ("L004", "unterminated comment".to_string()),
                 LexError::InvalidNumber(n) => ("L005", format!("invalid number: {}", n)),
             };
-            (code, msg, *span, "Lexical Error".to_string())
+            report!(code, "Lexical Error".to_string(), msg, report_span,)
         }
-        ParseError::Syntax(syntax_error) => match syntax_error {
-            SyntaxError::UnexpectedToken { found, expected } => (
-                "E001",
-                format!("expected {}, found '{}'", expected, found.lexeme),
-                found.span,
-                expected.help().to_string(),
-            ),
-            SyntaxError::UnexpectedEnd { span } => (
-                "E002",
-                "found an unexpected end of file".to_string(),
-                *span,
-                String::new(),
-            ),
-            SyntaxError::MissingToken { expected, span } => (
-                "E003",
-                format!("expected '{}'", expected),
-                *span,
-                format!("add '{}' here to complete the syntax", expected),
-            ),
-        },
-    };
-
-    let report_span = ReportSpan { path, span };
-
-    Report::build(ReportKind::Error, report_span.clone())
-        .with_code(code)
-        .with_message("Syntax Error")
-        .with_label(
-            ariadne::Label::new(report_span)
-                .with_color(ariadne::Color::Red)
-                .with_message(msg),
-        )
-        .with_help(help)
+        ParseError::Syntax(syntax_error) => {
+            let error_type = "Semantic Error";
+            let msg = error.to_string();
+            match syntax_error {
+                SyntaxError::UnexpectedToken { found, expected } => report!(
+                    "E001",
+                    error_type,
+                    msg,
+                    report_span,
+                    format!("expected {}, found '{}'", expected, found.lexeme),
+                    expected.help().to_string()
+                ),
+                SyntaxError::UnexpectedEnd { .. } => {
+                    report!("E002", error_type, msg, report_span,)
+                }
+                SyntaxError::MissingToken { expected, .. } => report!(
+                    "E003",
+                    error_type,
+                    msg,
+                    report_span,
+                    format!("expected '{}'", expected),
+                    format!("add '{}' here to complete the syntax", expected)
+                ),
+            }
+        }
+    }
 }

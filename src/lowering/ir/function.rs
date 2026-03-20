@@ -79,7 +79,7 @@ impl<'ir> FunctionBuilder<'ir> {
             let param_ty: MathicType =
                 lower_inner_ast_type(&mut func_builder, &param.ty, param.span)?;
 
-            func_builder.params_tys.push(param_ty);
+            func_builder.params_tys.push(param_ty.clone());
 
             func_builder.sym_table.locals.push(Local {
                 local_idx: param_idx,

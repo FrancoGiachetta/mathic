@@ -3,7 +3,11 @@ use std::path::Path;
 use ariadne::{Report, ReportBuilder, ReportKind};
 use thiserror::Error;
 
-use crate::{diagnostics::ReportSpan, lowering::ir::types::MathicType, parser::Span};
+use crate::{
+    diagnostics::{ReportSpan, report},
+    lowering::ir::types::MathicType,
+    parser::Span,
+};
 
 #[derive(Debug, Error)]
 pub enum LoweringError {
@@ -47,8 +51,23 @@ pub enum LoweringError {
     #[error("The struct declaration does to have such field: {found}")]
     UndeclaredStructField { found: String, span: Span },
 
-    #[error("the struct initialization is missing some fields")]
+    #[error("The struct initialization is missing some fields")]
     MissingStructFields { missing: String, span: Span },
+}
+
+fn get_report_span(error: &LoweringError, path: String) -> ReportSpan {
+    match error {
+        LoweringError::UndeclaredVariable { span, .. }
+        | LoweringError::UndeclaredFunction { span, .. }
+        | LoweringError::UndeclaredType { span }
+        | LoweringError::DuplicateDeclaration { span, .. }
+        | LoweringError::WrongArgumentCount { span, .. }
+        | LoweringError::UnsupportedFeature { span, .. }
+        | LoweringError::MismatchedType { span, .. }
+        | LoweringError::MismatchedReturnType { span, .. }
+        | LoweringError::UndeclaredStructField { span, .. }
+        | LoweringError::MissingStructFields { span, .. } => ReportSpan { path, span: *span },
+    }
 }
 
 pub fn format_lowering_error<'err>(
@@ -56,69 +75,122 @@ pub fn format_lowering_error<'err>(
     error: &LoweringError,
 ) -> ReportBuilder<'err, ReportSpan> {
     let path = file_path.display().to_string();
-
+    let error_type = "Semantic Error";
     let msg = error.to_string();
-    let (code, help, span) = match error {
-        LoweringError::UndeclaredVariable { name, span } => (
-            "S001",
-            format!("declare '{}' with 'let' before using it", name),
-            span,
-        ),
-        LoweringError::DuplicateDeclaration { name, span } => (
+    let report_span = get_report_span(error, path);
+
+    match error {
+        LoweringError::UndeclaredVariable { name, .. } => {
+            report!(
+                "S001",
+                "Semantic Error",
+                msg,
+                report_span,
+                format!("declare '{}' with 'let' before using it", name)
+            )
+        }
+        LoweringError::DuplicateDeclaration { name, .. } => report!(
             "S002",
-            format!("'{}' is already declared in this scope", name),
-            span,
+            "Semantic Error",
+            msg,
+            report_span,
+            format!("'{}' is already declared in this scope", name)
         ),
-        LoweringError::WrongArgumentCount { expected, span, .. } => {
-            ("S003", format!("expected {} argument(s)", expected), span)
+        LoweringError::WrongArgumentCount { expected, .. } => {
+            report!(
+                "S003",
+                error_type,
+                msg,
+                report_span,
+                format!("expected {} argument(s)", expected)
+            )
         }
-        LoweringError::UndeclaredFunction { span, .. } => (
+        LoweringError::UndeclaredFunction { .. } => report!(
             "S004",
-            "declare the function before calling it".to_string(),
-            span,
+            "Semantic Error",
+            msg,
+            report_span,
+            "declare the function before calling it".to_string()
         ),
-        LoweringError::UndeclaredType { span, .. } => {
-            ("S005", "declare it using it".to_string(), span)
+        LoweringError::UndeclaredType { .. } => {
+            report!(
+                "S005",
+                error_type,
+                msg,
+                report_span,
+                "declare it using it".to_string()
+            )
         }
-        LoweringError::UnsupportedFeature { span, feature } => {
-            ("S006", format!("{} is not yet implemented", feature), span)
+        LoweringError::UnsupportedFeature { feature, .. } => {
+            report!(
+                "S006",
+                "Semantic Error",
+                msg,
+                report_span,
+                format!("{} is not yet implemented", feature)
+            )
         }
         LoweringError::MismatchedType {
-            span,
-            found,
-            expected,
-        } => ("S007", format!("expected: {expected}, got {found}"), span),
+            found, expected, ..
+        } => create_mismatched_type_report(expected, found, report_span),
         LoweringError::MismatchedReturnType {
-            expected,
-            found,
-            span,
-        } => (
+            expected, found, ..
+        } => report!(
             "S008",
+            "Semantic Error",
+            msg,
+            report_span,
             format!(
                 "function expects return type '{}', found '{}'",
                 expected, found
-            ),
-            span,
+            )
         ),
-        LoweringError::UndeclaredStructField { span, .. } => {
-            ("S009", "check struct declaration".to_string(), span)
+        LoweringError::UndeclaredStructField { .. } => {
+            report!(
+                "S009",
+                "Semantic Error",
+                msg,
+                report_span,
+                "check struct declaration".to_string()
+            )
         }
-        LoweringError::MissingStructFields { missing, span } => (
+        LoweringError::MissingStructFields { missing, .. } => report!(
             "S010",
-            format!("initialize the missing fields: {missing}"),
-            span,
+            error_type,
+            msg,
+            report_span,
+            format!("initialize the missing fields: {missing}")
         ),
-    };
+    }
+}
 
-    let report_span = ReportSpan { path, span: *span };
-
-    Report::build(ReportKind::Error, report_span.clone())
-        .with_code(code)
-        .with_message("Semantic Error")
-        .with_label(
-            ariadne::Label::new(report_span)
-                .with_color(ariadne::Color::Red)
-                .with_message(msg),
-        )
-        .with_help(help)
+fn create_mismatched_type_report<'err>(
+    expected: &MathicType,
+    found: &MathicType,
+    report_span: ReportSpan,
+) -> ReportBuilder<'err, ReportSpan> {
+    match (expected, found) {
+        (MathicType::Array { length: elen, .. }, MathicType::Array { length: flen, .. })
+            if elen != flen =>
+        {
+            report!(
+                "S007",
+                "Semantic Error",
+                "Mismatched type",
+                report_span,
+                format!(
+                    "expected an array {} elements, found one with {}",
+                    elen, flen
+                ),
+                format!("expected: {expected}, got {found}")
+            )
+        }
+        _ => report!(
+            "S007",
+            "Semantic Error",
+            "Mismatched type",
+            report_span,
+            format!("expected: {expected}, got {found}")
+        ),
+    }
 }

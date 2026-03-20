@@ -113,7 +113,7 @@ impl SymbolTable {
     }
 
     pub fn get_user_def_type(&self, name: &str) -> Option<MathicType> {
-        self.user_def_types.get(name).copied()
+        self.user_def_types.get(name).cloned()
     }
 
     pub fn get_local_from_name(&self, name: &str, span: Span) -> Result<Local, LoweringError> {

@@ -59,6 +59,7 @@ pub enum RValueKind {
 
 #[derive(Debug, Clone)]
 pub enum InitInstruct {
+    ArrayInit { elements: Vec<RValInstruct> },
     StructInit { fields: Vec<RValInstruct> },
 }
 
