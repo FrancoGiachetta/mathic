@@ -182,6 +182,7 @@ fn lower_binary_op(
             span,
         });
     }
+
     let inst_ty = match op {
         BinaryOp::Compare(_) => MathicType::Bool,
         BinaryOp::Arithmetic(_) => lhs.ty.clone(),
@@ -495,6 +496,9 @@ fn lower_primary_value(
             Some(ty) => (
                 Value::Const(match ty {
                     MathicType::Uint(uint_ty) => match uint_ty {
+                        UintTy::Usize => {
+                            ConstExpr::Numeric(NumericConst::Usize(n.parse::<usize>().unwrap()))
+                        }
                         UintTy::U8 => {
                             ConstExpr::Numeric(NumericConst::U8(n.parse::<u8>().unwrap()))
                         }
@@ -512,6 +516,9 @@ fn lower_primary_value(
                         }
                     },
                     MathicType::Sint(uint_ty) => match uint_ty {
+                        SintTy::Isize => {
+                            ConstExpr::Numeric(NumericConst::Isize(n.parse::<isize>().unwrap()))
+                        }
                         SintTy::I8 => {
                             ConstExpr::Numeric(NumericConst::I8(n.parse::<i8>().unwrap()))
                         }

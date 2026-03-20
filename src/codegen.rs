@@ -107,7 +107,7 @@ impl<'ctx> MathicCodeGen<'ctx> {
     pub fn get_compiled_type<'func>(&'func self, func: &Function, ty: MathicType) -> Type<'func> {
         match ty {
             MathicType::Uint(_) | MathicType::Sint(_) => {
-                IntegerType::new(self.ctx, ty.bit_width() as u32).into()
+                IntegerType::new(self.ctx, ty.bit_width()).into()
             }
             MathicType::Float(float_ty) => match float_ty {
                 FloatTy::F32 => Type::float32(self.ctx),

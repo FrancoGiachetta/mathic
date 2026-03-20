@@ -8,18 +8,20 @@ pub mod value {
     impl Display for NumericConst {
         fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
             match self {
+                Self::Isize(n) => write!(f, "{}", n),
                 Self::I8(n) => write!(f, "{}", n),
-                NumericConst::I16(n) => write!(f, "{}", n),
-                NumericConst::I32(n) => write!(f, "{}", n),
-                NumericConst::I64(n) => write!(f, "{}", n),
-                NumericConst::I128(n) => write!(f, "{}", n),
-                NumericConst::U8(n) => write!(f, "{}", n),
-                NumericConst::U16(n) => write!(f, "{}", n),
-                NumericConst::U32(n) => write!(f, "{}", n),
-                NumericConst::U64(n) => write!(f, "{}", n),
-                NumericConst::U128(n) => write!(f, "{}", n),
-                NumericConst::F32(n) => write!(f, "{}", n),
-                NumericConst::F64(n) => write!(f, "{}", n),
+                Self::I16(n) => write!(f, "{}", n),
+                Self::I32(n) => write!(f, "{}", n),
+                Self::I64(n) => write!(f, "{}", n),
+                Self::I128(n) => write!(f, "{}", n),
+                Self::Usize(n) => write!(f, "{}", n),
+                Self::U8(n) => write!(f, "{}", n),
+                Self::U16(n) => write!(f, "{}", n),
+                Self::U32(n) => write!(f, "{}", n),
+                Self::U64(n) => write!(f, "{}", n),
+                Self::U128(n) => write!(f, "{}", n),
+                Self::F32(n) => write!(f, "{}", n),
+                Self::F64(n) => write!(f, "{}", n),
             }
         }
     }
@@ -293,6 +295,7 @@ pub mod types {
     impl fmt::Display for UintTy {
         fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
             match self {
+                UintTy::Usize => write!(f, "usz"),
                 UintTy::U8 => write!(f, "u8"),
                 UintTy::U16 => write!(f, "u16"),
                 UintTy::U32 => write!(f, "u32"),
@@ -305,6 +308,7 @@ pub mod types {
     impl fmt::Display for SintTy {
         fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
             match self {
+                SintTy::Isize => write!(f, "isz"),
                 SintTy::I8 => write!(f, "i8"),
                 SintTy::I16 => write!(f, "i16"),
                 SintTy::I32 => write!(f, "i32"),

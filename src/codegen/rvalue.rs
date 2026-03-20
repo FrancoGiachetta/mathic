@@ -271,66 +271,22 @@ impl MathicCodeGen<'_> {
             }
             IRValue::Const(const_expr) => match const_expr {
                 ConstExpr::Numeric(num_const) => match num_const {
-                    NumericConst::I8(val) => block.const_int_from_type(
-                        self.ctx,
-                        location,
-                        val,
-                        IntegerType::new(self.ctx, 8).into(),
-                    )?,
-                    NumericConst::I16(val) => block.const_int_from_type(
-                        self.ctx,
-                        location,
-                        val,
-                        IntegerType::new(self.ctx, 16).into(),
-                    )?,
-                    NumericConst::I32(val) => block.const_int_from_type(
-                        self.ctx,
-                        location,
-                        val,
-                        IntegerType::new(self.ctx, 32).into(),
-                    )?,
-                    NumericConst::I64(val) => block.const_int_from_type(
-                        self.ctx,
-                        location,
-                        val,
-                        IntegerType::new(self.ctx, 64).into(),
-                    )?,
-                    NumericConst::I128(val) => block.const_int_from_type(
-                        self.ctx,
-                        location,
-                        val,
-                        IntegerType::new(self.ctx, 128).into(),
-                    )?,
-                    NumericConst::U8(val) => block.const_int_from_type(
-                        self.ctx,
-                        location,
-                        val,
-                        IntegerType::new(self.ctx, 8).into(),
-                    )?,
-                    NumericConst::U16(val) => block.const_int_from_type(
-                        self.ctx,
-                        location,
-                        val,
-                        IntegerType::new(self.ctx, 16).into(),
-                    )?,
-                    NumericConst::U32(val) => block.const_int_from_type(
-                        self.ctx,
-                        location,
-                        val,
-                        IntegerType::new(self.ctx, 32).into(),
-                    )?,
-                    NumericConst::U64(val) => block.const_int_from_type(
-                        self.ctx,
-                        location,
-                        val,
-                        IntegerType::new(self.ctx, 64).into(),
-                    )?,
-                    NumericConst::U128(val) => block.const_int_from_type(
-                        self.ctx,
-                        location,
-                        val,
-                        IntegerType::new(self.ctx, 128).into(),
-                    )?,
+                    NumericConst::Isize(val) => {
+                        block.const_int(self.ctx, location, val, isize::BITS)?
+                    }
+                    NumericConst::I8(val) => block.const_int(self.ctx, location, val, 8)?,
+                    NumericConst::I16(val) => block.const_int(self.ctx, location, val, 16)?,
+                    NumericConst::I32(val) => block.const_int(self.ctx, location, val, 32)?,
+                    NumericConst::I64(val) => block.const_int(self.ctx, location, val, 64)?,
+                    NumericConst::I128(val) => block.const_int(self.ctx, location, val, 128)?,
+                    NumericConst::Usize(val) => {
+                        block.const_int(self.ctx, location, val, usize::BITS)?
+                    }
+                    NumericConst::U8(val) => block.const_int(self.ctx, location, val, 8)?,
+                    NumericConst::U16(val) => block.const_int(self.ctx, location, val, 16)?,
+                    NumericConst::U32(val) => block.const_int(self.ctx, location, val, 32)?,
+                    NumericConst::U64(val) => block.const_int(self.ctx, location, val, 64)?,
+                    NumericConst::U128(val) => block.const_int(self.ctx, location, val, 128)?,
                     NumericConst::F32(_) => todo!(),
                     NumericConst::F64(_) => todo!(),
                 },

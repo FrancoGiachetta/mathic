@@ -13,6 +13,7 @@ use crate::{
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub enum UintTy {
+    Usize,
     U8,
     U16,
     U32,
@@ -22,6 +23,7 @@ pub enum UintTy {
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub enum SintTy {
+    Isize,
     I8,
     I16,
     I32,
@@ -55,11 +57,13 @@ pub fn lower_inner_ast_type(
 ) -> Result<MathicType, LoweringError> {
     Ok(match ty {
         AstType::Type(name) => match name.as_str() {
+            "isz" => MathicType::Sint(SintTy::Isize),
             "i8" => MathicType::Sint(SintTy::I8),
             "i16" => MathicType::Sint(SintTy::I16),
             "i32" => MathicType::Sint(SintTy::I32),
             "i64" => MathicType::Sint(SintTy::I64),
             "i128" => MathicType::Sint(SintTy::I128),
+            "usz" => MathicType::Uint(UintTy::Usize),
             "u8" => MathicType::Uint(UintTy::U8),
             "u16" => MathicType::Uint(UintTy::U16),
             "u32" => MathicType::Uint(UintTy::U32),
@@ -103,9 +107,10 @@ pub fn lower_inner_ast_type(
 }
 
 impl MathicType {
-    pub fn bit_width(&self) -> usize {
+    pub fn bit_width(&self) -> u32 {
         match self {
             Self::Sint(ty) => match ty {
+                SintTy::Isize => isize::BITS,
                 SintTy::I8 => 8,
                 SintTy::I16 => 16,
                 SintTy::I32 => 32,
@@ -113,6 +118,7 @@ impl MathicType {
                 SintTy::I128 => 128,
             },
             MathicType::Uint(ty) => match ty {
+                UintTy::Usize => usize::BITS,
                 UintTy::U8 => 8,
                 UintTy::U16 => 16,
                 UintTy::U32 => 32,
@@ -133,6 +139,7 @@ impl MathicType {
     pub fn align(&self, ir: &Ir, func: &Function) -> usize {
         match self {
             Self::Sint(ty) => match ty {
+                SintTy::Isize => isize::BITS as usize,
                 SintTy::I8 => 8,
                 SintTy::I16 => 16,
                 SintTy::I32 => 32,
@@ -140,6 +147,7 @@ impl MathicType {
                 SintTy::I128 => 128,
             },
             MathicType::Uint(ty) => match ty {
+                UintTy::Usize => usize::BITS as usize,
                 UintTy::U8 => 8,
                 UintTy::U16 => 16,
                 UintTy::U32 => 32,
