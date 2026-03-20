@@ -8,11 +8,11 @@ use crate::{
         },
     },
     parser::{
+        Span,
         ast::{
             declaration::DeclStmt,
             statement::{BlockStmt, Stmt, StmtKind},
         },
-        Span,
     },
 };
 
