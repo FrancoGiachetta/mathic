@@ -1,6 +1,11 @@
 use std::collections::HashMap;
 
-use crate::lowering::ir::{adts::Adt, function::Function, symbols::DeclTable, types::MathicType};
+use crate::lowering::ir::{
+    adts::Adt,
+    function::Function,
+    symbols::{DeclTable, GlobalSymbolTable, TypeIndex},
+    types::MathicType,
+};
 
 pub mod adts;
 pub mod basic_block;
@@ -22,18 +27,18 @@ pub struct Ir {
 #[derive(Debug, Default)]
 pub struct IrBuilder {
     pub decl_table: DeclTable,
+    pub sym_table: GlobalSymbolTable,
     pub functions: HashMap<String, Function>,
     pub adts: Vec<Adt>,
-    pub user_def_types: HashMap<String, MathicType>,
 }
 
 impl IrBuilder {
     pub fn new() -> Self {
         Self {
             decl_table: DeclTable::default(),
+            sym_table: Default::default(),
             functions: HashMap::new(),
             adts: Vec::new(),
-            user_def_types: HashMap::new(),
         }
     }
 
@@ -44,20 +49,19 @@ impl IrBuilder {
     pub fn add_adt(&mut self, name: String, adt: Adt) -> usize {
         let index = self.adts.len();
 
-        self.user_def_types.insert(
-            name,
-            MathicType::Adt {
-                index,
-                is_local: false,
-            },
-        );
+        let adt_type_idx = self.sym_table.get_or_insert_type(MathicType::Adt {
+            index,
+            is_local: false,
+        });
+
+        self.sym_table.add_user_def_type(name, adt_type_idx);
         self.adts.push(adt);
 
         index
     }
 
-    pub fn get_user_def_type(&self, name: &str) -> Option<MathicType> {
-        self.user_def_types.get(name).copied()
+    pub fn get_user_def_type(&self, name: &str) -> Option<TypeIndex> {
+        self.sym_table.user_def_types.get(name).copied()
     }
 
     pub fn build(self) -> Ir {

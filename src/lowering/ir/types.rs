@@ -5,6 +5,7 @@ use crate::{
         ir::{
             Ir,
             function::{Function, FunctionBuilder},
+            symbols::TypeIndex,
         },
         lower_top_level_struct,
     },
@@ -53,51 +54,90 @@ pub fn lower_inner_ast_type(
     func_builder: &mut FunctionBuilder,
     ty: &AstType,
     span: Span,
-) -> Result<MathicType, LoweringError> {
+) -> Result<TypeIndex, LoweringError> {
     Ok(match ty {
-        AstType::Type(name) => match name.as_str() {
-            "isz" => MathicType::Sint(SintTy::Isize),
-            "i8" => MathicType::Sint(SintTy::I8),
-            "i16" => MathicType::Sint(SintTy::I16),
-            "i32" => MathicType::Sint(SintTy::I32),
-            "i64" => MathicType::Sint(SintTy::I64),
-            "i128" => MathicType::Sint(SintTy::I128),
-            "usz" => MathicType::Uint(UintTy::Usize),
-            "u8" => MathicType::Uint(UintTy::U8),
-            "u16" => MathicType::Uint(UintTy::U16),
-            "u32" => MathicType::Uint(UintTy::U32),
-            "u64" => MathicType::Uint(UintTy::U64),
-            "u128" => MathicType::Uint(UintTy::U128),
-            "str" => MathicType::Str,
-            "char" => MathicType::Char,
-            "bool" => MathicType::Bool,
-            other => {
-                if let Ok(ty) = func_builder.get_user_def_type(other, span) {
-                    return Ok(ty);
-                }
+        AstType::Type(name) => {
+            match name.as_str() {
+                "isz" => func_builder
+                    .local_sym_table
+                    .get_or_insert_global_type(MathicType::Sint(SintTy::Isize)),
+                "i8" => func_builder
+                    .local_sym_table
+                    .get_or_insert_global_type(MathicType::Sint(SintTy::I8)),
+                "i16" => func_builder
+                    .local_sym_table
+                    .get_or_insert_global_type(MathicType::Sint(SintTy::I16)),
+                "i32" => func_builder
+                    .local_sym_table
+                    .get_or_insert_global_type(MathicType::Sint(SintTy::I32)),
+                "i64" => func_builder
+                    .local_sym_table
+                    .get_or_insert_global_type(MathicType::Sint(SintTy::I64)),
+                "i128" => func_builder
+                    .local_sym_table
+                    .get_or_insert_global_type(MathicType::Sint(SintTy::I128)),
+                "usz" => func_builder
+                    .local_sym_table
+                    .get_or_insert_global_type(MathicType::Uint(UintTy::Usize)),
+                "u8" => func_builder
+                    .local_sym_table
+                    .get_or_insert_global_type(MathicType::Uint(UintTy::U8)),
+                "u16" => func_builder
+                    .local_sym_table
+                    .get_or_insert_global_type(MathicType::Uint(UintTy::U16)),
+                "u32" => func_builder
+                    .local_sym_table
+                    .get_or_insert_global_type(MathicType::Uint(UintTy::U32)),
+                "u64" => func_builder
+                    .local_sym_table
+                    .get_or_insert_global_type(MathicType::Uint(UintTy::U64)),
+                "u128" => func_builder
+                    .local_sym_table
+                    .get_or_insert_global_type(MathicType::Uint(UintTy::U128)),
+                "str" => func_builder
+                    .local_sym_table
+                    .get_or_insert_global_type(MathicType::Str),
+                "char" => func_builder
+                    .local_sym_table
+                    .get_or_insert_global_type(MathicType::Char),
+                "bool" => func_builder
+                    .local_sym_table
+                    .get_or_insert_global_type(MathicType::Bool),
+                other => {
+                    if let Ok(ty) = func_builder.get_user_def_type(other, span) {
+                        return Ok(ty);
+                    }
 
-                match func_builder
-                    .ir_builder
-                    .decl_table
-                    .get_struct_decl(other)
-                    .cloned()
-                {
-                    Some(d) => MathicType::Adt {
-                        index: lower_top_level_struct(func_builder.ir_builder, &d)?,
-                        is_local: false,
-                    },
-                    None => match func_builder.decl_table.get_struct_decl(other).cloned() {
-                        Some(d) => MathicType::Adt {
-                            index: lower_inner_struct(func_builder, &d)?,
-                            is_local: true,
+                    match func_builder
+                        .ir_builder
+                        .decl_table
+                        .get_struct_decl(other)
+                        .cloned()
+                    {
+                        Some(d) => func_builder.local_sym_table.get_or_insert_global_type(
+                            MathicType::Adt {
+                                index: lower_top_level_struct(func_builder.ir_builder, &d)?,
+                                is_local: false,
+                            },
+                        ),
+                        None => match func_builder.decl_table.get_struct_decl(other).cloned() {
+                            Some(d) => {
+                                let adt_index = lower_inner_struct(func_builder, &d)?;
+                                func_builder
+                                    .local_sym_table
+                                    .get_or_insert_type(MathicType::Adt {
+                                        index: adt_index,
+                                        is_local: true,
+                                    })
+                            }
+                            None => {
+                                return Err(LoweringError::UndeclaredType { span });
+                            }
                         },
-                        None => {
-                            return Err(LoweringError::UndeclaredType { span });
-                        }
-                    },
+                    }
                 }
             }
-        },
+        }
     })
 }
 

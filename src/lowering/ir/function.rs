@@ -6,7 +6,7 @@ use crate::{
         adts::Adt,
         basic_block::Terminator,
         instruction::LValInstruct,
-        symbols::SymbolTable,
+        symbols::{LocalSymbolTable, TypeIndex},
         types::{MathicType, lower_inner_ast_type},
     },
     parser::{
@@ -22,20 +22,20 @@ pub struct Function {
     pub name: String,
     pub sym_table: SymbolTable,
     pub basic_blocks: Vec<BasicBlock>,
-    pub params_tys: Vec<MathicType>,
-    pub return_ty: MathicType,
+    pub params_tys: Vec<TypeIndex>,
+    pub return_ty: TypeIndex,
     pub span: Span,
 }
 
 /// Helper struct to build a Function.
-pub struct FunctionBuilder<'ir> {
+pub struct FunctionBuilder<'glb> {
     pub name: String,
     pub decl_table: DeclTable,
-    pub sym_table: SymbolTable,
-    pub params_tys: Vec<MathicType>,
+    pub sym_table: LocalSymbolTable<'glb>,
+    pub params_tys: Vec<TypeIndex>,
     pub basic_blocks: Vec<BasicBlock>,
-    pub return_ty: MathicType,
-    pub ir_builder: &'ir mut IrBuilder,
+    pub return_ty: TypeIndex,
+    pub ir_builder: &'glb mut IrBuilder,
     pub span: Span,
 }
 
@@ -51,7 +51,7 @@ pub enum LocalKind {
 pub struct Local {
     pub local_idx: usize,
     pub kind: LocalKind,
-    pub ty: MathicType,
+    pub ty: TypeIndex,
     pub debug_name: Option<String>,
 }
 
@@ -60,14 +60,14 @@ impl<'ir> FunctionBuilder<'ir> {
     pub fn new(
         name: String,
         params: &[Param],
-        return_ty: MathicType,
+        return_ty: TypeIndex,
         ir_builder: &'ir mut IrBuilder,
         span: Span,
     ) -> Result<Self, LoweringError> {
         let mut func_builder = Self {
             name,
             decl_table: DeclTable::default(),
-            sym_table: Default::default(),
+            sym_table: LocalSymbolTable::new(&mut ir_builder.sym_table),
             basic_blocks: vec![BasicBlock::new(0, Terminator::Return(None, None), None)],
             params_tys: Vec::new(),
             return_ty,
@@ -75,18 +75,17 @@ impl<'ir> FunctionBuilder<'ir> {
             span,
         };
 
-        for (param_idx, param) in params.iter().enumerate() {
-            let param_ty: MathicType =
-                lower_inner_ast_type(&mut func_builder, &param.ty, param.span)?;
+        for param in params.iter() {
+            let param_ty = lower_inner_ast_type(&mut func_builder, &param.ty, param.span)?;
 
             func_builder.params_tys.push(param_ty);
 
-            func_builder.sym_table.locals.push(Local {
-                local_idx: param_idx,
-                kind: LocalKind::Param,
-                ty: param_ty,
-                debug_name: Some(param.name.clone()),
-            });
+            let param_idx = func_builder.sym_table.add_local(
+                Some(param.name.clone()),
+                param_ty,
+                Some(span),
+                LocalKind::Param,
+            )?;
             func_builder
                 .sym_table
                 .local_indexes
@@ -121,7 +120,7 @@ impl<'ir> FunctionBuilder<'ir> {
         }
     }
 
-    pub fn get_user_def_type(&self, name: &str, span: Span) -> Result<MathicType, LoweringError> {
+    pub fn get_user_def_type(&self, name: &str, span: Span) -> Result<TypeIndex, LoweringError> {
         if let Some(ty) = self.sym_table.get_user_def_type(name) {
             return Ok(ty);
         }
