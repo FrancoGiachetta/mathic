@@ -6,9 +6,9 @@ use crate::{
         basic_block::Terminator,
         function::{FunctionBuilder, LocalKind},
         instruction::{InitInstruct, LValInstruct, RValInstruct, RValueKind},
+        symbols::TypeIndex,
         types::{FloatTy, MathicType, SintTy, UintTy, lower_inner_ast_type},
-        value::ValueModifier,
-        value::{ConstExpr, NumericConst, Value},
+        value::{ConstExpr, NumericConst, Value, ValueModifier},
     },
     parser::{
         Span,
@@ -19,8 +19,8 @@ use crate::{
 pub fn lower_expr(
     func: &mut FunctionBuilder,
     expr: &ExprStmt,
-    ty_hint: Option<MathicType>,
-) -> Result<(RValInstruct, MathicType), LoweringError> {
+    ty_hint: Option<TypeIndex>,
+) -> Result<(RValInstruct, TypeIndex), LoweringError> {
     let rvalue = match &expr.kind {
         ExprStmtKind::Primary(val) => lower_primary_value(func, val, expr.span, ty_hint)?,
         ExprStmtKind::Binary { lhs, op, rhs } => lower_binary_op(func, lhs, *op, rhs, expr.span)?,
@@ -417,7 +417,7 @@ fn lower_primary_value(
     func: &mut FunctionBuilder,
     expr: &PrimaryExpr,
     span: Span,
-    ty_hint: Option<MathicType>,
+    ty_hint: Option<TypeIndex>,
 ) -> Result<RValInstruct, LoweringError> {
     let (value, ty) = match expr {
         PrimaryExpr::Ident(name) => {
@@ -432,7 +432,7 @@ fn lower_primary_value(
         }
         PrimaryExpr::Num(n) => match ty_hint {
             Some(ty) => (
-                Value::Const(match ty {
+                Value::Const(match func.sym_table.get_type(ty, span)? {
                     MathicType::Uint(uint_ty) => match uint_ty {
                         UintTy::Usize => {
                             ConstExpr::Numeric(NumericConst::Usize(n.parse::<usize>().unwrap()))
@@ -495,12 +495,22 @@ fn lower_primary_value(
                 Value::Const(ConstExpr::Numeric(NumericConst::I32(
                     n.parse::<i32>().unwrap(),
                 ))),
-                MathicType::Sint(SintTy::I32),
+                func.sym_table
+                    .get_or_insert_global_type(MathicType::Sint(SintTy::I32)),
             ),
         },
-        PrimaryExpr::Bool(b) => (Value::Const(ConstExpr::Bool(*b)), MathicType::Bool),
-        PrimaryExpr::Str(s) => (Value::Const(ConstExpr::Str(s.clone())), MathicType::Str),
-        PrimaryExpr::Char(c) => (Value::Const(ConstExpr::Char(*c)), MathicType::Char),
+        PrimaryExpr::Bool(b) => (
+            Value::Const(ConstExpr::Bool(*b)),
+            func.sym_table.get_or_insert_global_type(MathicType::Bool),
+        ),
+        PrimaryExpr::Str(s) => (
+            Value::Const(ConstExpr::Str(s.clone())),
+            func.sym_table.get_or_insert_global_type(MathicType::Str),
+        ),
+        PrimaryExpr::Char(c) => (
+            Value::Const(ConstExpr::Char(*c)),
+            func.sym_table.get_or_insert_global_type(MathicType::Char),
+        ),
     };
 
     Ok(RValInstruct {
@@ -520,34 +530,48 @@ fn lower_primary_value(
 fn lower_expression_type(
     func: &mut FunctionBuilder,
     expr: &ExprStmtKind,
-    ty_hint: Option<MathicType>,
+    ty_hint: Option<TypeIndex>,
     span: Span,
-) -> Result<MathicType, LoweringError> {
+) -> Result<TypeIndex, LoweringError> {
     Ok(match expr {
         ExprStmtKind::Primary(primary_expr) => match primary_expr {
             PrimaryExpr::Ident(name) => func.sym_table.get_local_from_name(name, span)?.ty,
             PrimaryExpr::Num(_) => match ty_hint {
                 Some(ty) => ty,
-                None => MathicType::Sint(SintTy::I32),
+                None => func
+                    .local_sym_table
+                    .get_or_insert_global_type(MathicType::Sint(SintTy::I32)),
             },
-            PrimaryExpr::Str(_) => MathicType::Str,
-            PrimaryExpr::Char(_) => MathicType::Char,
-            PrimaryExpr::Bool(_) => MathicType::Bool,
+            PrimaryExpr::Str(_) => func
+                .local_sym_table
+                .get_or_insert_global_type(MathicType::Str),
+            PrimaryExpr::Char(_) => func
+                .local_sym_table
+                .get_or_insert_global_type(MathicType::Char),
+            PrimaryExpr::Bool(_) => func
+                .local_sym_table
+                .get_or_insert_global_type(MathicType::Bool),
         },
         ExprStmtKind::Binary { lhs, op, .. } => match op {
-            BinaryOp::Compare(_) => MathicType::Bool,
+            BinaryOp::Compare(_) => func
+                .local_sym_table
+                .get_or_insert_global_type(MathicType::Bool),
             BinaryOp::Arithmetic(_) => lower_expression_type(func, &lhs.kind, None, span)?,
         },
         ExprStmtKind::Call { callee, .. } => {
             let func_decl = func.get_function_decl(callee, span)?;
             match func_decl.return_ty {
                 Some(ty) => lower_inner_ast_type(func, &ty, span)?,
-                None => MathicType::Void,
+                None => func
+                    .local_sym_table
+                    .get_or_insert_global_type(MathicType::Void),
             }
         }
         ExprStmtKind::Group(expr_stmt) => lower_expression_type(func, &expr_stmt.kind, None, span)?,
         ExprStmtKind::Index { .. } => todo!(),
-        ExprStmtKind::Logical { .. } => MathicType::Bool,
+        ExprStmtKind::Logical { .. } => func
+            .local_sym_table
+            .get_or_insert_global_type(MathicType::Bool),
         ExprStmtKind::Unary { rhs, .. } => lower_expression_type(func, &rhs.kind, None, span)?,
         ExprStmtKind::Assign { expr, .. } | ExprStmtKind::StructSet { rhs: expr, .. } => {
             lower_expression_type(func, &expr.kind, None, span)?

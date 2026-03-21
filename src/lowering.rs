@@ -9,6 +9,7 @@ use crate::{
             IrBuilder,
             adts::{Adt, StructAdt, StructField},
             function::FunctionBuilder,
+            symbols::TypeIndex,
             types::{MathicType, SintTy, UintTy, lower_inner_ast_type},
         },
     },
@@ -132,32 +133,61 @@ pub fn lower_top_level_ast_type(
     ir_builder: &mut IrBuilder,
     ty: &AstType,
     span: Span,
-) -> Result<MathicType, LoweringError> {
+) -> Result<TypeIndex, LoweringError> {
     Ok(match ty {
         AstType::Type(name) => match name.as_str() {
-            "i8" => MathicType::Sint(SintTy::I8),
-            "i16" => MathicType::Sint(SintTy::I16),
-            "i32" => MathicType::Sint(SintTy::I32),
-            "i64" => MathicType::Sint(SintTy::I64),
-            "i128" => MathicType::Sint(SintTy::I128),
-            "u8" => MathicType::Uint(UintTy::U8),
-            "u16" => MathicType::Uint(UintTy::U16),
-            "u32" => MathicType::Uint(UintTy::U32),
-            "u64" => MathicType::Uint(UintTy::U64),
-            "u128" => MathicType::Uint(UintTy::U128),
-            "str" => MathicType::Str,
-            "char" => MathicType::Char,
-            "bool" => MathicType::Bool,
+            "isz" => ir_builder
+                .sym_table
+                .get_or_insert_type(MathicType::Sint(SintTy::Isize)),
+            "i8" => ir_builder
+                .sym_table
+                .get_or_insert_type(MathicType::Sint(SintTy::I8)),
+            "i16" => ir_builder
+                .sym_table
+                .get_or_insert_type(MathicType::Sint(SintTy::I16)),
+            "i32" => ir_builder
+                .sym_table
+                .get_or_insert_type(MathicType::Sint(SintTy::I32)),
+            "i64" => ir_builder
+                .sym_table
+                .get_or_insert_type(MathicType::Sint(SintTy::I64)),
+            "i128" => ir_builder
+                .sym_table
+                .get_or_insert_type(MathicType::Sint(SintTy::I128)),
+            "usz" => ir_builder
+                .sym_table
+                .get_or_insert_type(MathicType::Uint(UintTy::Usize)),
+            "u8" => ir_builder
+                .sym_table
+                .get_or_insert_type(MathicType::Uint(UintTy::U8)),
+            "u16" => ir_builder
+                .sym_table
+                .get_or_insert_type(MathicType::Uint(UintTy::U16)),
+            "u32" => ir_builder
+                .sym_table
+                .get_or_insert_type(MathicType::Uint(UintTy::U32)),
+            "u64" => ir_builder
+                .sym_table
+                .get_or_insert_type(MathicType::Uint(UintTy::U64)),
+            "u128" => ir_builder
+                .sym_table
+                .get_or_insert_type(MathicType::Uint(UintTy::U128)),
+            "str" => ir_builder.sym_table.get_or_insert_type(MathicType::Str),
+            "char" => ir_builder.sym_table.get_or_insert_type(MathicType::Char),
+            "bool" => ir_builder.sym_table.get_or_insert_type(MathicType::Bool),
             other => {
                 if let Some(ty) = ir_builder.get_user_def_type(other) {
                     return Ok(ty);
                 }
 
                 match ir_builder.decl_table.get_struct_decl(other).cloned() {
-                    Some(d) => MathicType::Adt {
-                        index: lower_top_level_struct(ir_builder, &d)?,
-                        is_local: false,
-                    },
+                    Some(d) => {
+                        let adt_index = lower_top_level_struct(ir_builder, &d)?;
+                        ir_builder.sym_table.get_or_insert_type(MathicType::Adt {
+                            index: adt_index,
+                            is_local: false,
+                        })
+                    }
                     None => {
                         return Err(LoweringError::UndeclaredType { span });
                     }

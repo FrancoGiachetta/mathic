@@ -29,7 +29,11 @@ pub fn lower_if(func: &mut FunctionBuilder, stmt: &IfStmt) -> Result<(), Lowerin
 
     let (condition_val, condition_ty) = expression::lower_expr(func, condition, None)?;
 
-    if !condition_ty.is_bool() {
+    if !func
+        .sym_table
+        .get_type(condition_ty, condition.span)?
+        .is_bool()
+    {
         return Err(LoweringError::MismatchedType {
             expected: MathicType::Bool,
             found: condition_ty,
@@ -98,7 +102,11 @@ pub fn lower_while(
 
     let (loop_breaker_condition, condition_ty) = expression::lower_expr(func, condition, None)?;
 
-    if !condition_ty.is_bool() {
+    if !func
+        .sym_table
+        .get_type(condition_ty, condition.span)?
+        .is_bool()
+    {
         return Err(LoweringError::MismatchedType {
             expected: MathicType::Bool,
             found: condition_ty,
@@ -146,7 +154,7 @@ pub fn lower_for(
             rhs: Box::new(end_val),
             span: Span::from(start.span.start..end.span.end),
         },
-        ty: MathicType::Bool,
+        ty: func.sym_table.get_or_insert_global_type(MathicType::Bool),
     };
 
     let extra_instructions = vec![LValInstruct::Assign {
