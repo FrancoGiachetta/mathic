@@ -14,7 +14,7 @@ use crate::{
     diagnostics::CodegenError,
     lowering::ir::{
         function::{Function, LocalKind},
-        types::MathicType,
+        symbols::TypeIndex,
     },
 };
 
@@ -25,7 +25,7 @@ use crate::{
 /// **locals**: variables defined within the function context.
 /// **mlir_blocks**: the MLIR Blocks that the function will use.
 pub struct FunctionCtx<'ctx, 'this> {
-    locals: Vec<(MlirValue, MathicType)>,
+    locals: Vec<(MlirValue, TypeIndex)>,
     mlir_blocks: &'this [BlockRef<'ctx, 'this>],
     ir_func: &'this Function,
 }
@@ -39,11 +39,11 @@ impl<'ctx, 'this> FunctionCtx<'ctx, 'this> {
         }
     }
 
-    pub fn define_local(&mut self, value: Value, ty: MathicType) {
+    pub fn define_local(&mut self, value: Value, ty: TypeIndex) {
         self.locals.push((value.to_raw(), ty));
     }
 
-    pub fn get_local(&self, idx: usize) -> Option<(Value<'ctx, '_>, MathicType)> {
+    pub fn get_local(&self, idx: usize) -> Option<(Value<'ctx, '_>, TypeIndex)> {
         self.locals
             .get(idx)
             .copied()
@@ -106,8 +106,7 @@ impl MathicCodeGen<'_> {
 
         let mut inner_fn_ctx = FunctionCtx::new(&mlir_blocks, inner_func);
         let function_params = inner_func
-            .sym_table
-            .locals
+            .get_locals()
             .iter()
             .filter(|l| l.kind == LocalKind::Param);
 
@@ -124,7 +123,7 @@ impl MathicCodeGen<'_> {
         }
 
         // Precompile inner functions.
-        for (_, inner_func) in inner_func.sym_table.functions.iter() {
+        for inner_func in inner_func.get_inner_functions() {
             self.compile_function(
                 inner_func,
                 &[(

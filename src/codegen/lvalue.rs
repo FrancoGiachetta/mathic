@@ -61,11 +61,10 @@ impl MathicCodeGen<'_> {
                         ValueModifier::Field(idx) => match ty {
                             MathicType::Adt { index, is_local } => {
                                 let adt = if is_local {
-                                    fn_ctx.get_ir_func().sym_table.adts.get(index)
+                                    fn_ctx.get_ir_func().get_adt(index)
                                 } else {
-                                    self.ir.adts.get(index)
-                                }
-                                .unwrap();
+                                    self.ir.get_adt(index)
+                                };
 
                                 match adt {
                                     Adt::Struct(struct_adt) => {

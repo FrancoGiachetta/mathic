@@ -28,10 +28,13 @@ pub fn lower_var_declaration(
         expr,
         ty: var_ty,
     } = stmt;
-    let var_ty = lower_inner_ast_type(func, var_ty, span)?;
-    let (init, expr_ty) = expression::lower_expr(func, expr, Some(var_ty))?;
+    let var_ty_idx = lower_inner_ast_type(func, var_ty, span)?;
+    let (init, expr_ty_idx) = expression::lower_expr(func, expr, Some(var_ty_idx))?;
 
-    if expr_ty != var_ty {
+    let var_ty = func.get_type(var_ty_idx, span)?;
+    let expr_ty = func.get_type(expr_ty_idx, span)?;
+
+    if expr_ty_idx != var_ty_idx {
         return Err(LoweringError::MismatchedType {
             expected: var_ty,
             found: expr_ty,
@@ -41,7 +44,7 @@ pub fn lower_var_declaration(
 
     let local_idx =
         func.sym_table
-            .add_local(Some(name.clone()), var_ty, Some(span), LocalKind::Temp)?;
+            .add_local(Some(name.clone()), var_ty_idx, Some(span), LocalKind::Temp)?;
 
     func.push_instruction(LValInstruct::Let {
         local_idx,
@@ -72,9 +75,7 @@ pub fn lower_inner_struct(
         });
     }
 
-    let idx = func_builder
-        .sym_table
-        .add_adt(name.clone(), Adt::Struct(adt));
+    let idx = func_builder.add_adt(adt.name.clone(), Adt::Struct(adt));
 
     Ok(idx)
 }
@@ -97,7 +98,7 @@ pub fn lower_inner_function(
         params,
         match return_ty {
             Some(ty) => lower_inner_ast_type(func, ty, span)?,
-            None => MathicType::Void,
+            None => func.get_or_insert_global_type_idx(MathicType::Void),
         },
         func.ir_builder,
         span,

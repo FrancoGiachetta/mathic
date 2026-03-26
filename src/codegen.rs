@@ -82,19 +82,21 @@ impl<'ctx> MathicCodeGen<'ctx> {
     #[instrument(target = "codegen", skip(self, helper))]
     pub fn generate_module(&self, helper: &mut CompilerHelper) -> MathicResult<()> {
         let start = std::time::Instant::now();
+        let global_functions = self.ir.get_functions();
+
         tracing::info!(
             "Starting code generation for {} functions",
-            self.ir.functions.len()
+            global_functions.len()
         );
 
         // Check if main function is present
-        if !self.ir.functions.iter().any(|f| f.name == "main") {
+        if !global_functions.iter().any(|f| f.name == "main") {
             return Err(MathicError::Codegen(CodegenError::MissingMainFunction));
         }
 
         // TODO: Compile structs in the future
 
-        for func in self.ir.functions.iter() {
+        for func in global_functions {
             tracing::debug!("Compiling function: {}", func.name);
             self.compile_function(func, &[], helper)?;
         }
@@ -118,15 +120,23 @@ impl<'ctx> MathicCodeGen<'ctx> {
             MathicType::Str => llvm::r#type::pointer(self.ctx, 0),
             MathicType::Void => Type::none(self.ctx),
             MathicType::Adt { index, is_local } => {
-                let adt = if is_local {
-                    func.sym_table.adts.get(index)
-                } else {
-                    self.ir.adts.get(index)
-                }
-                .unwrap();
+                let adt_fields_tys: Vec<MathicType> = if is_local {
+                    let adt = func.get_adt(index);
 
-                let fields_tys = adt
-                    .get_fields_tys()
+                    adt.get_fields_tys()
+                        .iter()
+                        .map(|t| func.get_type(t.idx))
+                        .collect()
+                } else {
+                    let adt = self.ir.get_adt(index);
+
+                    adt.get_fields_tys()
+                        .iter()
+                        .map(|t| self.ir.get_type(t.idx))
+                        .collect()
+                };
+
+                let fields_tys = adt_fields_tys
                     .iter()
                     .map(|ty| self.get_compiled_type(func, *ty))
                     .collect::<Vec<_>>();

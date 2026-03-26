@@ -1,10 +1,12 @@
-use std::collections::HashMap;
-
-use crate::lowering::ir::{
-    adts::Adt,
-    function::Function,
-    symbols::{DeclTable, GlobalSymbolTable, TypeIndex},
-    types::MathicType,
+use crate::{
+    diagnostics::LoweringError,
+    lowering::ir::{
+        adts::Adt,
+        function::Function,
+        symbols::{DeclTable, SymbolTableBuilder, TypeIndex},
+        types::MathicType,
+    },
+    parser::Span,
 };
 
 pub mod adts;
@@ -19,45 +21,64 @@ pub mod value;
 /// Mathic's IR (MATHIR).
 #[derive(Debug, Default)]
 pub struct Ir {
-    pub functions: Vec<Function>,
-    pub adts: Vec<Adt>,
+    types: Vec<MathicType>,
+    functions: Vec<Function>,
+    adts: Vec<Adt>,
+}
+
+impl Ir {
+    pub fn get_type(&self, idx: usize) -> MathicType {
+        self.types.get(idx).copied().unwrap()
+    }
+
+    pub fn get_adt(&self, idx: usize) -> &Adt {
+        self.adts.get(idx).unwrap()
+    }
+
+    pub fn get_functions(&self) -> &[Function] {
+        &self.functions
+    }
 }
 
 /// Helper struct to build the IR.
 #[derive(Debug, Default)]
 pub struct IrBuilder {
     pub decl_table: DeclTable,
-    pub sym_table: GlobalSymbolTable,
-    pub functions: HashMap<String, Function>,
-    pub adts: Vec<Adt>,
+    pub sym_table: SymbolTableBuilder,
 }
 
 impl IrBuilder {
     pub fn new() -> Self {
         Self {
             decl_table: DeclTable::default(),
-            sym_table: Default::default(),
-            functions: HashMap::new(),
-            adts: Vec::new(),
+            sym_table: SymbolTableBuilder::default(),
         }
     }
 
     pub fn add_function(&mut self, func: Function) {
-        self.functions.insert(func.name.clone(), func);
+        self.sym_table.functions.insert(func.name.clone(), func);
+    }
+
+    pub fn get_type(&self, idx: TypeIndex, span: Span) -> Result<MathicType, LoweringError> {
+        self.sym_table
+            .get_type(idx.idx)
+            .ok_or(LoweringError::UndeclaredType { span })
     }
 
     pub fn add_adt(&mut self, name: String, adt: Adt) -> usize {
-        let index = self.adts.len();
+        self.sym_table.add_adt(name, adt, false)
+    }
 
-        let adt_type_idx = self.sym_table.get_or_insert_type(MathicType::Adt {
-            index,
-            is_local: false,
-        });
+    pub fn get_adt(&self, adt_type_idx: TypeIndex, span: Span) -> Result<&Adt, LoweringError> {
+        let adt_ty = self.get_type(adt_type_idx, span)?;
 
-        self.sym_table.add_user_def_type(name, adt_type_idx);
-        self.adts.push(adt);
+        self.sym_table
+            .get_adt(adt_ty)
+            .ok_or(LoweringError::UndeclaredType { span })
+    }
 
-        index
+    pub fn get_or_insert_type_idx(&mut self, ty: MathicType) -> TypeIndex {
+        self.sym_table.get_or_insert_type(ty, false)
     }
 
     pub fn get_user_def_type(&self, name: &str) -> Option<TypeIndex> {
@@ -65,9 +86,11 @@ impl IrBuilder {
     }
 
     pub fn build(self) -> Ir {
+        let sym_table = self.sym_table.build();
         Ir {
-            functions: self.functions.into_values().collect(),
-            adts: self.adts,
+            types: sym_table.types,
+            functions: sym_table.functions,
+            adts: sym_table.adts,
         }
     }
 }

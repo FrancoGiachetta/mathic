@@ -10,6 +10,7 @@ use crate::{
     lowering::ir::{
         adts::Adt,
         instruction::{InitInstruct, RValInstruct, RValueKind},
+        symbols::TypeIndex,
         types::MathicType,
         value::{ConstExpr, NumericConst, Value as IRValue, ValueModifier},
     },
@@ -52,7 +53,7 @@ impl MathicCodeGen<'_> {
         fn_ctx: &mut FunctionCtx<'ctx, 'func>,
         block: &'func Block<'ctx>,
         init_inst: &InitInstruct,
-        adt_ty: MathicType,
+        adt_ty_idx: TypeIndex,
         span: Span,
         helper: &mut CompilerHelper,
     ) -> Result<Value<'ctx, 'func>, CodegenError>
@@ -243,11 +244,10 @@ impl MathicCodeGen<'_> {
                         ValueModifier::Field(idx) => match ty {
                             MathicType::Adt { index, is_local } => {
                                 let adt = if is_local {
-                                    fn_ctx.get_ir_func().sym_table.adts.get(index)
+                                    fn_ctx.get_ir_func().get_adt(index)
                                 } else {
-                                    self.ir.adts.get(index)
-                                }
-                                .unwrap();
+                                    self.ir.get_adt(index)
+                                };
 
                                 match adt {
                                     Adt::Struct(struct_adt) => {

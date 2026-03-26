@@ -60,13 +60,13 @@ fn lower_assignment(
     span: Span,
 ) -> Result<RValInstruct, LoweringError> {
     let local = func.sym_table.get_local_from_name(name, span)?;
-    let (value, ty) = lower_expr(func, expr, Some(local.ty))?;
+    let (value, expr_ty_idx) = lower_expr(func, expr, Some(local.ty))?;
 
     // The new value should be of the same type as the local's.
-    if local.ty != ty {
+    if local.ty != expr_ty_idx {
         return Err(LoweringError::MismatchedType {
-            expected: local.ty,
-            found: ty,
+            expected: func.get_type(local.ty, span)?,
+            found: func.get_type(expr_ty_idx, span)?,
             span,
         });
     }
@@ -85,7 +85,7 @@ fn lower_assignment(
             value: Value::Const(ConstExpr::Void),
             span: None,
         },
-        ty: MathicType::Void,
+        ty: func.get_or_insert_global_type_idx(MathicType::Void),
     })
 }
 
@@ -108,13 +108,13 @@ fn lower_call(
     }
 
     for (arg, param) in func_args.iter().zip(func_prototype.params.iter()) {
-        let param_ty: MathicType = lower_inner_ast_type(func, &param.ty, param.span)?;
-        let (arg_val, arg_ty) = lower_expr(func, arg, Some(param_ty))?;
+        let param_ty_idx = lower_inner_ast_type(func, &param.ty, param.span)?;
+        let (arg_val, arg_ty_idx) = lower_expr(func, arg, Some(param_ty_idx))?;
 
-        if arg_ty != param_ty {
+        if arg_ty_idx != param_ty_idx {
             return Err(LoweringError::MismatchedType {
-                expected: param_ty,
-                found: arg_ty,
+                expected: func.get_type(param_ty_idx, param.span)?,
+                found: func.get_type(arg_ty_idx, param.span)?,
                 span: arg.span,
             });
         }
@@ -127,13 +127,13 @@ fn lower_call(
     // not RValue instructions, we need to create a temporary local to store
     // the return value and then create the RValue instruction pointing to that
     // new local.
-    let return_ty = match func_prototype.return_ty {
+    let return_ty_idx = match func_prototype.return_ty {
         Some(ty) => lower_inner_ast_type(func, &ty, span)?,
-        None => MathicType::Void,
+        None => func.get_or_insert_global_type_idx(MathicType::Void),
     };
     let local_idx = func
         .sym_table
-        .add_local(None, return_ty, None, LocalKind::Temp)?;
+        .add_local(None, return_ty_idx, None, LocalKind::Temp)?;
 
     let dest_block_idx = func.last_block_idx() + 1;
 
@@ -145,7 +145,7 @@ fn lower_call(
             local_idx,
             modifier: vec![],
         },
-        return_ty,
+        return_ty: return_ty_idx,
         dest_block: dest_block_idx,
     };
 
@@ -159,7 +159,7 @@ fn lower_call(
             },
             span: None,
         },
-        ty: return_ty,
+        ty: return_ty_idx,
     })
 }
 
@@ -170,21 +170,21 @@ fn lower_binary_op(
     rhs: &ExprStmt,
     span: Span,
 ) -> Result<RValInstruct, LoweringError> {
-    let (lhs, lhs_ty) = lower_expr(func, lhs, None)?;
-    let (rhs, rhs_ty) = lower_expr(func, rhs, Some(lhs_ty))?;
+    let (lhs, lhs_ty_idx) = lower_expr(func, lhs, None)?;
+    let (rhs, rhs_ty_idx) = lower_expr(func, rhs, Some(lhs_ty_idx))?;
 
     // Operands' types must match.
-    if lhs_ty != rhs_ty {
+    if lhs_ty_idx != rhs_ty_idx {
         return Err(LoweringError::MismatchedType {
-            expected: lhs_ty,
-            found: rhs_ty,
+            expected: func.get_type(lhs_ty_idx, span)?,
+            found: func.get_type(rhs_ty_idx, span)?,
             span,
         });
     }
 
-    let inst_ty = match op {
-        BinaryOp::Compare(_) => MathicType::Bool,
-        BinaryOp::Arithmetic(_) => lhs_ty,
+    let inst_ty_idx = match op {
+        BinaryOp::Compare(_) => func.get_or_insert_global_type_idx(MathicType::Bool),
+        BinaryOp::Arithmetic(_) => lhs_ty_idx,
     };
 
     Ok(RValInstruct {
@@ -194,7 +194,7 @@ fn lower_binary_op(
             rhs: Box::new(rhs),
             span,
         },
-        ty: inst_ty,
+        ty: inst_ty_idx,
     })
 }
 
@@ -205,8 +205,11 @@ fn lower_logical_op(
     rhs: &ExprStmt,
     span: Span,
 ) -> Result<RValInstruct, LoweringError> {
-    let (lhs, lhs_ty) = lower_expr(func, lhs, None)?;
-    let (rhs, rhs_ty) = lower_expr(func, rhs, Some(lhs_ty))?;
+    let (lhs, lhs_ty_idx) = lower_expr(func, lhs, None)?;
+    let (rhs, rhs_ty_idx) = lower_expr(func, rhs, Some(lhs_ty_idx))?;
+
+    let lhs_ty = func.get_type(lhs_ty_idx, span)?;
+    let rhs_ty = func.get_type(rhs_ty_idx, span)?;
 
     // Operands' types must be boolean.
     if !lhs_ty.is_bool() {
@@ -231,7 +234,7 @@ fn lower_logical_op(
             rhs: Box::new(rhs),
             span,
         },
-        ty: MathicType::Bool,
+        ty: func.get_or_insert_global_type_idx(MathicType::Bool),
     })
 }
 
@@ -240,7 +243,7 @@ fn lower_unary_op(
     op: UnaryOp,
     rhs: &ExprStmt,
     span: Span,
-    ty_hint: Option<MathicType>,
+    ty_hint: Option<TypeIndex>,
 ) -> Result<RValInstruct, LoweringError> {
     let (rhs, rhs_ty) = lower_expr(func, rhs, ty_hint)?;
 
@@ -261,8 +264,9 @@ fn lower_adt_init(
     span: Span,
 ) -> Result<RValInstruct, LoweringError> {
     let adt_ty = func.get_user_def_type(name, span)?;
-    let adt_body = func.get_adt_body(adt_ty, span)?.clone();
+    let adt_body = func.get_adt(adt_ty, span)?.clone();
     let mut init_fields = vec![None; fields.len()];
+
     if fields.len() != adt_body.fields_len() {
         let adt_fields_names = adt_body.get_field_names();
         let missing = adt_fields_names
@@ -275,18 +279,19 @@ fn lower_adt_init(
     }
 
     for (name, expr) in fields {
-        let (rvalue, rvalue_ty) = lower_expr(func, expr, adt_body.get_field_ty(name))?;
-        let field_ty = adt_body
-            .get_field_ty(name)
-            .ok_or(LoweringError::UndeclaredStructField {
-                found: name.to_string(),
-                span,
-            })?;
+        let (rvalue, rvalue_ty_idx) = lower_expr(func, expr, adt_body.get_field_ty(name))?;
+        let field_ty_idx =
+            adt_body
+                .get_field_ty(name)
+                .ok_or(LoweringError::UndeclaredStructField {
+                    found: name.to_string(),
+                    span,
+                })?;
 
-        if field_ty != rvalue_ty {
+        if field_ty_idx != rvalue_ty_idx {
             return Err(LoweringError::MismatchedType {
-                expected: field_ty,
-                found: rvalue_ty,
+                expected: func.get_type(field_ty_idx, span)?,
+                found: func.get_type(rvalue_ty_idx, span)?,
                 span,
             });
         }
@@ -318,7 +323,7 @@ fn lower_struct_get(
     expr: &ExprStmt,
     field_name: &str,
     span: Span,
-    ty_hint: Option<MathicType>,
+    ty_hint: Option<TypeIndex>,
 ) -> Result<RValInstruct, LoweringError> {
     let (struct_expr, struct_ty) = lower_expr(func, expr, ty_hint)?;
 
@@ -333,7 +338,7 @@ fn lower_struct_get(
         unreachable!()
     };
 
-    let struct_adt = func.get_adt_body(struct_ty, expr.span)?;
+    let struct_adt = func.get_adt(struct_ty, expr.span)?;
     let field_index =
         struct_adt
             .get_field_index(field_name)
@@ -385,12 +390,12 @@ fn lower_struct_set(
 
         (local_idx, modifier)
     };
-    let (value, value_ty) = lower_expr(func, rhs, Some(struct_field_value.ty))?;
+    let (value, value_ty_idx) = lower_expr(func, rhs, Some(struct_field_value.ty))?;
 
-    if value_ty != struct_field_value.ty {
+    if value_ty_idx != struct_field_value.ty {
         return Err(LoweringError::MismatchedType {
-            expected: struct_field_value.ty,
-            found: value_ty,
+            expected: func.get_type(struct_field_value.ty, span)?,
+            found: func.get_type(value_ty_idx, span)?,
             span,
         });
     }
@@ -409,7 +414,7 @@ fn lower_struct_set(
             value: Value::Const(ConstExpr::Void),
             span: None,
         },
-        ty: MathicType::Void,
+        ty: func.get_or_insert_global_type_idx(MathicType::Void),
     })
 }
 
@@ -432,7 +437,7 @@ fn lower_primary_value(
         }
         PrimaryExpr::Num(n) => match ty_hint {
             Some(ty) => (
-                Value::Const(match func.sym_table.get_type(ty, span)? {
+                Value::Const(match func.get_type(ty, span)? {
                     MathicType::Uint(uint_ty) => match uint_ty {
                         UintTy::Usize => {
                             ConstExpr::Numeric(NumericConst::Usize(n.parse::<usize>().unwrap()))
@@ -495,21 +500,20 @@ fn lower_primary_value(
                 Value::Const(ConstExpr::Numeric(NumericConst::I32(
                     n.parse::<i32>().unwrap(),
                 ))),
-                func.sym_table
-                    .get_or_insert_global_type(MathicType::Sint(SintTy::I32)),
+                func.get_or_insert_global_type_idx(MathicType::Sint(SintTy::I32)),
             ),
         },
         PrimaryExpr::Bool(b) => (
             Value::Const(ConstExpr::Bool(*b)),
-            func.sym_table.get_or_insert_global_type(MathicType::Bool),
+            func.get_or_insert_global_type_idx(MathicType::Bool),
         ),
         PrimaryExpr::Str(s) => (
             Value::Const(ConstExpr::Str(s.clone())),
-            func.sym_table.get_or_insert_global_type(MathicType::Str),
+            func.get_or_insert_global_type_idx(MathicType::Str),
         ),
         PrimaryExpr::Char(c) => (
             Value::Const(ConstExpr::Char(*c)),
-            func.sym_table.get_or_insert_global_type(MathicType::Char),
+            func.get_or_insert_global_type_idx(MathicType::Char),
         ),
     };
 
@@ -538,40 +542,26 @@ fn lower_expression_type(
             PrimaryExpr::Ident(name) => func.sym_table.get_local_from_name(name, span)?.ty,
             PrimaryExpr::Num(_) => match ty_hint {
                 Some(ty) => ty,
-                None => func
-                    .local_sym_table
-                    .get_or_insert_global_type(MathicType::Sint(SintTy::I32)),
+                None => func.get_or_insert_global_type_idx(MathicType::Sint(SintTy::I32)),
             },
-            PrimaryExpr::Str(_) => func
-                .local_sym_table
-                .get_or_insert_global_type(MathicType::Str),
-            PrimaryExpr::Char(_) => func
-                .local_sym_table
-                .get_or_insert_global_type(MathicType::Char),
-            PrimaryExpr::Bool(_) => func
-                .local_sym_table
-                .get_or_insert_global_type(MathicType::Bool),
+            PrimaryExpr::Str(_) => func.get_or_insert_global_type_idx(MathicType::Str),
+            PrimaryExpr::Char(_) => func.get_or_insert_global_type_idx(MathicType::Char),
+            PrimaryExpr::Bool(_) => func.get_or_insert_global_type_idx(MathicType::Bool),
         },
         ExprStmtKind::Binary { lhs, op, .. } => match op {
-            BinaryOp::Compare(_) => func
-                .local_sym_table
-                .get_or_insert_global_type(MathicType::Bool),
+            BinaryOp::Compare(_) => func.get_or_insert_global_type_idx(MathicType::Bool),
             BinaryOp::Arithmetic(_) => lower_expression_type(func, &lhs.kind, None, span)?,
         },
         ExprStmtKind::Call { callee, .. } => {
             let func_decl = func.get_function_decl(callee, span)?;
             match func_decl.return_ty {
                 Some(ty) => lower_inner_ast_type(func, &ty, span)?,
-                None => func
-                    .local_sym_table
-                    .get_or_insert_global_type(MathicType::Void),
+                None => func.get_or_insert_global_type_idx(MathicType::Void),
             }
         }
         ExprStmtKind::Group(expr_stmt) => lower_expression_type(func, &expr_stmt.kind, None, span)?,
         ExprStmtKind::Index { .. } => todo!(),
-        ExprStmtKind::Logical { .. } => func
-            .local_sym_table
-            .get_or_insert_global_type(MathicType::Bool),
+        ExprStmtKind::Logical { .. } => func.get_or_insert_global_type_idx(MathicType::Bool),
         ExprStmtKind::Unary { rhs, .. } => lower_expression_type(func, &rhs.kind, None, span)?,
         ExprStmtKind::Assign { expr, .. } | ExprStmtKind::StructSet { rhs: expr, .. } => {
             lower_expression_type(func, &expr.kind, None, span)?
@@ -579,7 +569,7 @@ fn lower_expression_type(
         ExprStmtKind::StructInit { name, .. } => func.get_user_def_type(name, span)?,
         ExprStmtKind::StructGet { expr, field_name } => {
             let adt_ty = lower_expression_type(func, &expr.kind, ty_hint, span)?;
-            let adt = func.get_adt_body(adt_ty, span)?;
+            let adt = func.get_adt(adt_ty, span)?;
 
             adt.get_field_ty(field_name).unwrap()
         }

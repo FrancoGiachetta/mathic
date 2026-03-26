@@ -1,4 +1,3 @@
-use super::types::MathicType;
 use super::value::Value;
 use crate::{
     lowering::ir::{symbols::TypeIndex, value::ValueModifier},

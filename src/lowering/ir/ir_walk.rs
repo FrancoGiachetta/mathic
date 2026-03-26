@@ -346,7 +346,7 @@ pub mod adts {
                 writeln!(f, "{}struct {} {{", indent_str, s.name)?;
 
                 for field in &s.fields {
-                    writeln!(f, "{}    {}: {},", indent_str, field.name, field.ty)?;
+                    writeln!(f, "{}    {}: {:?},", indent_str, field.name, field.ty)?;
                 }
 
                 writeln!(f, "{}}}\n", indent_str)
@@ -356,20 +356,20 @@ pub mod adts {
 }
 
 pub mod function {
-    use crate::lowering::ir::ir_walk::{adts, basic_block::write_block_ir};
+    use crate::lowering::ir::{
+        function::{Function, LocalKind},
+        ir_walk::{adts, basic_block::write_block_ir},
+    };
 
     pub fn write_function_ir<W: std::fmt::Write>(
-        func: &crate::lowering::ir::function::Function,
+        func: &Function,
         f: &mut W,
         indent: usize,
     ) -> std::fmt::Result {
-        use crate::lowering::ir::function::LocalKind;
-
         let indent_str = " ".repeat(indent);
 
         let params = func
-            .sym_table
-            .locals
+            .get_locals()
             .iter()
             .filter(|local| matches!(local.kind, LocalKind::Param))
             .map(|p| format!("%{}", p.local_idx))
@@ -378,11 +378,11 @@ pub mod function {
 
         writeln!(f, "{}df {}({}) -> i64 {{", indent_str, func.name, params)?;
 
-        for nested_adt in func.sym_table.adts.iter() {
+        for nested_adt in func.get_adts() {
             adts::write_adt_ir(nested_adt, f, indent + 4)?;
         }
 
-        for (_, nested_func) in func.sym_table.functions.iter() {
+        for nested_func in func.get_inner_functions() {
             write_function_ir(nested_func, f, indent + 4)?;
         }
 

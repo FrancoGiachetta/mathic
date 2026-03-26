@@ -1,7 +1,6 @@
 use super::instruction::LValInstruct;
 use super::value::Value;
-use crate::lowering::ir::instruction::RValInstruct;
-use crate::lowering::ir::types::MathicType;
+use crate::lowering::ir::{instruction::RValInstruct, symbols::TypeIndex};
 use crate::parser::Span;
 
 pub type BlockId = usize;
@@ -57,7 +56,7 @@ pub enum Terminator {
         args: Vec<RValInstruct>,
         span: Option<Span>,
         return_dest: Value,
-        return_ty: MathicType,
+        return_ty: TypeIndex,
         dest_block: usize,
     },
 }
