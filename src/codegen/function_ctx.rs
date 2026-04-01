@@ -71,14 +71,14 @@ impl MathicCodeGen<'_> {
     {
         let location = self.get_location(None)?;
 
-        let return_ty = self.get_compiled_type(inner_func, inner_func.return_ty);
+        let return_ty = self.get_compiled_type(inner_func, inner_func.return_ty)?;
         let mut params_types = Vec::with_capacity(inner_func.params_tys.len());
         let mut block_params = Vec::with_capacity(inner_func.params_tys.len());
 
         // Prepare the function's params' types and the entry block params as
         // well.
         for param_ty in inner_func.params_tys.iter() {
-            let mlir_ty = self.get_compiled_type(inner_func, *param_ty);
+            let mlir_ty = self.get_compiled_type(inner_func, *param_ty)?;
 
             params_types.push(mlir_ty);
             block_params.push((mlir_ty, location));

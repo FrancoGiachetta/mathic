@@ -14,6 +14,7 @@ use crate::{
     lowering::ir::{
         Ir,
         function::Function,
+        symbols::TypeIndex,
         types::{FloatTy, MathicType},
     },
     parser::Span,
@@ -106,8 +107,22 @@ impl<'ctx> MathicCodeGen<'ctx> {
         Ok(())
     }
 
-    pub fn get_compiled_type<'func>(&'func self, func: &Function, ty: MathicType) -> Type<'func> {
-        match ty {
+    pub fn get_type(&self, func: &Function, ty_idx: TypeIndex) -> Result<MathicType, CodegenError> {
+        Ok(if ty_idx.is_local {
+            func.get_type(ty_idx.idx)
+        } else {
+            self.ir.get_type(ty_idx.idx)
+        })
+    }
+
+    pub fn get_compiled_type<'func>(
+        &'func self,
+        func: &Function,
+        ty_idx: TypeIndex,
+    ) -> Result<Type<'func>, CodegenError> {
+        let ty = self.get_type(func, ty_idx)?;
+
+        Ok(match ty {
             MathicType::Uint(_) | MathicType::Sint(_) => {
                 IntegerType::new(self.ctx, ty.bit_width()).into()
             }
@@ -120,29 +135,20 @@ impl<'ctx> MathicCodeGen<'ctx> {
             MathicType::Str => llvm::r#type::pointer(self.ctx, 0),
             MathicType::Void => Type::none(self.ctx),
             MathicType::Adt { index, is_local } => {
-                let adt_fields_tys: Vec<MathicType> = if is_local {
-                    let adt = func.get_adt(index);
-
-                    adt.get_fields_tys()
-                        .iter()
-                        .map(|t| func.get_type(t.idx))
-                        .collect()
+                let adt = if is_local {
+                    func.get_adt(index)
                 } else {
-                    let adt = self.ir.get_adt(index);
-
-                    adt.get_fields_tys()
-                        .iter()
-                        .map(|t| self.ir.get_type(t.idx))
-                        .collect()
+                    self.ir.get_adt(index)
                 };
 
-                let fields_tys = adt_fields_tys
+                let fields_tys = adt
+                    .get_fields_tys()
                     .iter()
                     .map(|ty| self.get_compiled_type(func, *ty))
-                    .collect::<Vec<_>>();
+                    .collect::<Result<Vec<_>, _>>()?;
 
                 llvm::r#type::r#struct(self.ctx, &fields_tys, false)
             }
-        }
+        })
     }
 }

@@ -104,11 +104,10 @@ impl SymbolTableBuilder {
         }
     }
 
-    pub fn get_type_index(&self, ty: MathicType) -> Option<TypeIndex> {
-        self.types.get_index(ty).map(|idx| TypeIndex {
-            idx,
-            is_local: true,
-        })
+    pub fn get_type_index(&self, ty: MathicType, is_local: bool) -> Option<TypeIndex> {
+        self.types
+            .get_index(ty)
+            .map(|idx| TypeIndex { idx, is_local })
     }
 
     pub fn get_type(&self, idx: usize) -> Option<MathicType> {
@@ -116,10 +115,11 @@ impl SymbolTableBuilder {
     }
 
     pub fn get_or_insert_type(&mut self, ty: MathicType, is_local: bool) -> TypeIndex {
-        self.get_type_index(ty).unwrap_or_else(|| TypeIndex {
-            idx: self.types.insert(ty),
-            is_local,
-        })
+        self.get_type_index(ty, is_local)
+            .unwrap_or_else(|| TypeIndex {
+                idx: self.types.insert(ty),
+                is_local,
+            })
     }
 
     pub fn add_function(&mut self, func: Function) {

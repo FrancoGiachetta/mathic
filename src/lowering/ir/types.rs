@@ -85,7 +85,7 @@ pub fn lower_inner_ast_type(
                 {
                     Some(d) => {
                         let adt_index = lower_top_level_struct(func_builder.ir_builder, &d)?;
-                        func_builder.get_or_insert_type_idx(MathicType::Adt {
+                        func_builder.get_or_insert_global_type_idx(MathicType::Adt {
                             index: adt_index,
                             is_local: false,
                         })
@@ -165,21 +165,28 @@ impl MathicType {
             Self::Char => 8,
             Self::Void => 0,
             Self::Adt { index, is_local } => {
-                let adt_fields_tys: Vec<MathicType> = if *is_local {
-                    let adt = func.get_adt(*index);
-
-                    adt.get_fields_tys()
-                        .iter()
-                        .map(|t| func.get_type(t.idx))
-                        .collect()
-                } else {
-                    let adt = ir.get_adt(*index);
-
-                    adt.get_fields_tys()
-                        .iter()
-                        .map(|t| ir.get_type(t.idx))
-                        .collect()
+                let adt_fields_tys: Vec<MathicType> = {
+                    if *is_local {
+                        let adt = func.get_adt(*index);
+                        adt.get_fields_tys()
+                            .iter()
+                            .map(|t| {
+                                if t.is_local {
+                                    func.get_type(t.idx)
+                                } else {
+                                    ir.get_type(t.idx)
+                                }
+                            })
+                            .collect()
+                    } else {
+                        let adt = ir.get_adt(*index);
+                        adt.get_fields_tys()
+                            .iter()
+                            .map(|t| ir.get_type(t.idx))
+                            .collect()
+                    }
                 };
+
                 let mut align = 0;
 
                 for ty in adt_fields_tys.iter() {

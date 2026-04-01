@@ -177,7 +177,11 @@ impl<'ir> FunctionBuilder<'ir> {
 
     pub fn get_adt(&self, adt_ty_idx: TypeIndex, span: Span) -> Result<&Adt, LoweringError> {
         if adt_ty_idx.is_local {
-            self.get_adt(adt_ty_idx, span)
+            let adt_ty = self.get_type(adt_ty_idx, span)?;
+
+            self.sym_table
+                .get_adt(adt_ty)
+                .ok_or(LoweringError::UndeclaredType { span })
         } else {
             self.ir_builder.get_adt(adt_ty_idx, span)
         }

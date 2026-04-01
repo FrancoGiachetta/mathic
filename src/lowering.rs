@@ -10,7 +10,7 @@ use crate::{
             adts::{Adt, StructAdt, StructField},
             function::FunctionBuilder,
             symbols::TypeIndex,
-            types::{MathicType, SintTy, UintTy, lower_inner_ast_type},
+            types::{MathicType, SintTy, UintTy},
         },
     },
     parser::{
@@ -73,16 +73,8 @@ fn lower_top_level_function(
         return_ty,
     } = func_decl;
 
-    let mut temporary_func_builder = FunctionBuilder::new(
-        name.clone(),
-        params,
-        ir_builder.get_or_insert_type_idx(MathicType::Void),
-        ir_builder,
-        *span,
-    )?;
-
     let return_ty = match return_ty {
-        Some(ty) => lower_inner_ast_type(&mut temporary_func_builder, ty, *span)?,
+        Some(ty) => lower_top_level_ast_type(ir_builder, ty, *span)?,
         None => ir_builder.get_or_insert_type_idx(MathicType::Void),
     };
 

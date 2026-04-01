@@ -277,7 +277,6 @@ fn lower_adt_init(
 
         return Err(LoweringError::MissingStructFields { missing, span });
     }
-
     for (name, expr) in fields {
         let (rvalue, rvalue_ty_idx) = lower_expr(func, expr, adt_body.get_field_ty(name))?;
         let field_ty_idx =
