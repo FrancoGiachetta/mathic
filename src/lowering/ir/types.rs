@@ -167,7 +167,9 @@ impl MathicType {
             Self::Adt { index, is_local } => {
                 let adt_fields_tys: Vec<MathicType> = {
                     if *is_local {
-                        let adt = func.get_adt(*index);
+                        let adt = func
+                            .get_adt(*index)
+                            .expect("internal error: invalid local ADT index in type alignment");
                         adt.get_fields_tys()
                             .iter()
                             .map(|t| {
@@ -176,13 +178,22 @@ impl MathicType {
                                 } else {
                                     ir.get_type(t.idx)
                                 }
+                                .expect(
+                                    "internal error: invalid local type index in type alignment",
+                                )
                             })
                             .collect()
                     } else {
-                        let adt = ir.get_adt(*index);
+                        let adt = ir
+                            .get_adt(*index)
+                            .expect("internal error: invalid global ADT index in type alignment");
                         adt.get_fields_tys()
                             .iter()
-                            .map(|t| ir.get_type(t.idx))
+                            .map(|t| {
+                                ir.get_type(t.idx).expect(
+                                    "internal error: invalid global type index in type alignment",
+                                )
+                            })
                             .collect()
                     }
                 };

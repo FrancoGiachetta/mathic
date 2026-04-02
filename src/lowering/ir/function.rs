@@ -44,12 +44,12 @@ pub struct Function {
 }
 
 impl Function {
-    pub fn get_type(&self, idx: usize) -> MathicType {
-        self.sym_table.types.get(idx).copied().unwrap()
+    pub fn get_type(&self, idx: usize) -> Option<MathicType> {
+        self.sym_table.types.get(idx).copied()
     }
 
-    pub fn get_adt(&self, idx: usize) -> &Adt {
-        self.sym_table.adts.get(idx).unwrap()
+    pub fn get_adt(&self, idx: usize) -> Option<&Adt> {
+        self.sym_table.adts.get(idx)
     }
 
     pub fn get_inner_functions(&self) -> &[Function] {

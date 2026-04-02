@@ -149,7 +149,7 @@ impl SymbolTableBuilder {
 
     pub fn get_adt(&self, adt_ty: MathicType) -> Option<&Adt> {
         let MathicType::Adt { index, .. } = adt_ty else {
-            panic!()
+            panic!("internal error: expected ADT type in get_adt")
         };
 
         self.adts.get(index)

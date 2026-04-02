@@ -27,12 +27,12 @@ pub struct Ir {
 }
 
 impl Ir {
-    pub fn get_type(&self, idx: usize) -> MathicType {
-        self.types.get(idx).copied().unwrap()
+    pub fn get_type(&self, idx: usize) -> Option<MathicType> {
+        self.types.get(idx).copied()
     }
 
-    pub fn get_adt(&self, idx: usize) -> &Adt {
-        self.adts.get(idx).unwrap()
+    pub fn get_adt(&self, idx: usize) -> Option<&Adt> {
+        self.adts.get(idx)
     }
 
     pub fn get_functions(&self) -> &[Function] {

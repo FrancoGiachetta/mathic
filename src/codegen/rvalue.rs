@@ -251,7 +251,8 @@ impl MathicCodeGen<'_> {
                                     fn_ctx.get_ir_func().get_adt(index)
                                 } else {
                                     self.ir.get_adt(index)
-                                };
+                                }
+                                .ok_or(CodegenError::InvalidAdtIndex(index))?;
 
                                 match adt {
                                     Adt::Struct(struct_adt) => {

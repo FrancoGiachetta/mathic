@@ -49,7 +49,8 @@ pub mod value {
                         .iter()
                         .map(|m| m.to_string())
                         .collect::<Vec<_>>()
-                        .join(".");
+                        .join("");
+
                     write!(f, "%{}{}", local_idx, modifier_str)
                 }
                 Self::Const(c) => write!(f, "{}", c),
@@ -60,7 +61,7 @@ pub mod value {
     impl Display for ValueModifier {
         fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
             match self {
-                Self::Field(idx) => write!(f, "{}", idx),
+                Self::Field(idx) => write!(f, ".{}", idx),
             }
         }
     }

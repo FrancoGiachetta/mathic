@@ -108,11 +108,12 @@ impl<'ctx> MathicCodeGen<'ctx> {
     }
 
     pub fn get_type(&self, func: &Function, ty_idx: TypeIndex) -> Result<MathicType, CodegenError> {
-        Ok(if ty_idx.is_local {
+        let ty = if ty_idx.is_local {
             func.get_type(ty_idx.idx)
         } else {
             self.ir.get_type(ty_idx.idx)
-        })
+        };
+        ty.ok_or(CodegenError::InvalidTypeIndex(ty_idx.idx))
     }
 
     pub fn get_compiled_type<'func>(
@@ -139,7 +140,8 @@ impl<'ctx> MathicCodeGen<'ctx> {
                     func.get_adt(index)
                 } else {
                     self.ir.get_adt(index)
-                };
+                }
+                .ok_or(CodegenError::InvalidAdtIndex(index))?;
 
                 let fields_tys = adt
                     .get_fields_tys()
