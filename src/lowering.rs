@@ -9,7 +9,8 @@ use crate::{
             IrBuilder,
             adts::{Adt, StructAdt, StructField},
             function::FunctionBuilder,
-            types::{MathicType, SintTy, UintTy, lower_inner_ast_type},
+            symbols::TypeIndex,
+            types::{MathicType, SintTy, UintTy},
         },
     },
     parser::{
@@ -72,12 +73,9 @@ fn lower_top_level_function(
         return_ty,
     } = func_decl;
 
-    let mut temporary_func_builder =
-        FunctionBuilder::new(name.clone(), params, MathicType::Void, ir_builder, *span)?;
-
     let return_ty = match return_ty {
-        Some(ty) => lower_inner_ast_type(&mut temporary_func_builder, ty, *span)?,
-        None => MathicType::Void,
+        Some(ty) => lower_top_level_ast_type(ir_builder, ty, *span)?,
+        None => ir_builder.get_or_insert_type_idx(MathicType::Void),
     };
 
     let mut func_builder =
@@ -123,7 +121,7 @@ fn lower_top_level_struct(
         });
     }
 
-    let idx = ir_builder.add_adt(name.clone(), Adt::Struct(adt));
+    let idx = ir_builder.add_adt(adt.name.clone(), Adt::Struct(adt));
 
     Ok(idx)
 }
@@ -132,32 +130,37 @@ pub fn lower_top_level_ast_type(
     ir_builder: &mut IrBuilder,
     ty: &AstType,
     span: Span,
-) -> Result<MathicType, LoweringError> {
+) -> Result<TypeIndex, LoweringError> {
     Ok(match ty {
         AstType::Type(name) => match name.as_str() {
-            "i8" => MathicType::Sint(SintTy::I8),
-            "i16" => MathicType::Sint(SintTy::I16),
-            "i32" => MathicType::Sint(SintTy::I32),
-            "i64" => MathicType::Sint(SintTy::I64),
-            "i128" => MathicType::Sint(SintTy::I128),
-            "u8" => MathicType::Uint(UintTy::U8),
-            "u16" => MathicType::Uint(UintTy::U16),
-            "u32" => MathicType::Uint(UintTy::U32),
-            "u64" => MathicType::Uint(UintTy::U64),
-            "u128" => MathicType::Uint(UintTy::U128),
-            "str" => MathicType::Str,
-            "char" => MathicType::Char,
-            "bool" => MathicType::Bool,
+            "isz" => ir_builder.get_or_insert_type_idx(MathicType::Sint(SintTy::Isize)),
+            "i8" => ir_builder.get_or_insert_type_idx(MathicType::Sint(SintTy::I8)),
+            "i16" => ir_builder.get_or_insert_type_idx(MathicType::Sint(SintTy::I16)),
+            "i32" => ir_builder.get_or_insert_type_idx(MathicType::Sint(SintTy::I32)),
+            "i64" => ir_builder.get_or_insert_type_idx(MathicType::Sint(SintTy::I64)),
+            "i128" => ir_builder.get_or_insert_type_idx(MathicType::Sint(SintTy::I128)),
+            "usz" => ir_builder.get_or_insert_type_idx(MathicType::Uint(UintTy::Usize)),
+            "u8" => ir_builder.get_or_insert_type_idx(MathicType::Uint(UintTy::U8)),
+            "u16" => ir_builder.get_or_insert_type_idx(MathicType::Uint(UintTy::U16)),
+            "u32" => ir_builder.get_or_insert_type_idx(MathicType::Uint(UintTy::U32)),
+            "u64" => ir_builder.get_or_insert_type_idx(MathicType::Uint(UintTy::U64)),
+            "u128" => ir_builder.get_or_insert_type_idx(MathicType::Uint(UintTy::U128)),
+            "str" => ir_builder.get_or_insert_type_idx(MathicType::Str),
+            "char" => ir_builder.get_or_insert_type_idx(MathicType::Char),
+            "bool" => ir_builder.get_or_insert_type_idx(MathicType::Bool),
             other => {
                 if let Some(ty) = ir_builder.get_user_def_type(other) {
                     return Ok(ty);
                 }
 
                 match ir_builder.decl_table.get_struct_decl(other).cloned() {
-                    Some(d) => MathicType::Adt {
-                        index: lower_top_level_struct(ir_builder, &d)?,
-                        is_local: false,
-                    },
+                    Some(d) => {
+                        let adt_index = lower_top_level_struct(ir_builder, &d)?;
+                        ir_builder.get_or_insert_type_idx(MathicType::Adt {
+                            index: adt_index,
+                            is_local: false,
+                        })
+                    }
                     None => {
                         return Err(LoweringError::UndeclaredType { span });
                     }

@@ -33,12 +33,13 @@ impl MathicCodeGen<'_> {
                 let location = self.get_location(*span)?;
 
                 let init_val = self.compile_rvalue(fn_ctx, block, init, helper)?;
-                let init_ty = self.get_compiled_type(fn_ctx.get_ir_func(), init.ty);
+                let init_mlir_ty = self.get_compiled_type(fn_ctx.get_ir_func(), init.ty)?;
+                let init_ty = self.get_type(fn_ctx.get_ir_func(), init.ty)?;
                 let ptr = block.alloca1(
                     self.ctx,
                     location,
-                    init_ty,
-                    init.ty.align(self.ir, fn_ctx.get_ir_func()),
+                    init_mlir_ty,
+                    init_ty.align(self.ir, fn_ctx.get_ir_func()),
                 )?;
 
                 block.store(self.ctx, location, ptr, init_val)?;
@@ -54,29 +55,32 @@ impl MathicCodeGen<'_> {
                 let location = self.get_location(*span)?;
 
                 let val = self.compile_rvalue(fn_ctx, block, value, helper)?;
-                let (mut ptr, mut ty) = fn_ctx.get_local(*local_idx).expect("invalid local idx");
+                let (mut ptr, mut ty_idx) =
+                    fn_ctx.get_local(*local_idx).expect("invalid local idx");
 
                 for m in modifier {
                     ptr = match m {
-                        ValueModifier::Field(idx) => match ty {
+                        ValueModifier::Field(idx) => match self
+                            .get_type(fn_ctx.get_ir_func(), ty_idx)?
+                        {
                             MathicType::Adt { index, is_local } => {
                                 let adt = if is_local {
-                                    fn_ctx.get_ir_func().sym_table.adts.get(index)
+                                    fn_ctx.get_ir_func().get_adt(index)
                                 } else {
-                                    self.ir.adts.get(index)
+                                    self.ir.get_adt(index)
                                 }
-                                .unwrap();
+                                .ok_or(CodegenError::InvalidAdtIndex(index))?;
 
                                 match adt {
                                     Adt::Struct(struct_adt) => {
                                         let field_ty = struct_adt.fields[*idx].ty;
-                                        ty = field_ty;
+                                        ty_idx = field_ty;
                                         block.gep(
                                             self.ctx,
                                             location,
                                             ptr,
                                             &[GepIndex::Const(*idx as i32)],
-                                            self.get_compiled_type(fn_ctx.get_ir_func(), ty),
+                                            self.get_compiled_type(fn_ctx.get_ir_func(), ty_idx)?,
                                         )?
                                     }
                                 }
@@ -143,7 +147,7 @@ impl MathicCodeGen<'_> {
                 args,
                 return_dest: _,
                 dest_block,
-                return_ty,
+                return_ty: return_ty_idx,
                 span,
             } => {
                 let unknown_location = Location::unknown(self.ctx);
@@ -153,7 +157,9 @@ impl MathicCodeGen<'_> {
                     args_vals.push(self.compile_rvalue(fn_ctx, block, arg, helper)?);
                 }
 
-                let mlir_return_ty = self.get_compiled_type(fn_ctx.get_ir_func(), *return_ty);
+                let mlir_return_ty =
+                    self.get_compiled_type(fn_ctx.get_ir_func(), *return_ty_idx)?;
+                let return_ty = self.get_type(fn_ctx.get_ir_func(), *return_ty_idx)?;
                 let return_ptr = block.alloca1(
                     self.ctx,
                     unknown_location,
@@ -170,7 +176,7 @@ impl MathicCodeGen<'_> {
 
                 block.store(self.ctx, unknown_location, return_ptr, return_value)?;
 
-                fn_ctx.define_local(return_ptr, *return_ty);
+                fn_ctx.define_local(return_ptr, *return_ty_idx);
 
                 block.append_operation(cf::br(
                     &fn_ctx.get_block(*dest_block),

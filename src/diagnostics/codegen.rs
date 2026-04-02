@@ -6,10 +6,7 @@ use thiserror::Error;
 pub enum CodegenError {
     #[error("Missing main function")]
     MissingMainFunction,
-    #[error("Invalid operation: {0}")]
-    InvalidOperation(String),
-    #[error("Identifier with name: {0}, was not found in the symbol table")]
-    IdentifierNotFound(String),
+
     #[error(transparent)]
     MeliorError(#[from] melior::Error),
     #[error("LLVM error: {0}")]
@@ -18,6 +15,12 @@ pub enum CodegenError {
     ParseIntError(#[from] ParseIntError),
     #[error("Couldn't not parse attribute")]
     ParseAttributeError,
+
+    #[error("Invalid type index")]
+    InvalidTypeIndex(usize),
+    #[error("Invalid ADT index")]
+    InvalidAdtIndex(usize),
+
     #[error("{0}")]
     Custom(String),
 

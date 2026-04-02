@@ -14,6 +14,7 @@ use crate::{
     lowering::ir::{
         Ir,
         function::Function,
+        symbols::TypeIndex,
         types::{FloatTy, MathicType},
     },
     parser::Span,
@@ -82,19 +83,21 @@ impl<'ctx> MathicCodeGen<'ctx> {
     #[instrument(target = "codegen", skip(self, helper))]
     pub fn generate_module(&self, helper: &mut CompilerHelper) -> MathicResult<()> {
         let start = std::time::Instant::now();
+        let global_functions = self.ir.get_functions();
+
         tracing::info!(
             "Starting code generation for {} functions",
-            self.ir.functions.len()
+            global_functions.len()
         );
 
         // Check if main function is present
-        if !self.ir.functions.iter().any(|f| f.name == "main") {
+        if !global_functions.iter().any(|f| f.name == "main") {
             return Err(MathicError::Codegen(CodegenError::MissingMainFunction));
         }
 
         // TODO: Compile structs in the future
 
-        for func in self.ir.functions.iter() {
+        for func in global_functions {
             tracing::debug!("Compiling function: {}", func.name);
             self.compile_function(func, &[], helper)?;
         }
@@ -104,8 +107,23 @@ impl<'ctx> MathicCodeGen<'ctx> {
         Ok(())
     }
 
-    pub fn get_compiled_type<'func>(&'func self, func: &Function, ty: MathicType) -> Type<'func> {
-        match ty {
+    pub fn get_type(&self, func: &Function, ty_idx: TypeIndex) -> Result<MathicType, CodegenError> {
+        let ty = if ty_idx.is_local {
+            func.get_type(ty_idx.idx)
+        } else {
+            self.ir.get_type(ty_idx.idx)
+        };
+        ty.ok_or(CodegenError::InvalidTypeIndex(ty_idx.idx))
+    }
+
+    pub fn get_compiled_type<'func>(
+        &'func self,
+        func: &Function,
+        ty_idx: TypeIndex,
+    ) -> Result<Type<'func>, CodegenError> {
+        let ty = self.get_type(func, ty_idx)?;
+
+        Ok(match ty {
             MathicType::Uint(_) | MathicType::Sint(_) => {
                 IntegerType::new(self.ctx, ty.bit_width()).into()
             }
@@ -119,20 +137,20 @@ impl<'ctx> MathicCodeGen<'ctx> {
             MathicType::Void => Type::none(self.ctx),
             MathicType::Adt { index, is_local } => {
                 let adt = if is_local {
-                    func.sym_table.adts.get(index)
+                    func.get_adt(index)
                 } else {
-                    self.ir.adts.get(index)
+                    self.ir.get_adt(index)
                 }
-                .unwrap();
+                .ok_or(CodegenError::InvalidAdtIndex(index))?;
 
                 let fields_tys = adt
                     .get_fields_tys()
                     .iter()
                     .map(|ty| self.get_compiled_type(func, *ty))
-                    .collect::<Vec<_>>();
+                    .collect::<Result<Vec<_>, _>>()?;
 
                 llvm::r#type::r#struct(self.ctx, &fields_tys, false)
             }
-        }
+        })
     }
 }
