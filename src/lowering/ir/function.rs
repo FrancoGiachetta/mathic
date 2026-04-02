@@ -6,7 +6,7 @@ use crate::{
         adts::Adt,
         basic_block::Terminator,
         instruction::LValInstruct,
-        symbols::SymbolTable,
+        symbols::{SymbolTable, SymbolTableBuilder, TypeIndex},
         types::{MathicType, lower_inner_ast_type},
     },
     parser::{
@@ -14,30 +14,6 @@ use crate::{
         ast::declaration::{FuncDecl, Param},
     },
 };
-
-/// MATHIR's representation of a function.
-#[derive(Debug, Clone)]
-#[allow(dead_code)]
-pub struct Function {
-    pub name: String,
-    pub sym_table: SymbolTable,
-    pub basic_blocks: Vec<BasicBlock>,
-    pub params_tys: Vec<MathicType>,
-    pub return_ty: MathicType,
-    pub span: Span,
-}
-
-/// Helper struct to build a Function.
-pub struct FunctionBuilder<'ir> {
-    pub name: String,
-    pub decl_table: DeclTable,
-    pub sym_table: SymbolTable,
-    pub params_tys: Vec<MathicType>,
-    pub basic_blocks: Vec<BasicBlock>,
-    pub return_ty: MathicType,
-    pub ir_builder: &'ir mut IrBuilder,
-    pub span: Span,
-}
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum LocalKind {
@@ -51,8 +27,54 @@ pub enum LocalKind {
 pub struct Local {
     pub local_idx: usize,
     pub kind: LocalKind,
-    pub ty: MathicType,
+    pub ty: TypeIndex,
     pub debug_name: Option<String>,
+}
+
+/// MATHIR's representation of a function.
+#[derive(Debug, Clone)]
+#[allow(dead_code)]
+pub struct Function {
+    pub name: String,
+    sym_table: SymbolTable,
+    pub basic_blocks: Vec<BasicBlock>,
+    pub params_tys: Vec<TypeIndex>,
+    pub return_ty: TypeIndex,
+    pub span: Span,
+}
+
+impl Function {
+    pub fn get_type(&self, idx: usize) -> Option<MathicType> {
+        self.sym_table.types.get(idx).copied()
+    }
+
+    pub fn get_adt(&self, idx: usize) -> Option<&Adt> {
+        self.sym_table.adts.get(idx)
+    }
+
+    pub fn get_inner_functions(&self) -> &[Function] {
+        &self.sym_table.functions
+    }
+
+    pub fn get_locals(&self) -> &[Local] {
+        &self.sym_table.locals
+    }
+
+    pub fn get_adts(&self) -> &[Adt] {
+        &self.sym_table.adts
+    }
+}
+
+/// Helper struct to build a Function.
+pub struct FunctionBuilder<'glb> {
+    pub name: String,
+    pub decl_table: DeclTable,
+    pub sym_table: SymbolTableBuilder,
+    pub params_tys: Vec<TypeIndex>,
+    pub basic_blocks: Vec<BasicBlock>,
+    pub return_ty: TypeIndex,
+    pub ir_builder: &'glb mut IrBuilder,
+    pub span: Span,
 }
 
 impl<'ir> FunctionBuilder<'ir> {
@@ -60,14 +82,14 @@ impl<'ir> FunctionBuilder<'ir> {
     pub fn new(
         name: String,
         params: &[Param],
-        return_ty: MathicType,
+        return_ty: TypeIndex,
         ir_builder: &'ir mut IrBuilder,
         span: Span,
     ) -> Result<Self, LoweringError> {
         let mut func_builder = Self {
             name,
             decl_table: DeclTable::default(),
-            sym_table: Default::default(),
+            sym_table: SymbolTableBuilder::default(),
             basic_blocks: vec![BasicBlock::new(0, Terminator::Return(None, None), None)],
             params_tys: Vec::new(),
             return_ty,
@@ -75,18 +97,17 @@ impl<'ir> FunctionBuilder<'ir> {
             span,
         };
 
-        for (param_idx, param) in params.iter().enumerate() {
-            let param_ty: MathicType =
-                lower_inner_ast_type(&mut func_builder, &param.ty, param.span)?;
+        for param in params.iter() {
+            let param_ty = lower_inner_ast_type(&mut func_builder, &param.ty, param.span)?;
 
             func_builder.params_tys.push(param_ty.clone());
 
-            func_builder.sym_table.locals.push(Local {
-                local_idx: param_idx,
-                kind: LocalKind::Param,
-                ty: param_ty,
-                debug_name: Some(param.name.clone()),
-            });
+            let param_idx = func_builder.sym_table.add_local(
+                Some(param.name.clone()),
+                param_ty,
+                Some(span),
+                LocalKind::Param,
+            )?;
             func_builder
                 .sym_table
                 .local_indexes
@@ -100,7 +121,7 @@ impl<'ir> FunctionBuilder<'ir> {
     pub fn build(self) -> Function {
         Function {
             name: self.name,
-            sym_table: self.sym_table,
+            sym_table: self.sym_table.build(),
             params_tys: self.params_tys,
             basic_blocks: self.basic_blocks,
             return_ty: self.return_ty,
@@ -121,7 +142,25 @@ impl<'ir> FunctionBuilder<'ir> {
         }
     }
 
-    pub fn get_user_def_type(&self, name: &str, span: Span) -> Result<MathicType, LoweringError> {
+    pub fn get_type(&self, idx: TypeIndex, span: Span) -> Result<MathicType, LoweringError> {
+        if idx.is_local {
+            self.sym_table
+                .get_type(idx.idx)
+                .ok_or(LoweringError::UndeclaredType { span })
+        } else {
+            self.ir_builder.get_type(idx, span)
+        }
+    }
+
+    pub fn get_or_insert_type_idx(&mut self, ty: MathicType) -> TypeIndex {
+        self.sym_table.get_or_insert_type(ty, true)
+    }
+
+    pub fn get_or_insert_global_type_idx(&mut self, ty: MathicType) -> TypeIndex {
+        self.ir_builder.sym_table.get_or_insert_type(ty, false)
+    }
+
+    pub fn get_user_def_type(&self, name: &str, span: Span) -> Result<TypeIndex, LoweringError> {
         if let Some(ty) = self.sym_table.get_user_def_type(name) {
             return Ok(ty);
         }
@@ -132,18 +171,20 @@ impl<'ir> FunctionBuilder<'ir> {
         Err(LoweringError::UndeclaredType { span })
     }
 
-    pub fn get_adt_body(&self, adt_ty: MathicType, span: Span) -> Result<&Adt, LoweringError> {
-        let MathicType::Adt { index, is_local } = adt_ty else {
-            panic!()
-        };
+    pub fn add_adt(&mut self, name: String, adt: Adt) -> usize {
+        self.sym_table.add_adt(name, adt, true)
+    }
 
-        let adt = if is_local {
-            self.sym_table.get_adt(index)
+    pub fn get_adt(&self, adt_ty_idx: TypeIndex, span: Span) -> Result<&Adt, LoweringError> {
+        if adt_ty_idx.is_local {
+            let adt_ty = self.get_type(adt_ty_idx, span)?;
+
+            self.sym_table
+                .get_adt(adt_ty)
+                .ok_or(LoweringError::UndeclaredType { span })
         } else {
-            self.ir_builder.adts.get(index)
-        };
-
-        adt.ok_or(LoweringError::UndeclaredType { span })
+            self.ir_builder.get_adt(adt_ty_idx, span)
+        }
     }
 
     pub fn add_block(&mut self, terminator: Terminator, span: Option<Span>) -> BlockId {

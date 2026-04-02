@@ -1,4 +1,4 @@
-use crate::{lowering::ir::types::MathicType, parser::Span};
+use crate::{lowering::ir::symbols::TypeIndex, parser::Span};
 
 #[derive(Debug, Clone)]
 pub enum Adt {
@@ -15,7 +15,7 @@ pub struct StructAdt {
 #[derive(Debug, Clone)]
 pub struct StructField {
     pub name: String,
-    pub ty: MathicType,
+    pub ty: TypeIndex,
     pub _is_pub: bool,
 }
 
@@ -38,7 +38,7 @@ impl Adt {
         }
     }
 
-    pub fn get_field_ty(&self, name: &str) -> Option<MathicType> {
+    pub fn get_field_ty(&self, name: &str) -> Option<TypeIndex> {
         match self {
             Adt::Struct(s) => s
                 .fields
@@ -48,7 +48,7 @@ impl Adt {
         }
     }
 
-    pub fn get_fields_tys(&self) -> Vec<MathicType> {
+    pub fn get_fields_tys(&self) -> Vec<TypeIndex> {
         match self {
             Adt::Struct(s) => s.fields.iter().map(|f| f.ty.clone()).collect(),
         }

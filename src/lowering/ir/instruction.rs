@@ -1,7 +1,6 @@
-use super::types::MathicType;
 use super::value::Value;
 use crate::{
-    lowering::ir::value::ValueModifier,
+    lowering::ir::{symbols::TypeIndex, value::ValueModifier},
     parser::{
         Span,
         ast::expression::{BinaryOp, LogicalOp, UnaryOp},
@@ -70,5 +69,5 @@ pub enum InitInstruct {
 #[derive(Debug, Clone)]
 pub struct RValInstruct {
     pub kind: RValueKind,
-    pub ty: MathicType,
+    pub ty: TypeIndex,
 }

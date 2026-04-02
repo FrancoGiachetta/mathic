@@ -5,6 +5,7 @@ use crate::{
         ir::{
             Ir,
             function::{Function, FunctionBuilder},
+            symbols::TypeIndex,
         },
         lower_top_level_struct,
     },
@@ -54,24 +55,24 @@ pub fn lower_inner_ast_type(
     func_builder: &mut FunctionBuilder,
     ty: &AstType,
     span: Span,
-) -> Result<MathicType, LoweringError> {
+) -> Result<TypeIndex, LoweringError> {
     Ok(match ty {
         AstType::Type(name) => match name.as_str() {
-            "isz" => MathicType::Sint(SintTy::Isize),
-            "i8" => MathicType::Sint(SintTy::I8),
-            "i16" => MathicType::Sint(SintTy::I16),
-            "i32" => MathicType::Sint(SintTy::I32),
-            "i64" => MathicType::Sint(SintTy::I64),
-            "i128" => MathicType::Sint(SintTy::I128),
-            "usz" => MathicType::Uint(UintTy::Usize),
-            "u8" => MathicType::Uint(UintTy::U8),
-            "u16" => MathicType::Uint(UintTy::U16),
-            "u32" => MathicType::Uint(UintTy::U32),
-            "u64" => MathicType::Uint(UintTy::U64),
-            "u128" => MathicType::Uint(UintTy::U128),
-            "str" => MathicType::Str,
-            "char" => MathicType::Char,
-            "bool" => MathicType::Bool,
+            "isz" => func_builder.get_or_insert_global_type_idx(MathicType::Sint(SintTy::Isize)),
+            "i8" => func_builder.get_or_insert_global_type_idx(MathicType::Sint(SintTy::I8)),
+            "i16" => func_builder.get_or_insert_global_type_idx(MathicType::Sint(SintTy::I16)),
+            "i32" => func_builder.get_or_insert_global_type_idx(MathicType::Sint(SintTy::I32)),
+            "i64" => func_builder.get_or_insert_global_type_idx(MathicType::Sint(SintTy::I64)),
+            "i128" => func_builder.get_or_insert_global_type_idx(MathicType::Sint(SintTy::I128)),
+            "usz" => func_builder.get_or_insert_global_type_idx(MathicType::Uint(UintTy::Usize)),
+            "u8" => func_builder.get_or_insert_global_type_idx(MathicType::Uint(UintTy::U8)),
+            "u16" => func_builder.get_or_insert_global_type_idx(MathicType::Uint(UintTy::U16)),
+            "u32" => func_builder.get_or_insert_global_type_idx(MathicType::Uint(UintTy::U32)),
+            "u64" => func_builder.get_or_insert_global_type_idx(MathicType::Uint(UintTy::U64)),
+            "u128" => func_builder.get_or_insert_global_type_idx(MathicType::Uint(UintTy::U128)),
+            "str" => func_builder.get_or_insert_global_type_idx(MathicType::Str),
+            "char" => func_builder.get_or_insert_global_type_idx(MathicType::Char),
+            "bool" => func_builder.get_or_insert_global_type_idx(MathicType::Bool),
             other => {
                 if let Ok(ty) = func_builder.get_user_def_type(other, span) {
                     return Ok(ty);
@@ -83,15 +84,21 @@ pub fn lower_inner_ast_type(
                     .get_struct_decl(other)
                     .cloned()
                 {
-                    Some(d) => MathicType::Adt {
-                        index: lower_top_level_struct(func_builder.ir_builder, &d)?,
-                        is_local: false,
-                    },
+                    Some(d) => {
+                        let adt_index = lower_top_level_struct(func_builder.ir_builder, &d)?;
+                        func_builder.get_or_insert_global_type_idx(MathicType::Adt {
+                            index: adt_index,
+                            is_local: false,
+                        })
+                    }
                     None => match func_builder.decl_table.get_struct_decl(other).cloned() {
-                        Some(d) => MathicType::Adt {
-                            index: lower_inner_struct(func_builder, &d)?,
-                            is_local: true,
-                        },
+                        Some(d) => {
+                            let adt_index = lower_inner_struct(func_builder, &d)?;
+                            func_builder.get_or_insert_type_idx(MathicType::Adt {
+                                index: adt_index,
+                                is_local: true,
+                            })
+                        }
                         None => {
                             return Err(LoweringError::UndeclaredType { span });
                         }
@@ -163,12 +170,39 @@ impl MathicType {
             Self::Char => 8,
             Self::Void => 0,
             Self::Adt { index, is_local } => {
-                let adt = if *is_local {
-                    func.sym_table.get_adt(*index).unwrap()
-                } else {
-                    ir.adts.get(*index).unwrap()
+                let adt_fields_tys: Vec<MathicType> = {
+                    if *is_local {
+                        let adt = func
+                            .get_adt(*index)
+                            .expect("internal error: invalid local ADT index in type alignment");
+                        adt.get_fields_tys()
+                            .iter()
+                            .map(|t| {
+                                if t.is_local {
+                                    func.get_type(t.idx)
+                                } else {
+                                    ir.get_type(t.idx)
+                                }
+                                .expect(
+                                    "internal error: invalid local type index in type alignment",
+                                )
+                            })
+                            .collect()
+                    } else {
+                        let adt = ir
+                            .get_adt(*index)
+                            .expect("internal error: invalid global ADT index in type alignment");
+                        adt.get_fields_tys()
+                            .iter()
+                            .map(|t| {
+                                ir.get_type(t.idx).expect(
+                                    "internal error: invalid global type index in type alignment",
+                                )
+                            })
+                            .collect()
+                    }
                 };
-                let adt_fields_tys = adt.get_fields_tys();
+
                 let mut align = 0;
 
                 for ty in adt_fields_tys.iter() {

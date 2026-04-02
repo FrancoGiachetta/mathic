@@ -10,6 +10,7 @@ use crate::{
     lowering::ir::{
         adts::Adt,
         instruction::{InitInstruct, RValInstruct, RValueKind},
+        symbols::TypeIndex,
         types::MathicType,
         value::{ConstExpr, NumericConst, Value as IRValue, ValueModifier},
     },
@@ -52,7 +53,7 @@ impl MathicCodeGen<'_> {
         fn_ctx: &mut FunctionCtx<'ctx, 'func>,
         block: &'func Block<'ctx>,
         init_inst: &InitInstruct,
-        adt_ty: MathicType,
+        adt_ty_idx: TypeIndex,
         span: Span,
         helper: &mut CompilerHelper,
     ) -> Result<Value<'ctx, 'func>, CodegenError>
@@ -62,7 +63,7 @@ impl MathicCodeGen<'_> {
         let location = self.get_location(Some(span))?;
         match init_inst {
             InitInstruct::StructInit { fields } => {
-                let struct_ty = self.get_compiled_type(fn_ctx.get_ir_func(), adt_ty);
+                let struct_ty = self.get_compiled_type(fn_ctx.get_ir_func(), adt_ty_idx)?;
                 let empty_struct = block.append_op_result(llvm::undef(struct_ty, location))?;
                 let fields_values = fields
                     .iter()
@@ -119,13 +120,15 @@ impl MathicCodeGen<'_> {
         let lhs_val = self.compile_rvalue(fn_ctx, block, lhs, helper)?;
         let rhs_val = self.compile_rvalue(fn_ctx, block, rhs, helper)?;
 
+        let lhs_ty = self.get_type(fn_ctx.get_ir_func(), lhs.ty)?;
+
         Ok(match op {
             BinaryOp::Compare(cmp) => match cmp {
                 CmpOp::Eq => block.cmpi(self.ctx, CmpiPredicate::Eq, lhs_val, rhs_val, location)?,
                 CmpOp::Ne => block.cmpi(self.ctx, CmpiPredicate::Ne, lhs_val, rhs_val, location)?,
                 CmpOp::Lt => block.cmpi(
                     self.ctx,
-                    if lhs.ty.is_signed() {
+                    if lhs_ty.is_signed() {
                         CmpiPredicate::Slt
                     } else {
                         CmpiPredicate::Ult
@@ -136,7 +139,7 @@ impl MathicCodeGen<'_> {
                 )?,
                 CmpOp::Le => block.cmpi(
                     self.ctx,
-                    if lhs.ty.is_signed() {
+                    if lhs_ty.is_signed() {
                         CmpiPredicate::Sle
                     } else {
                         CmpiPredicate::Ule
@@ -147,7 +150,7 @@ impl MathicCodeGen<'_> {
                 )?,
                 CmpOp::Gt => block.cmpi(
                     self.ctx,
-                    if lhs.ty.is_signed() {
+                    if lhs_ty.is_signed() {
                         CmpiPredicate::Sgt
                     } else {
                         CmpiPredicate::Ugt
@@ -158,7 +161,7 @@ impl MathicCodeGen<'_> {
                 )?,
                 CmpOp::Ge => block.cmpi(
                     self.ctx,
-                    if lhs.ty.is_signed() {
+                    if lhs_ty.is_signed() {
                         CmpiPredicate::Sge
                     } else {
                         CmpiPredicate::Uge
@@ -173,7 +176,7 @@ impl MathicCodeGen<'_> {
                 ArithOp::Sub => block.subi(lhs_val, rhs_val, location)?,
                 ArithOp::Mul => block.muli(lhs_val, rhs_val, location)?,
                 ArithOp::Div => {
-                    if lhs.ty.is_signed() {
+                    if lhs_ty.is_signed() {
                         block.divsi(lhs_val, rhs_val, location)?
                     } else {
                         block.divui(lhs_val, rhs_val, location)?
@@ -230,33 +233,34 @@ impl MathicCodeGen<'_> {
                 local_idx,
                 modifier,
             } => {
-                let (ptr, ty) = fn_ctx.get_local(*local_idx).expect("Invalid local idx");
+                let (ptr, mut ty_idx) = fn_ctx.get_local(*local_idx).expect("Invalid local idx");
 
                 let mut val = block.load(
                     self.ctx,
                     location,
                     ptr,
-                    self.get_compiled_type(fn_ctx.get_ir_func(), ty.clone()),
+                    self.get_compiled_type(fn_ctx.get_ir_func(), ty_idx)?,
                 )?;
 
                 for m in modifier {
                     val = match m {
-                        ValueModifier::Field(idx) => match ty.clone() {
+                        ValueModifier::Field(idx) => match self
+                            .get_type(fn_ctx.get_ir_func(), ty_idx)?
+                        {
                             MathicType::Adt { index, is_local } => {
                                 let adt = if is_local {
-                                    fn_ctx.get_ir_func().sym_table.adts.get(index)
+                                    fn_ctx.get_ir_func().get_adt(index)
                                 } else {
-                                    self.ir.adts.get(index)
+                                    self.ir.get_adt(index)
                                 }
-                                .unwrap();
+                                .ok_or(CodegenError::InvalidAdtIndex(index))?;
 
                                 match adt {
                                     Adt::Struct(struct_adt) => {
-                                        let field_ty = &struct_adt.fields[*idx].ty;
-                                        let mlir_ty = self.get_compiled_type(
-                                            fn_ctx.get_ir_func(),
-                                            field_ty.clone(),
-                                        );
+                                        let field_ty_idx = struct_adt.fields[*idx].ty;
+                                        ty_idx = field_ty_idx;
+                                        let mlir_ty =
+                                            self.get_compiled_type(fn_ctx.get_ir_func(), ty_idx)?;
                                         block
                                             .extract_value(self.ctx, location, val, mlir_ty, *idx)?
                                     }

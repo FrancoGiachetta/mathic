@@ -24,18 +24,6 @@ pub struct DeclTable {
     structs: HashMap<String, StructDecl>,
 }
 
-/// Symbol Table.
-///
-/// Stores locals and function declared within the function's context.
-#[derive(Debug, Clone, Default)]
-pub struct SymbolTable {
-    pub locals: Vec<Local>,
-    pub local_indexes: HashMap<String, usize>,
-    pub functions: HashMap<String, Function>,
-    pub adts: Vec<Adt>,
-    pub user_def_types: HashMap<String, MathicType>,
-}
-
 impl DeclTable {
     pub fn add_func_decl(&mut self, func: FuncDecl) {
         self.functions.insert(func.name.clone(), func);
@@ -54,12 +42,123 @@ impl DeclTable {
     }
 }
 
-impl SymbolTable {
-    /// Adds a user-defined local.
+#[derive(Default, Debug, Clone, Copy, PartialEq, Eq)]
+pub struct TypeIndex {
+    pub idx: usize,
+    pub is_local: bool,
+}
+
+#[derive(Default, Debug, Clone)]
+pub struct TypeTable {
+    types: Vec<MathicType>,
+    cache: HashMap<MathicType, usize>, // private
+}
+
+impl TypeTable {
+    pub fn get(&self, idx: usize) -> Option<MathicType> {
+        self.types.get(idx).copied()
+    }
+
+    pub fn get_index(&self, ty: MathicType) -> Option<usize> {
+        self.cache.get(&ty).copied()
+    }
+
+    pub fn insert(&mut self, ty: MathicType) -> usize {
+        let idx = self.types.len();
+
+        self.types.push(ty);
+        self.cache.insert(ty, idx);
+
+        idx
+    }
+}
+
+/// Local Symbol Table.
+///
+/// Stores symbols declared within the function's context.
+#[derive(Clone, Debug, Default)]
+pub struct SymbolTable {
+    pub types: Vec<MathicType>,
+    pub locals: Vec<Local>,
+    pub functions: Vec<Function>,
+    pub adts: Vec<Adt>,
+}
+
+#[derive(Clone, Debug, Default)]
+pub struct SymbolTableBuilder {
+    types: TypeTable,
+    pub locals: Vec<Local>,
+    pub local_indexes: HashMap<String, usize>,
+    pub functions: HashMap<String, Function>,
+    pub user_def_types: HashMap<String, TypeIndex>,
+    pub adts: Vec<Adt>,
+}
+
+impl SymbolTableBuilder {
+    pub fn build(self) -> SymbolTable {
+        SymbolTable {
+            types: self.types.types,
+            locals: self.locals,
+            functions: self.functions.into_values().collect(),
+            adts: self.adts,
+        }
+    }
+
+    pub fn get_type_index(&self, ty: MathicType, is_local: bool) -> Option<TypeIndex> {
+        self.types
+            .get_index(ty)
+            .map(|idx| TypeIndex { idx, is_local })
+    }
+
+    pub fn get_type(&self, idx: usize) -> Option<MathicType> {
+        self.types.get(idx)
+    }
+
+    pub fn get_or_insert_type(&mut self, ty: MathicType, is_local: bool) -> TypeIndex {
+        self.get_type_index(ty, is_local)
+            .unwrap_or_else(|| TypeIndex {
+                idx: self.types.insert(ty),
+                is_local,
+            })
+    }
+
+    pub fn add_function(&mut self, func: Function) {
+        self.functions.insert(func.name.clone(), func);
+    }
+
+    pub fn get_user_def_type(&self, name: &str) -> Option<TypeIndex> {
+        self.user_def_types.get(name).copied()
+    }
+
+    pub fn add_adt(&mut self, name: String, adt: Adt, is_local: bool) -> usize {
+        let index = self.adts.len();
+
+        let adt_type_idx = self.types.insert(MathicType::Adt { index, is_local });
+
+        self.user_def_types.insert(
+            name,
+            TypeIndex {
+                idx: adt_type_idx,
+                is_local,
+            },
+        );
+        self.adts.push(adt);
+
+        index
+    }
+
+    pub fn get_adt(&self, adt_ty: MathicType) -> Option<&Adt> {
+        let MathicType::Adt { index, .. } = adt_ty else {
+            panic!("internal error: expected ADT type in get_adt")
+        };
+
+        self.adts.get(index)
+    }
+
     pub fn add_local(
         &mut self,
         debug_name: Option<String>,
-        ty: MathicType,
+        ty: TypeIndex,
         span: Option<Span>,
         kind: LocalKind,
     ) -> Result<usize, LoweringError> {
@@ -86,34 +185,6 @@ impl SymbolTable {
         }
 
         Ok(idx)
-    }
-
-    pub fn add_function(&mut self, func: Function) {
-        self.functions.insert(func.name.clone(), func);
-    }
-
-    pub fn add_adt(&mut self, name: String, adt: Adt) -> usize {
-        let index = self.adts.len();
-
-        self.user_def_types.insert(
-            name,
-            MathicType::Adt {
-                index,
-                is_local: true,
-            },
-        );
-
-        self.adts.push(adt);
-
-        index
-    }
-
-    pub fn get_adt(&self, idx: usize) -> Option<&Adt> {
-        self.adts.get(idx)
-    }
-
-    pub fn get_user_def_type(&self, name: &str) -> Option<MathicType> {
-        self.user_def_types.get(name).cloned()
     }
 
     pub fn get_local_from_name(&self, name: &str, span: Span) -> Result<Local, LoweringError> {

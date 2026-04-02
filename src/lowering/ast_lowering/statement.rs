@@ -24,13 +24,12 @@ pub fn lower_stmt(func: &mut FunctionBuilder, stmt: &Stmt) -> Result<(), Lowerin
     match &stmt.kind {
         StmtKind::Decl(decl) => lower_declaration(func, decl, &stmt.span)?,
         StmtKind::Return(expr) => {
-            let return_ty = func.return_ty.clone();
-            let value = lower_expr(func, expr, Some(return_ty.clone()))?;
+            let (value, value_ty_idx) = lower_expr(func, expr, Some(func.return_ty))?;
 
-            if value.ty != return_ty {
+            if value_ty_idx != func.return_ty {
                 return Err(LoweringError::MismatchedReturnType {
-                    expected: return_ty,
-                    found: value.ty,
+                    expected: func.get_type(func.return_ty, stmt.span)?,
+                    found: func.get_type(value_ty_idx, stmt.span)?,
                     span: stmt.span,
                 });
             }
