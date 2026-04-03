@@ -339,7 +339,10 @@ pub mod types {
                 MathicType::Char => write!(f, "char"),
                 MathicType::Void => write!(f, "void"),
                 MathicType::Adt { index, .. } => write!(f, "Adt({index})"),
-                MathicType::Array { inner_ty, length } => write!(f, "[{}]{}", length, *inner_ty),
+                MathicType::Array {
+                    inner_ty_idx,
+                    length,
+                } => write!(f, "[{}]{}", length, inner_ty_idx.idx),
             }
         }
     }

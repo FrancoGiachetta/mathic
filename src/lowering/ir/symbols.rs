@@ -42,7 +42,7 @@ impl DeclTable {
     }
 }
 
-#[derive(Default, Debug, Clone, Copy, PartialEq, Eq)]
+#[derive(Default, Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub struct TypeIndex {
     pub idx: usize,
     pub is_local: bool,

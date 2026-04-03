@@ -135,8 +135,8 @@ impl<'ctx> MathicCodeGen<'ctx> {
             MathicType::Char => IntegerType::new(self.ctx, 8).into(),
             MathicType::Str => llvm::r#type::pointer(self.ctx, 0),
             MathicType::Void => Type::none(self.ctx),
-            MathicType::Adt { index, is_local } => {
-                let adt = if is_local {
+            MathicType::Adt { index, .. } => {
+                let adt = if ty_idx.is_local {
                     func.get_adt(index)
                 } else {
                     self.ir.get_adt(index)
@@ -150,6 +150,13 @@ impl<'ctx> MathicCodeGen<'ctx> {
                     .collect::<Result<Vec<_>, _>>()?;
 
                 llvm::r#type::r#struct(self.ctx, &fields_tys, false)
+            }
+            MathicType::Array {
+                inner_ty_idx,
+                length,
+            } => {
+                let inner_ty = self.get_compiled_type(func, inner_ty_idx)?;
+                llvm::r#type::array(inner_ty, length)
             }
         })
     }

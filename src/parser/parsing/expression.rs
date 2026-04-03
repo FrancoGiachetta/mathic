@@ -71,7 +71,7 @@ impl<'a> MathicParser<'a> {
         } else {
             let mut expr = self.parse_logic_or()?;
 
-            if self.match_token(Token::LBrace)?.is_some() {
+            if self.check_next(Token::LBrace)? {
                 expr = self.parse_struct_init(lookahead)?;
             }
 
@@ -288,7 +288,9 @@ impl<'a> MathicParser<'a> {
         let mut expr = self.parse_primary_expr()?;
 
         while lookahead.token == Token::Ident
-            && (self.check_next(Token::LParen)? || self.check_next(Token::Dot)?)
+            && (self.check_next(Token::LParen)?
+                || self.check_next(Token::Dot)?
+                || self.check_next(Token::LSquareBracket)?)
         {
             let t = self.next()?; // consume Dot.
             match t.token {
@@ -303,8 +305,21 @@ impl<'a> MathicParser<'a> {
                             expr: Box::new(expr),
                             field_name,
                         },
-                        span: self.current_span(),
+                        span: Span::from_merged_spans(lookahead.span, self.current_span()),
                     };
+                }
+                Token::LSquareBracket => {
+                    let index_expr = self.parse_expr_no_init()?;
+
+                    self.consume_token(Token::RSquareBracket)?;
+
+                    expr = ExprStmt {
+                        kind: ExprStmtKind::Index {
+                            expr: Box::new(expr),
+                            pos: Box::new(index_expr),
+                        },
+                        span: Span::from_merged_spans(lookahead.span, self.current_span()),
+                    }
                 }
                 _ => {}
             }

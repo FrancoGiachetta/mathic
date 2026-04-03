@@ -2,5 +2,7 @@ df main() {
 	let array: [2][3]u32 = [
 		[1,2,3],
 		[1,2,3]
-	]; 
+	];
+
+	return array[1][0]; 
 }

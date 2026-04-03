@@ -1,6 +1,6 @@
 use std::collections::HashMap;
 
-use crate::parser::{Span, token::Token};
+use crate::parser::Span;
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct ExprStmt {
@@ -24,8 +24,8 @@ pub enum ExprStmtKind {
     },
     Group(Box<ExprStmt>),
     Index {
-        name: Token,
-        pos: Token,
+        expr: Box<ExprStmt>,
+        pos: Box<ExprStmt>,
     },
     Logical {
         lhs: Box<ExprStmt>,

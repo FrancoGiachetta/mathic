@@ -44,7 +44,7 @@ impl MathicCodeGen<'_> {
 
                 block.store(self.ctx, location, ptr, init_val)?;
 
-                fn_ctx.define_local(ptr, init.ty.clone());
+                fn_ctx.define_local(ptr, init.ty);
             }
             LValInstruct::Assign {
                 local_idx,

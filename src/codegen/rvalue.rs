@@ -43,7 +43,7 @@ impl MathicCodeGen<'_> {
                 op, lhs, rhs, span, ..
             } => self.compile_logical(fn_ctx, block, lhs, *op, rhs, *span, helper),
             RValueKind::Init { init_inst, span } => {
-                self.compile_init_op(fn_ctx, block, init_inst, rvalue.ty.clone(), *span, helper)
+                self.compile_init_op(fn_ctx, block, init_inst, rvalue.ty, *span, helper)
             }
         }
     }
@@ -53,7 +53,7 @@ impl MathicCodeGen<'_> {
         fn_ctx: &mut FunctionCtx<'ctx, 'func>,
         block: &'func Block<'ctx>,
         init_inst: &InitInstruct,
-        adt_ty_idx: TypeIndex,
+        ty_idx: TypeIndex,
         span: Span,
         helper: &mut CompilerHelper,
     ) -> Result<Value<'ctx, 'func>, CodegenError>
@@ -63,7 +63,7 @@ impl MathicCodeGen<'_> {
         let location = self.get_location(Some(span))?;
         match init_inst {
             InitInstruct::StructInit { fields } => {
-                let struct_ty = self.get_compiled_type(fn_ctx.get_ir_func(), adt_ty_idx)?;
+                let struct_ty = self.get_compiled_type(fn_ctx.get_ir_func(), ty_idx)?;
                 let empty_struct = block.append_op_result(llvm::undef(struct_ty, location))?;
                 let fields_values = fields
                     .iter()
@@ -72,7 +72,17 @@ impl MathicCodeGen<'_> {
 
                 Ok(block.insert_values(self.ctx, location, empty_struct, &fields_values)?)
             }
-            InitInstruct::ArrayInit { elements } => todo!(),
+            InitInstruct::ArrayInit { elements } => {
+                let array_ty = self.get_compiled_type(fn_ctx.get_ir_func(), ty_idx)?;
+                let empty_array = block.append_op_result(llvm::undef(array_ty, location))?;
+
+                let fields_values = elements
+                    .iter()
+                    .map(|rv| self.compile_rvalue(fn_ctx, block, rv, helper))
+                    .collect::<Result<Vec<_>, _>>()?;
+
+                Ok(block.insert_values(self.ctx, location, empty_array, &fields_values)?)
+            }
         }
     }
 

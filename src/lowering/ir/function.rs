@@ -100,7 +100,7 @@ impl<'ir> FunctionBuilder<'ir> {
         for param in params.iter() {
             let param_ty = lower_inner_ast_type(&mut func_builder, &param.ty, param.span)?;
 
-            func_builder.params_tys.push(param_ty.clone());
+            func_builder.params_tys.push(param_ty);
 
             let param_idx = func_builder.sym_table.add_local(
                 Some(param.name.clone()),

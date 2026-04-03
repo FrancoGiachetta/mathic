@@ -29,10 +29,10 @@ pub fn lower_if(func: &mut FunctionBuilder, stmt: &IfStmt) -> Result<(), Lowerin
 
     let condition_val = expression::lower_expr(func, condition, None)?;
 
-    if !func.get_type(condition_ty, condition.span)?.is_bool() {
+    if !func.get_type(condition_val.ty, condition.span)?.is_bool() {
         return Err(LoweringError::MismatchedType {
             expected: MathicType::Bool,
-            found: func.get_type(condition_ty, condition.span)?,
+            found: func.get_type(condition_val.ty, condition.span)?,
             span: condition.span,
         });
     }
@@ -96,13 +96,13 @@ pub fn lower_while(
 ) -> Result<(), LoweringError> {
     let WhileStmt { condition, body } = stmt;
 
-    let (loop_breaker_condition, condition_ty_idx) = expression::lower_expr(func, condition, None)?;
-    let condition_ty = func.get_type(condition_ty_idx, condition.span)?;
+    let loop_breaker_condition = expression::lower_expr(func, condition, None)?;
+    let loop_breaker_condition_ty = func.get_type(loop_breaker_condition.ty, condition.span)?;
 
-    if !loop_breaker_condition.ty.is_bool() {
+    if !loop_breaker_condition_ty.is_bool() {
         return Err(LoweringError::MismatchedType {
             expected: MathicType::Bool,
-            found: loop_breaker_condition.ty.clone(),
+            found: loop_breaker_condition_ty,
             span: condition.span,
         });
     }
@@ -127,7 +127,7 @@ pub fn lower_for(
 
     let loop_tracker_idx = func.sym_table.add_local(
         Some(variable.clone()),
-        start_val.ty.clone(),
+        start_val.ty,
         Some(span),
         LocalKind::Temp,
     )?;
@@ -142,7 +142,7 @@ pub fn lower_for(
                     },
                     span: None,
                 },
-                ty: start_val.ty.clone(),
+                ty: start_val.ty,
             }),
             rhs: Box::new(end_val),
             span: Span::from(start.span.start..end.span.end),
@@ -163,18 +163,18 @@ pub fn lower_for(
                         },
                         span: None,
                     },
-                    ty: start_val.ty.clone(),
+                    ty: start_val.ty,
                 }),
                 rhs: Box::new(RValInstruct {
                     kind: RValueKind::Use {
                         value: 1i32.into(),
                         span: None,
                     },
-                    ty: start_val.ty.clone(),
+                    ty: start_val.ty,
                 }),
                 span: Span::from(start.span.start..end.span.end),
             },
-            ty: start_val.ty.clone(),
+            ty: start_val.ty,
         },
         modifier: vec![],
         span: None,
