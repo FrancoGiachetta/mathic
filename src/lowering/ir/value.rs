@@ -13,6 +13,7 @@ pub enum Value {
 #[derive(Debug, Clone, PartialEq)]
 pub enum ValueModifier {
     Field(usize),
+    Index(usize),
 }
 
 /// Constant expressions

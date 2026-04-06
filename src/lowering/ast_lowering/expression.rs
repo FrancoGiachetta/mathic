@@ -39,7 +39,7 @@ pub fn lower_expr(
         ExprStmtKind::Init(init_expr) => {
             lower_init_expr(func, init_expr, ty_hint.unwrap(), expr.span)?
         }
-        ExprStmtKind::Index { .. } => todo!(),
+        ExprStmtKind::Index { expr, pos } => lower_index(func, expr, pos, expr.span, ty_hint)?,
         ExprStmtKind::StructGet {
             expr: struct_expr,
             field_name,
@@ -364,6 +364,60 @@ fn lower_adt_init(
             span,
         },
         ty: adt_ty,
+    })
+}
+
+fn lower_index(
+    func: &mut FunctionBuilder,
+    array_expr: &ExprStmt,
+    pos_expr: &ExprStmt,
+    span: Span,
+    ty_hint: Option<TypeIndex>,
+) -> Result<RValInstruct, LoweringError> {
+    let array_expr = lower_expr(func, array_expr, ty_hint)?;
+
+    let array_ty = func.get_type(array_expr.ty, span)?;
+
+    let MathicType::Array { inner_ty_idx, .. } = array_ty else {
+        return Err(LoweringError::TypeNotIndexable { ty: array_ty, span });
+    };
+
+    // Indexing can only be performed using usize values.
+    let usize_ty_idx = func.get_or_insert_global_type_idx(MathicType::Uint(UintTy::Usize));
+    let pos_expr = lower_expr(func, pos_expr, Some(usize_ty_idx))?;
+
+    let RValueKind::Use { value, .. } = array_expr.kind else {
+        unreachable!("Must be a use instruction")
+    };
+    let Value::InMemory {
+        local_idx,
+        mut modifier,
+    } = value
+    else {
+        unreachable!()
+    };
+
+    let index_local = func
+        .sym_table
+        .add_local(None, inner_ty_idx, None, LocalKind::Temp)?;
+
+    func.push_instruction(LValInstruct::Let {
+        local_idx: index_local,
+        init: pos_expr,
+        span: None,
+    });
+
+    modifier.push(ValueModifier::Index(index_local));
+
+    Ok(RValInstruct {
+        kind: RValueKind::Use {
+            value: Value::InMemory {
+                local_idx,
+                modifier,
+            },
+            span: Some(span),
+        },
+        ty: inner_ty_idx,
     })
 }
 

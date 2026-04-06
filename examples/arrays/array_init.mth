@@ -1,7 +1,7 @@
-df main() {
-	let array: [2][3]u32 = [
-		[1,2,3],
-		[1,2,3]
+df main() u32 {
+	let array: [2][1]u32 = [
+		[1],
+		[2]
 	];
 
 	return array[1][0]; 

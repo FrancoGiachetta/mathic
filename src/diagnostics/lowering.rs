@@ -53,6 +53,9 @@ pub enum LoweringError {
 
     #[error("The struct initialization is missing some fields")]
     MissingStructFields { missing: String, span: Span },
+
+    #[error("Value of type {ty} is not indexable")]
+    TypeNotIndexable { ty: MathicType, span: Span },
 }
 
 fn get_report_span(error: &LoweringError, path: String) -> ReportSpan {
@@ -66,7 +69,8 @@ fn get_report_span(error: &LoweringError, path: String) -> ReportSpan {
         | LoweringError::MismatchedType { span, .. }
         | LoweringError::MismatchedReturnType { span, .. }
         | LoweringError::UndeclaredStructField { span, .. }
-        | LoweringError::MissingStructFields { span, .. } => ReportSpan { path, span: *span },
+        | LoweringError::MissingStructFields { span, .. }
+        | LoweringError::TypeNotIndexable { span, .. } => ReportSpan { path, span: *span },
     }
 }
 
@@ -161,6 +165,7 @@ pub fn format_lowering_error<'err>(
             report_span,
             format!("initialize the missing fields: {missing}")
         ),
+        LoweringError::TypeNotIndexable { .. } => report!("S011", error_type, msg, report_span,),
     }
 }
 

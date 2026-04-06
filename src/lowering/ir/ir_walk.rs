@@ -62,6 +62,7 @@ pub mod value {
         fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
             match self {
                 Self::Field(idx) => write!(f, ".{}", idx),
+                Self::Index(idx) => write!(f, "[{}]", idx),
             }
         }
     }
