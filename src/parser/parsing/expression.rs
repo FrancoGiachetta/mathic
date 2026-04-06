@@ -1,6 +1,7 @@
 use std::collections::HashMap;
 
 use crate::diagnostics::parse::{ExpectedToken, ParseError, SyntaxError};
+use crate::parser::ast::expression::InitExpr;
 use crate::parser::lexer::SpannedToken;
 use crate::parser::{
     MathicParser, ParserResult, Span,
@@ -64,13 +65,18 @@ impl<'a> MathicParser<'a> {
 
     pub fn parse_initializer(&self) -> ParserResult<ExprStmt> {
         let lookahead = self.peek_not_none()?;
-        let mut expr = self.parse_logic_or()?;
 
-        if self.match_token(Token::LBrace)?.is_some() {
-            expr = self.parse_struct_init(lookahead)?;
+        if self.check_next(Token::LSquareBracket)? {
+            self.parse_array_init()
+        } else {
+            let mut expr = self.parse_logic_or()?;
+
+            if self.check_next(Token::LBrace)? {
+                expr = self.parse_struct_init(lookahead)?;
+            }
+
+            Ok(expr)
         }
-
-        Ok(expr)
     }
 
     fn parse_logic_or(&self) -> ParserResult<ExprStmt> {
@@ -282,7 +288,9 @@ impl<'a> MathicParser<'a> {
         let mut expr = self.parse_primary_expr()?;
 
         while lookahead.token == Token::Ident
-            && (self.check_next(Token::LParen)? || self.check_next(Token::Dot)?)
+            && (self.check_next(Token::LParen)?
+                || self.check_next(Token::Dot)?
+                || self.check_next(Token::LSquareBracket)?)
         {
             let t = self.next()?; // consume Dot.
             match t.token {
@@ -297,8 +305,21 @@ impl<'a> MathicParser<'a> {
                             expr: Box::new(expr),
                             field_name,
                         },
-                        span: self.current_span(),
+                        span: Span::from_merged_spans(lookahead.span, self.current_span()),
                     };
+                }
+                Token::LSquareBracket => {
+                    let index_expr = self.parse_expr_no_init()?;
+
+                    self.consume_token(Token::RSquareBracket)?;
+
+                    expr = ExprStmt {
+                        kind: ExprStmtKind::Index {
+                            expr: Box::new(expr),
+                            pos: Box::new(index_expr),
+                        },
+                        span: Span::from_merged_spans(lookahead.span, self.current_span()),
+                    }
                 }
                 _ => {}
             }
@@ -320,18 +341,43 @@ impl<'a> MathicParser<'a> {
         })
     }
 
+    pub fn parse_array_init(&self) -> ParserResult<ExprStmt> {
+        let start_span = self.consume_token(Token::LSquareBracket)?.span;
+
+        let elements = if self.check_next(Token::RSquareBracket)? {
+            Vec::with_capacity(0)
+        } else {
+            let mut elements = vec![self.parse_expr()?];
+
+            while self.match_token(Token::Comma)?.is_some() {
+                elements.push(self.parse_expr()?);
+            }
+
+            elements
+        };
+
+        self.consume_token(Token::RSquareBracket)?;
+
+        Ok(ExprStmt {
+            kind: ExprStmtKind::Init(InitExpr::ArrayInit { elements }),
+            span: Span::from_merged_spans(start_span, self.current_span()),
+        })
+    }
+
     pub fn parse_struct_init(&self, lookahead: SpannedToken) -> ParserResult<ExprStmt> {
+        let start_span = self.consume_token(Token::LBrace)?.span;
+
         let fields = self.parse_struct_init_fields()?;
 
         self.consume_token(Token::RBrace)?;
 
         let expr = if let Token::Ident = lookahead.token {
             ExprStmt {
-                kind: ExprStmtKind::StructInit {
+                kind: ExprStmtKind::Init(InitExpr::StructInit {
                     name: lookahead.lexeme.to_string(),
                     fields,
-                },
-                span: lookahead.span,
+                }),
+                span: Span::from_merged_spans(start_span, self.current_span()),
             }
         } else {
             return Err(ParseError::Syntax(SyntaxError::UnexpectedToken {

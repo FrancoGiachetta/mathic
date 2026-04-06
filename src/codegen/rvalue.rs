@@ -1,7 +1,11 @@
 use melior::{
     dialect::{arith::CmpiPredicate, llvm, ods},
     helpers::{ArithBlockExt, BuiltinBlockExt, LlvmBlockExt},
-    ir::{Block, Value, ValueLike, attribute::StringAttribute, r#type::IntegerType},
+    ir::{
+        Block, Value, ValueLike,
+        attribute::{DenseI32ArrayAttribute, StringAttribute, TypeAttribute},
+        r#type::IntegerType,
+    },
 };
 
 use crate::{
@@ -53,7 +57,7 @@ impl MathicCodeGen<'_> {
         fn_ctx: &mut FunctionCtx<'ctx, 'func>,
         block: &'func Block<'ctx>,
         init_inst: &InitInstruct,
-        adt_ty_idx: TypeIndex,
+        ty_idx: TypeIndex,
         span: Span,
         helper: &mut CompilerHelper,
     ) -> Result<Value<'ctx, 'func>, CodegenError>
@@ -63,7 +67,7 @@ impl MathicCodeGen<'_> {
         let location = self.get_location(Some(span))?;
         match init_inst {
             InitInstruct::StructInit { fields } => {
-                let struct_ty = self.get_compiled_type(fn_ctx.get_ir_func(), adt_ty_idx)?;
+                let struct_ty = self.get_compiled_type(fn_ctx.get_ir_func(), ty_idx)?;
                 let empty_struct = block.append_op_result(llvm::undef(struct_ty, location))?;
                 let fields_values = fields
                     .iter()
@@ -71,6 +75,17 @@ impl MathicCodeGen<'_> {
                     .collect::<Result<Vec<_>, _>>()?;
 
                 Ok(block.insert_values(self.ctx, location, empty_struct, &fields_values)?)
+            }
+            InitInstruct::ArrayInit { elements } => {
+                let array_ty = self.get_compiled_type(fn_ctx.get_ir_func(), ty_idx)?;
+                let empty_array = block.append_op_result(llvm::undef(array_ty, location))?;
+
+                let fields_values = elements
+                    .iter()
+                    .map(|rv| self.compile_rvalue(fn_ctx, block, rv, helper))
+                    .collect::<Result<Vec<_>, _>>()?;
+
+                Ok(block.insert_values(self.ctx, location, empty_array, &fields_values)?)
             }
         }
     }
@@ -232,20 +247,12 @@ impl MathicCodeGen<'_> {
                 local_idx,
                 modifier,
             } => {
-                let (ptr, mut ty_idx) = fn_ctx.get_local(*local_idx).expect("Invalid local idx");
-
-                let mut val = block.load(
-                    self.ctx,
-                    location,
-                    ptr,
-                    self.get_compiled_type(fn_ctx.get_ir_func(), ty_idx)?,
-                )?;
-
+                let (mut ptr, mut ty_idx) =
+                    fn_ctx.get_local(*local_idx).expect("Invalid local idx");
                 for m in modifier {
-                    val = match m {
-                        ValueModifier::Field(idx) => match self
-                            .get_type(fn_ctx.get_ir_func(), ty_idx)?
-                        {
+                    let ty = self.get_type(fn_ctx.get_ir_func(), ty_idx)?;
+                    ptr = match m {
+                        ValueModifier::Field(idx) => match ty {
                             MathicType::Adt { index, is_local } => {
                                 let adt = if is_local {
                                     fn_ctx.get_ir_func().get_adt(index)
@@ -253,24 +260,72 @@ impl MathicCodeGen<'_> {
                                     self.ir.get_adt(index)
                                 }
                                 .ok_or(CodegenError::InvalidAdtIndex(index))?;
-
                                 match adt {
                                     Adt::Struct(struct_adt) => {
                                         let field_ty_idx = struct_adt.fields[*idx].ty;
+                                        let mem_ptr =
+                                            block.append_op_result(llvm::get_element_ptr(
+                                                self.ctx,
+                                                ptr,
+                                                DenseI32ArrayAttribute::new(
+                                                    self.ctx,
+                                                    &[0, *idx as i32],
+                                                ),
+                                                self.get_compiled_type(
+                                                    fn_ctx.get_ir_func(),
+                                                    ty_idx,
+                                                )?,
+                                                llvm::r#type::pointer(self.ctx, 0),
+                                                location,
+                                            ))?;
+
                                         ty_idx = field_ty_idx;
-                                        let mlir_ty =
-                                            self.get_compiled_type(fn_ctx.get_ir_func(), ty_idx)?;
-                                        block
-                                            .extract_value(self.ctx, location, val, mlir_ty, *idx)?
+
+                                        mem_ptr
                                     }
                                 }
                             }
                             other => unreachable!("{}", other),
                         },
-                    }
+                        ValueModifier::Index(idx) => match ty {
+                            MathicType::Array { inner_ty_idx, .. } => {
+                                let (index_ptr, index_ty) = fn_ctx.get_local(*idx).expect("");
+                                let index_val = block.load(
+                                    self.ctx,
+                                    location,
+                                    index_ptr,
+                                    self.get_compiled_type(fn_ctx.get_ir_func(), index_ty)?,
+                                )?;
+                                let elem_ptr = block.append_op_result(
+                                    ods::llvm::getelementptr(
+                                        self.ctx,
+                                        llvm::r#type::pointer(self.ctx, 0),
+                                        ptr,
+                                        &[index_val],
+                                        DenseI32ArrayAttribute::new(self.ctx, &[0, i32::MIN]),
+                                        TypeAttribute::new(
+                                            self.get_compiled_type(fn_ctx.get_ir_func(), ty_idx)?,
+                                        ),
+                                        location,
+                                    )
+                                    .into(),
+                                )?;
+
+                                ty_idx = inner_ty_idx;
+
+                                elem_ptr
+                            }
+                            other => unreachable!("{other}"),
+                        },
+                    };
                 }
 
-                val
+                block.load(
+                    self.ctx,
+                    location,
+                    ptr,
+                    self.get_compiled_type(fn_ctx.get_ir_func(), ty_idx)?,
+                )?
             }
             IRValue::Const(const_expr) => match const_expr {
                 ConstExpr::Numeric(num_const) => match num_const {

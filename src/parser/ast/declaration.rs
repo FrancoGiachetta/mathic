@@ -55,4 +55,5 @@ pub struct Param {
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum AstType {
     Type(String),
+    Array { inner: Box<Self>, length: u32 },
 }

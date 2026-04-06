@@ -12,7 +12,9 @@ use crate::{
     },
     parser::{
         Span,
-        ast::expression::{BinaryOp, ExprStmt, ExprStmtKind, LogicalOp, PrimaryExpr, UnaryOp},
+        ast::expression::{
+            BinaryOp, ExprStmt, ExprStmtKind, InitExpr, LogicalOp, PrimaryExpr, UnaryOp,
+        },
     },
 };
 
@@ -20,7 +22,7 @@ pub fn lower_expr(
     func: &mut FunctionBuilder,
     expr: &ExprStmt,
     ty_hint: Option<TypeIndex>,
-) -> Result<(RValInstruct, TypeIndex), LoweringError> {
+) -> Result<RValInstruct, LoweringError> {
     let rvalue = match &expr.kind {
         ExprStmtKind::Primary(val) => lower_primary_value(func, val, expr.span, ty_hint)?,
         ExprStmtKind::Binary { lhs, op, rhs } => lower_binary_op(func, lhs, *op, rhs, expr.span)?,
@@ -34,8 +36,10 @@ pub fn lower_expr(
             expr: assign_expr,
         } => lower_assignment(func, name, assign_expr, expr.span)?,
         ExprStmtKind::Logical { lhs, op, rhs } => lower_logical_op(func, lhs, *op, rhs, expr.span)?,
-        ExprStmtKind::StructInit { name, fields } => lower_adt_init(func, name, fields, expr.span)?,
-        ExprStmtKind::Index { .. } => todo!(),
+        ExprStmtKind::Init(init_expr) => {
+            lower_init_expr(func, init_expr, ty_hint.unwrap(), expr.span)?
+        }
+        ExprStmtKind::Index { expr, pos } => lower_index(func, expr, pos, expr.span, ty_hint)?,
         ExprStmtKind::StructGet {
             expr: struct_expr,
             field_name,
@@ -47,10 +51,7 @@ pub fn lower_expr(
         } => lower_struct_set(func, lhs, field_name, rhs, expr.span)?,
     };
 
-    Ok((
-        rvalue,
-        lower_expression_type(func, &expr.kind, ty_hint, expr.span)?,
-    ))
+    Ok(rvalue)
 }
 
 fn lower_assignment(
@@ -60,13 +61,13 @@ fn lower_assignment(
     span: Span,
 ) -> Result<RValInstruct, LoweringError> {
     let local = func.sym_table.get_local_from_name(name, span)?;
-    let (value, expr_ty_idx) = lower_expr(func, expr, Some(local.ty))?;
+    let rvalue = lower_expr(func, expr, Some(local.ty))?;
 
     // The new value should be of the same type as the local's.
-    if local.ty != expr_ty_idx {
+    if local.ty != rvalue.ty {
         return Err(LoweringError::MismatchedType {
             expected: func.get_type(local.ty, span)?,
-            found: func.get_type(expr_ty_idx, span)?,
+            found: func.get_type(rvalue.ty, span)?,
             span,
         });
     }
@@ -75,7 +76,7 @@ fn lower_assignment(
         .instructions
         .push(LValInstruct::Assign {
             local_idx: local.local_idx,
-            value,
+            value: rvalue,
             modifier: vec![],
             span: Some(span),
         });
@@ -109,12 +110,12 @@ fn lower_call(
 
     for (arg, param) in func_args.iter().zip(func_prototype.params.iter()) {
         let param_ty_idx = lower_inner_ast_type(func, &param.ty, param.span)?;
-        let (arg_val, arg_ty_idx) = lower_expr(func, arg, Some(param_ty_idx))?;
+        let arg_val = lower_expr(func, arg, Some(param_ty_idx))?;
 
-        if arg_ty_idx != param_ty_idx {
+        if arg_val.ty != param_ty_idx {
             return Err(LoweringError::MismatchedType {
                 expected: func.get_type(param_ty_idx, param.span)?,
-                found: func.get_type(arg_ty_idx, param.span)?,
+                found: func.get_type(arg_val.ty, param.span)?,
                 span: arg.span,
             });
         }
@@ -170,21 +171,21 @@ fn lower_binary_op(
     rhs: &ExprStmt,
     span: Span,
 ) -> Result<RValInstruct, LoweringError> {
-    let (lhs, lhs_ty_idx) = lower_expr(func, lhs, None)?;
-    let (rhs, rhs_ty_idx) = lower_expr(func, rhs, Some(lhs_ty_idx))?;
+    let lhs = lower_expr(func, lhs, None)?;
+    let rhs = lower_expr(func, rhs, Some(lhs.ty))?;
 
     // Operands' types must match.
-    if lhs_ty_idx != rhs_ty_idx {
+    if lhs.ty != rhs.ty {
         return Err(LoweringError::MismatchedType {
-            expected: func.get_type(lhs_ty_idx, span)?,
-            found: func.get_type(rhs_ty_idx, span)?,
+            expected: func.get_type(lhs.ty, span)?,
+            found: func.get_type(rhs.ty, span)?,
             span,
         });
     }
 
     let inst_ty_idx = match op {
         BinaryOp::Compare(_) => func.get_or_insert_global_type_idx(MathicType::Bool),
-        BinaryOp::Arithmetic(_) => lhs_ty_idx,
+        BinaryOp::Arithmetic(_) => lhs.ty,
     };
 
     Ok(RValInstruct {
@@ -205,13 +206,12 @@ fn lower_logical_op(
     rhs: &ExprStmt,
     span: Span,
 ) -> Result<RValInstruct, LoweringError> {
-    let (lhs, lhs_ty_idx) = lower_expr(func, lhs, None)?;
-    let (rhs, rhs_ty_idx) = lower_expr(func, rhs, Some(lhs_ty_idx))?;
+    let lhs = lower_expr(func, lhs, None)?;
+    let rhs = lower_expr(func, rhs, Some(lhs.ty))?;
 
-    let lhs_ty = func.get_type(lhs_ty_idx, span)?;
-    let rhs_ty = func.get_type(rhs_ty_idx, span)?;
+    let lhs_ty = func.get_type(lhs.ty, span)?;
+    let rhs_ty = func.get_type(rhs.ty, span)?;
 
-    // Operands' types must be boolean.
     if !lhs_ty.is_bool() {
         return Err(LoweringError::MismatchedType {
             expected: MathicType::Bool,
@@ -245,15 +245,65 @@ fn lower_unary_op(
     span: Span,
     ty_hint: Option<TypeIndex>,
 ) -> Result<RValInstruct, LoweringError> {
-    let (rhs, rhs_ty) = lower_expr(func, rhs, ty_hint)?;
+    let rhs = lower_expr(func, rhs, ty_hint)?;
 
     Ok(RValInstruct {
+        ty: rhs.ty,
         kind: RValueKind::Unary {
             op,
             rhs: Box::new(rhs),
             span,
         },
-        ty: rhs_ty,
+    })
+}
+
+fn lower_init_expr(
+    func: &mut FunctionBuilder,
+    init: &InitExpr,
+    expr_ty: TypeIndex,
+    span: Span,
+) -> Result<RValInstruct, LoweringError> {
+    match init {
+        InitExpr::StructInit { name, fields } => lower_adt_init(func, name, fields, span),
+        InitExpr::ArrayInit { elements } => lower_array_init(func, elements, expr_ty, span),
+    }
+}
+
+fn lower_array_init(
+    func: &mut FunctionBuilder,
+    elements: &[ExprStmt],
+    ty_idx: TypeIndex,
+    span: Span,
+) -> Result<RValInstruct, LoweringError> {
+    let MathicType::Array { inner_ty_idx, .. } = func.get_type(ty_idx, span)? else {
+        panic!()
+    };
+
+    let inner_ty = func.get_type(inner_ty_idx, span)?;
+    let mut lowered_elements = Vec::with_capacity(elements.len());
+
+    for expr in elements.iter() {
+        let rvalue = lower_expr(func, expr, Some(inner_ty_idx))?;
+        let rvalue_ty = func.get_type(rvalue.ty, span)?;
+
+        if inner_ty_idx != rvalue.ty {
+            return Err(LoweringError::MismatchedType {
+                expected: inner_ty,
+                found: rvalue_ty,
+                span: expr.span,
+            });
+        }
+        lowered_elements.push(rvalue);
+    }
+
+    Ok(RValInstruct {
+        kind: RValueKind::Init {
+            init_inst: InitInstruct::ArrayInit {
+                elements: lowered_elements,
+            },
+            span,
+        },
+        ty: ty_idx,
     })
 }
 
@@ -278,7 +328,7 @@ fn lower_adt_init(
         return Err(LoweringError::MissingStructFields { missing, span });
     }
     for (name, expr) in fields {
-        let (rvalue, rvalue_ty_idx) = lower_expr(func, expr, adt_body.get_field_ty(name))?;
+        let rvalue = lower_expr(func, expr, adt_body.get_field_ty(name))?;
         let field_ty_idx =
             adt_body
                 .get_field_ty(name)
@@ -287,10 +337,10 @@ fn lower_adt_init(
                     span,
                 })?;
 
-        if field_ty_idx != rvalue_ty_idx {
+        if field_ty_idx != rvalue.ty {
             return Err(LoweringError::MismatchedType {
                 expected: func.get_type(field_ty_idx, span)?,
-                found: func.get_type(rvalue_ty_idx, span)?,
+                found: func.get_type(rvalue.ty, span)?,
                 span,
             });
         }
@@ -317,6 +367,60 @@ fn lower_adt_init(
     })
 }
 
+fn lower_index(
+    func: &mut FunctionBuilder,
+    array_expr: &ExprStmt,
+    pos_expr: &ExprStmt,
+    span: Span,
+    ty_hint: Option<TypeIndex>,
+) -> Result<RValInstruct, LoweringError> {
+    let array_expr = lower_expr(func, array_expr, ty_hint)?;
+
+    let array_ty = func.get_type(array_expr.ty, span)?;
+
+    let MathicType::Array { inner_ty_idx, .. } = array_ty else {
+        return Err(LoweringError::TypeNotIndexable { ty: array_ty, span });
+    };
+
+    // Indexing can only be performed using usize values.
+    let usize_ty_idx = func.get_or_insert_global_type_idx(MathicType::Uint(UintTy::Usize));
+    let pos_expr = lower_expr(func, pos_expr, Some(usize_ty_idx))?;
+
+    let RValueKind::Use { value, .. } = array_expr.kind else {
+        unreachable!("Must be a use instruction")
+    };
+    let Value::InMemory {
+        local_idx,
+        mut modifier,
+    } = value
+    else {
+        unreachable!()
+    };
+
+    let index_local = func
+        .sym_table
+        .add_local(None, inner_ty_idx, None, LocalKind::Temp)?;
+
+    func.push_instruction(LValInstruct::Let {
+        local_idx: index_local,
+        init: pos_expr,
+        span: None,
+    });
+
+    modifier.push(ValueModifier::Index(index_local));
+
+    Ok(RValInstruct {
+        kind: RValueKind::Use {
+            value: Value::InMemory {
+                local_idx,
+                modifier,
+            },
+            span: Some(span),
+        },
+        ty: inner_ty_idx,
+    })
+}
+
 fn lower_struct_get(
     func: &mut FunctionBuilder,
     expr: &ExprStmt,
@@ -324,7 +428,7 @@ fn lower_struct_get(
     span: Span,
     ty_hint: Option<TypeIndex>,
 ) -> Result<RValInstruct, LoweringError> {
-    let (struct_expr, struct_ty) = lower_expr(func, expr, ty_hint)?;
+    let struct_expr = lower_expr(func, expr, ty_hint)?;
 
     let RValueKind::Use { value, .. } = struct_expr.kind else {
         unreachable!()
@@ -337,7 +441,7 @@ fn lower_struct_get(
         unreachable!()
     };
 
-    let struct_adt = func.get_adt(struct_ty, expr.span)?;
+    let struct_adt = func.get_adt(struct_expr.ty, expr.span)?;
     let field_index =
         struct_adt
             .get_field_index(field_name)
@@ -389,12 +493,12 @@ fn lower_struct_set(
 
         (local_idx, modifier)
     };
-    let (value, value_ty_idx) = lower_expr(func, rhs, Some(struct_field_value.ty))?;
+    let value = lower_expr(func, rhs, Some(struct_field_value.ty))?;
 
-    if value_ty_idx != struct_field_value.ty {
+    if value.ty != struct_field_value.ty {
         return Err(LoweringError::MismatchedType {
             expected: func.get_type(struct_field_value.ty, span)?,
-            found: func.get_type(value_ty_idx, span)?,
+            found: func.get_type(value.ty, span)?,
             span,
         });
     }
@@ -489,7 +593,8 @@ fn lower_primary_value(
                     | MathicType::Void
                     | MathicType::Char
                     | MathicType::Str
-                    | MathicType::Adt { .. } => {
+                    | MathicType::Adt { .. }
+                    | MathicType::Array { .. } => {
                         unreachable!()
                     }
                 }),
@@ -522,55 +627,5 @@ fn lower_primary_value(
             span: Some(span),
         },
         ty,
-    })
-}
-
-/// Tries to infer the type of an expression.
-///
-/// A **ty_hint** may be provided to help guessing the type of expressions such
-/// as numeric constants, whose type depend on the bit width declared. In such
-/// cases, if no **ty_hint** was provided, the default type will be returned.
-fn lower_expression_type(
-    func: &mut FunctionBuilder,
-    expr: &ExprStmtKind,
-    ty_hint: Option<TypeIndex>,
-    span: Span,
-) -> Result<TypeIndex, LoweringError> {
-    Ok(match expr {
-        ExprStmtKind::Primary(primary_expr) => match primary_expr {
-            PrimaryExpr::Ident(name) => func.sym_table.get_local_from_name(name, span)?.ty,
-            PrimaryExpr::Num(_) => match ty_hint {
-                Some(ty) => ty,
-                None => func.get_or_insert_global_type_idx(MathicType::Sint(SintTy::I32)),
-            },
-            PrimaryExpr::Str(_) => func.get_or_insert_global_type_idx(MathicType::Str),
-            PrimaryExpr::Char(_) => func.get_or_insert_global_type_idx(MathicType::Char),
-            PrimaryExpr::Bool(_) => func.get_or_insert_global_type_idx(MathicType::Bool),
-        },
-        ExprStmtKind::Binary { lhs, op, .. } => match op {
-            BinaryOp::Compare(_) => func.get_or_insert_global_type_idx(MathicType::Bool),
-            BinaryOp::Arithmetic(_) => lower_expression_type(func, &lhs.kind, None, span)?,
-        },
-        ExprStmtKind::Call { callee, .. } => {
-            let func_decl = func.get_function_decl(callee, span)?;
-            match func_decl.return_ty {
-                Some(ty) => lower_inner_ast_type(func, &ty, span)?,
-                None => func.get_or_insert_global_type_idx(MathicType::Void),
-            }
-        }
-        ExprStmtKind::Group(expr_stmt) => lower_expression_type(func, &expr_stmt.kind, None, span)?,
-        ExprStmtKind::Index { .. } => todo!(),
-        ExprStmtKind::Logical { .. } => func.get_or_insert_global_type_idx(MathicType::Bool),
-        ExprStmtKind::Unary { rhs, .. } => lower_expression_type(func, &rhs.kind, None, span)?,
-        ExprStmtKind::Assign { expr, .. } | ExprStmtKind::StructSet { rhs: expr, .. } => {
-            lower_expression_type(func, &expr.kind, None, span)?
-        }
-        ExprStmtKind::StructInit { name, .. } => func.get_user_def_type(name, span)?,
-        ExprStmtKind::StructGet { expr, field_name } => {
-            let adt_ty = lower_expression_type(func, &expr.kind, ty_hint, span)?;
-            let adt = func.get_adt(adt_ty, span)?;
-
-            adt.get_field_ty(field_name).unwrap()
-        }
     })
 }

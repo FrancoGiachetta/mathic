@@ -62,6 +62,7 @@ pub mod value {
         fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
             match self {
                 Self::Field(idx) => write!(f, ".{}", idx),
+                Self::Index(idx) => write!(f, "[{}]", idx),
             }
         }
     }
@@ -129,19 +130,31 @@ pub mod instructions {
         let inner_indent = " ".repeat(indent + 4);
         match kind {
             RValueKind::Use { value, .. } => write!(f, "{}", value),
-            RValueKind::Init {
-                init_inst: InitInstruct::StructInit { fields, .. },
-                ..
-            } => {
-                let indent = " ".repeat(indent);
-                writeln!(f, "struct {{")?;
+            RValueKind::Init { init_inst, .. } => match init_inst {
+                InitInstruct::StructInit { fields, .. } => {
+                    let indent = " ".repeat(indent);
+                    writeln!(f, "struct {{")?;
 
-                for (i, field) in fields.iter().enumerate() {
-                    writeln!(f, "{}%{}: {}", inner_indent, i, field)?;
+                    for (i, field) in fields.iter().enumerate() {
+                        writeln!(f, "{}%{}: {}", inner_indent, i, field)?;
+                    }
+
+                    write!(f, "{}}}", indent)
                 }
+                InitInstruct::ArrayInit { elements } => {
+                    write!(f, "[")?;
 
-                write!(f, "{}}}", indent)
-            }
+                    let elements_str = elements
+                        .iter()
+                        .map(|e| e.to_string())
+                        .collect::<Vec<_>>()
+                        .join(",");
+
+                    write!(f, "{}", elements_str)?;
+
+                    write!(f, "]")
+                }
+            },
             RValueKind::Binary { op, lhs, rhs, .. } => write!(f, "{} {} {}", lhs, op, rhs),
             RValueKind::Unary { op, rhs, .. } => write!(f, "{}{}", op, rhs),
             RValueKind::Logical { op, lhs, rhs, .. } => write!(f, "{} {} {}", lhs, op, rhs),
@@ -327,6 +340,10 @@ pub mod types {
                 MathicType::Char => write!(f, "char"),
                 MathicType::Void => write!(f, "void"),
                 MathicType::Adt { index, .. } => write!(f, "Adt({index})"),
+                MathicType::Array {
+                    inner_ty_idx,
+                    length,
+                } => write!(f, "[{}]{}", length, inner_ty_idx.idx),
             }
         }
     }

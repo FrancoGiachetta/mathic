@@ -2,7 +2,8 @@ use melior::{
     dialect::func,
     helpers::{BuiltinBlockExt, LlvmBlockExt},
     ir::{
-        Attribute, Block, BlockLike, BlockRef, Identifier, Region, RegionLike, Value, ValueLike,
+        Attribute, Block, BlockLike, BlockRef, Identifier, Region, RegionLike, TypeLike, Value,
+        ValueLike,
         attribute::{StringAttribute, TypeAttribute},
         r#type::FunctionType,
     },
@@ -46,8 +47,7 @@ impl<'ctx, 'this> FunctionCtx<'ctx, 'this> {
     pub fn get_local(&self, idx: usize) -> Option<(Value<'ctx, '_>, TypeIndex)> {
         self.locals
             .get(idx)
-            .copied()
-            .map(|(v, t)| (unsafe { Value::from_raw(v) }, t))
+            .map(|(v, t)| (unsafe { Value::from_raw(*v) }, *t))
     }
 
     pub fn get_block(&self, idx: usize) -> BlockRef<'_, '_> {
@@ -71,7 +71,11 @@ impl MathicCodeGen<'_> {
     {
         let location = self.get_location(None)?;
 
-        let return_ty = self.get_compiled_type(inner_func, inner_func.return_ty)?;
+        let return_ty = {
+            let ty = self.get_compiled_type(inner_func, inner_func.return_ty)?;
+
+            if ty.is_none() { None } else { Some(ty) }
+        };
         let mut params_types = Vec::with_capacity(inner_func.params_tys.len());
         let mut block_params = Vec::with_capacity(inner_func.params_tys.len());
 
@@ -143,10 +147,12 @@ impl MathicCodeGen<'_> {
         }
 
         // Generate the function itself and add it to the module.
+        let fn_type = FunctionType::new(self.ctx, &params_types, return_ty.as_slice()).into();
+
         self.module.body().append_operation(func::func(
             self.ctx,
             StringAttribute::new(self.ctx, &format!("mathic__{}", inner_func.name)),
-            TypeAttribute::new(FunctionType::new(self.ctx, &params_types, &[return_ty]).into()),
+            TypeAttribute::new(fn_type),
             region,
             attributes,
             location,

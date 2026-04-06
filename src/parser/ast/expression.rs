@@ -1,6 +1,6 @@
 use std::collections::HashMap;
 
-use crate::parser::{Span, token::Token};
+use crate::parser::Span;
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct ExprStmt {
@@ -17,18 +17,15 @@ pub enum ExprStmtKind {
         op: BinaryOp,
         rhs: Box<ExprStmt>,
     },
-    StructInit {
-        name: String,
-        fields: HashMap<String, ExprStmt>,
-    },
+    Init(InitExpr),
     Call {
         callee: String,
         args: Vec<ExprStmt>,
     },
     Group(Box<ExprStmt>),
     Index {
-        name: Token,
-        pos: Token,
+        expr: Box<ExprStmt>,
+        pos: Box<ExprStmt>,
     },
     Logical {
         lhs: Box<ExprStmt>,
@@ -51,6 +48,17 @@ pub enum ExprStmtKind {
         lhs: Box<ExprStmt>,
         field_name: String,
         rhs: Box<ExprStmt>,
+    },
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum InitExpr {
+    StructInit {
+        name: String,
+        fields: HashMap<String, ExprStmt>,
+    },
+    ArrayInit {
+        elements: Vec<ExprStmt>,
     },
 }
 

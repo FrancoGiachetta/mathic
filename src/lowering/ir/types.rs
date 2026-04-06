@@ -40,7 +40,14 @@ pub enum FloatTy {
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub enum MathicType {
-    Adt { index: usize, is_local: bool },
+    Adt {
+        index: usize,
+        is_local: bool,
+    },
+    Array {
+        inner_ty_idx: TypeIndex,
+        length: u32,
+    },
     Bool,
     Char,
     Float(FloatTy),
@@ -105,6 +112,13 @@ pub fn lower_inner_ast_type(
                 }
             }
         },
+        AstType::Array { inner, length } => {
+            let inner_ty = lower_inner_ast_type(func_builder, inner, span)?;
+            func_builder.get_or_insert_type_idx(MathicType::Array {
+                inner_ty_idx: inner_ty,
+                length: *length,
+            })
+        }
     })
 }
 
@@ -134,7 +148,7 @@ impl MathicType {
             Self::Bool => 1,
             Self::Char => 8,
             Self::Void => 0,
-            Self::Str | Self::Adt { .. } => todo!(),
+            Self::Str | Self::Adt { .. } | MathicType::Array { .. } => todo!(),
         }
     }
 
@@ -205,6 +219,14 @@ impl MathicType {
                 }
 
                 align
+            }
+            Self::Array { inner_ty_idx, .. } => {
+                let inner_ty = if inner_ty_idx.is_local {
+                    func.get_type(inner_ty_idx.idx).unwrap()
+                } else {
+                    ir.get_type(inner_ty_idx.idx).unwrap()
+                };
+                inner_ty.align(ir, func)
             }
         }
     }

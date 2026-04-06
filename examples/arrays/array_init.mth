@@ -1,0 +1,8 @@
+df main() u32 {
+	let array: [2][1]u32 = [
+		[1],
+		[2]
+	];
+
+	return array[1][0]; 
+}
