@@ -1,0 +1,19 @@
+add_mlir_library(MLIRSymbolicDialect
+  SymbolicDialect.cpp
+  SymbolicOps.cpp
+  SymbolicTypes.cpp
+
+  DEPENDS
+    MLIRSymbolicDialectIncGen
+    MLIRSymbolicOpsIncGen
+    MLIRSymbolicTypesIncGen
+
+  LINK_LIBS PUBLIC
+    MLIRIR
+    MLIRSupport
+    MLIRParser
+    # ${SYMENGINE_LIBRARIES}
+
+  # INCLUDE_DIRS PUBLIC
+  #   ${SYMENGINE_INCLUDE_DIRS}
+)

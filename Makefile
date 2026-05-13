@@ -5,6 +5,7 @@ build:
 .PHONY: clean
 clean: clean-dumps 
 	cargo clean
+	rm -rf Dialeclects/builds Dialects/.cache
 
 .PHONY: check
 check: 

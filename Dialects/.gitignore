@@ -1,0 +1,16 @@
+# CMake
+build/
+CMakeFiles/
+cmake_install.cmake
+
+# LLVM/MLIR TableGen
+*.h.inc
+*.cpp.inc
+
+# Clangd
+compile_commands.json
+
+# Output
+*.so
+*.dylib
+*.a
