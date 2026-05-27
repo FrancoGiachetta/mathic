@@ -1,35 +1,60 @@
 #ifndef DIALECT_SYMBOLIC_OPS_
 #define DIALECT_SYMBOLIC_OPS_
 
-include "SymbolicDialect.td"
-include "SymbolicTypes.td"
-include "mlir/Interfaces/SideEffectInterfaces.td"
+include "SymbolicDialect.td" include "SymbolicTypes.td" include "mlir/Interfaces/SideEffectInterfaces.td"
 
-    class Symbolic_BinOp<string mnemonic> : Op<Symbolic_Dialect, mnemonic, [Pure, SameOperandsAndResultElementType]> {
-        let arguments = (ins SymExpr : $lhs, SymExpr : $rhs);
-        let results = (outs SymExpr : $res);
-        let assemblyFormat = "$lhs `,` $rhs attr-dict `:` type($res)";
-        let hasFolder = 1;
-    }
-
-def Symbolic_Add : Symbolic_BinOp<"add">
+    class Symbolic_BinOp<string mnemonic, list<Trait> traits = []>
+    : Op<Symbolic_Dialect, mnemonic, !listconcat([ Pure, SameOperandsAndResultElementType ], traits)>
 {
-    let summary = "Addition operation between symbolic expressions";
+    let arguments = (ins SymExpr:$lhs, SymExpr:$rhs);
+    let results = (outs SymExpr:$res);
+    let assemblyFormat = "$lhs `,` $rhs attr-dict `:` type($res)";
 }
 
-def Symbolic_Sub : Symbolic_BinOp<"sub">
-{
-    let summary = "Substraction operation between symbolic expressions";
+def Symbolic_AddOp : Symbolic_BinOp<"add", [Commutative]> {
+    let summary = "Addition of symbolic expressions";
+    let hasFolder = 1;
 }
 
-def Symbolic_Mul : Symbolic_BinOp<"mul">
+def Symbolic_SubOp : Symbolic_BinOp<"sub">
 {
-    let summary = "Multiplication operation between symbolic expressions";
+    let summary = "Subtraction of symbolic expressions";
+    let hasFolder = 1;
 }
 
-def Symbolic_Div : Symbolic_BinOp<"div">
+def Symbolic_MulOp : Symbolic_BinOp<"mul", [Commutative]> {
+    let summary = "Multiplication of symbolic expressions";
+    let hasFolder = 1;
+}
+
+def Symbolic_DivOp : Symbolic_BinOp<"div">
 {
-    let summary = "Division operation between symbolic expressions";
+    let summary = "Division of symbolic expressions";
+    let hasFolder = 1;
+}
+
+def Symbolic_SymOp : Op<Symbolic_Dialect, "sym", [Pure]> {
+    let summary = "Introduce a symbolic variable";
+    let arguments = (ins StrAttr:$name);
+    let results   = (outs SymExpr:$res);
+    let assemblyFormat = "$name attr-dict `:` type($res)";
+    let hasFolder = 1;
+}
+
+def Symbolic_DiffOp : Op<Symbolic_Dialect, "diff", [Pure]> {
+    let summary = "Differentiate a symbolic expression with respect to a variable";
+    let arguments = (ins SymExpr:$expr, StrAttr:$sym);
+    let results   = (outs SymExpr:$res);
+    let assemblyFormat = "$expr `,` $sym attr-dict `:` type($res)";
+    let hasFolder = 1;
+}
+
+def Symbolic_EvalOp : Op<Symbolic_Dialect, "eval", []>
+{
+    let summary = "Evaluate a symbolic expression substituting a variable with a concrete value";
+    let arguments = (ins SymExpr:$expr, StrAttr:$sym, F64 : $value);
+    let results = (outs F64 : $res);
+    let assemblyFormat = "$expr `,` $sym `,` $value attr-dict `:` type($value) `->` type($res)";
 }
 
 #endif // DIALECT_SYMBOLIC_OPS_

@@ -12,6 +12,7 @@ def Symbolic_Dialect : Dialect {
 
     let useDefaultTypePrinterParser = 1;
     let hasCanonicalizer = 1;
+    let usePropertiesForAttributes = 1;
 }
 
 #endif // SYMBOLIC_DIALECT

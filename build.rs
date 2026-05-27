@@ -9,7 +9,7 @@ fn main() {
 
     std::fs::create_dir_all(&build_dir).unwrap();
 
-    let llvm_prefix = String::from(env::var("LLVM_SYS_211_PREFIX").unwrap());
+    let llvm_prefix = env::var("LLVM_SYS_211_PREFIX").unwrap();
 
     // ── Build ─────────────────────────────────────────────────────────────
 

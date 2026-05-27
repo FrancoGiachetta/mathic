@@ -12,8 +12,5 @@ add_mlir_library(MLIRSymbolicDialect
     MLIRIR
     MLIRSupport
     MLIRParser
-    # ${SYMENGINE_LIBRARIES}
-
-  # INCLUDE_DIRS PUBLIC
-  #   ${SYMENGINE_INCLUDE_DIRS}
+    symengine
 )
