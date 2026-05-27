@@ -46,6 +46,12 @@ namespace mlir
 {
 namespace symbolic
 {
+OpFoldResult SymOp::fold(SymOp::FoldAdaptor adaptor)
+{
+
+    return StringAttr::get(getContext(), getName().str());
+}
+
 OpFoldResult AddOp::fold(AddOp::FoldAdaptor adaptor)
 {
     std::optional<Expression> lhs = attrToExpr(adaptor.getLhs());

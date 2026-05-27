@@ -52,8 +52,8 @@ def Symbolic_DiffOp : Op<Symbolic_Dialect, "diff", [Pure]> {
 def Symbolic_EvalOp : Op<Symbolic_Dialect, "eval", []>
 {
     let summary = "Evaluate a symbolic expression substituting a variable with a concrete value";
-    let arguments = (ins SymExpr:$expr, StrAttr:$sym, F64 : $value);
-    let results = (outs F64 : $res);
+    let arguments = (ins SymExpr:$expr, StrAttr:$sym, F64:$value);
+    let results = (outs F64:$res);
     let assemblyFormat = "$expr `,` $sym `,` $value attr-dict `:` type($value) `->` type($res)";
 }
 
