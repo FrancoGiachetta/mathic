@@ -23,6 +23,7 @@ struct RemoveDerivatives : public OpRewritePattern<DiffOp>
 
     LogicalResult matchAndRewrite(DiffOp op, PatternRewriter &rewriter) const override
     {
+        auto expr = op.getExpr();
         return success();
     }
 };

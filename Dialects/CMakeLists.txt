@@ -18,13 +18,13 @@ list(APPEND CMAKE_MODULE_PATH "${CMAKE_CURRENT_SOURCE_DIR}/cmake")
 
 set(LLVM_ENABLE_EH ON)
 set(LLVM_ENABLE_RTTI ON) 
-
 set(LLVM_REQUIRES_EH ON) 
 
 include(TableGen)
 include(AddLLVM)
 include(AddMLIR)
-include(HandleLLVMOptions) # This will now respect LLVM_REQUIRES_EH
+include(HandleLLVMOptions)
+
 # ── SymEngine ────────────────────────────────────────────────────────────────
 
 find_package(SymEngine CONFIG QUIET)
@@ -46,13 +46,13 @@ include_directories(${CMAKE_CURRENT_BINARY_DIR}/include)
 set(CMAKE_ARCHIVE_OUTPUT_DIRECTORY "${PROJECT_BINARY_DIR}/lib")
 
 set(CMAKE_LIBRARY_OUTPUT_DIRECTORY "${PROJECT_BINARY_DIR}/lib")
-set(CMAKE_RUNTIME_OUTPUT_DIRECTORY "${PROJECT_BINARY_DIR}/bin")
 
 message(STATUS "Using ARCHIVE_DIR ${CMAKE_ARCHIVE_OUTPUT_DIRECTORY}")
 message(STATUS "Using LIBRARY_DIR ${CMAKE_LIBRARY_OUTPUT_DIRECTORY}")
 
 # ── Subdirectories ────────────────────────────────────────────────────────────
 
+add_subdirectory(tools)
 add_subdirectory(include)
 add_subdirectory(lib)
 
@@ -66,7 +66,7 @@ execute_process(
 
 # Testing
 
-# if(BUILD_TESTING)
-#     enable_testing()
-#     add_subdirectory(test)
-# endif()
+if(BUILD_TESTING)
+    enable_testing()
+    add_subdirectory(tests)
+endif()

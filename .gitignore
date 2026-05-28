@@ -9,6 +9,4 @@ target/
 env.sh
 
 **/*.mathir
-**/*.mlir
-**/*.ll
 **/*.o

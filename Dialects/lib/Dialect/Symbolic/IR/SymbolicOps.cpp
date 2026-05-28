@@ -11,9 +11,6 @@
 #include <symengine/expression.h>
 #include <symengine/parser.h>
 
-#define GET_OP_CLASSES
-#include "Dialect/Symbolic/IR/SymbolicOps.cpp.inc"
-
 using namespace SymEngine;
 
 namespace
@@ -95,9 +92,9 @@ OpFoldResult DivOp::fold(DivOp::FoldAdaptor adaptor)
 
     return exprToAttr(getContext(), expand(*lhs * *rhs));
 }
+
 OpFoldResult DiffOp::fold(DiffOp::FoldAdaptor adaptor)
 {
-
     std::optional<Expression> expr = attrToExpr(adaptor.getExpr());
 
     if (!expr)

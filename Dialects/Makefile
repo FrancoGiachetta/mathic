@@ -9,8 +9,7 @@ build: clean
 .PHONY: test
 test: clean
 	cmake -S . -B ${BUILD_DIR} --fresh -DBUILD_TESTING=ON -DCMAKE_POLICY_VERSION_MINIMUM=3.10
-	cmake --build ${BUILD_DIR}
-	./builds/build/test/tests
+	cmake --build ${BUILD_DIR} --target check-dialects
 
 .PHONY: fmt
 fmt:
