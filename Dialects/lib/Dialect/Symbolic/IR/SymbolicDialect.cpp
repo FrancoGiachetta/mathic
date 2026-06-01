@@ -3,6 +3,7 @@
 #include "Dialect/Symbolic/IR/SymbolicTypes.h"
 
 #include "Dialect/Symbolic/IR/SymbolicDialect.cpp.inc"
+
 #define GET_TYPEDEF_CLASSES
 #include "Dialect/Symbolic/IR/SymbolicTypes.cpp.inc"
 #define GET_OP_CLASSES

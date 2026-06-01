@@ -7,7 +7,6 @@
 #include <mlir/Support/LLVM.h>
 #include <optional>
 #include <sstream>
-#include <symengine/derivative.h>
 #include <symengine/expression.h>
 #include <symengine/parser.h>
 
@@ -26,8 +25,9 @@ static std::optional<Expression> attrToExpr(mlir::Attribute attr)
 {
     auto str_attr = mlir::dyn_cast<mlir::StringAttr>(attr);
 
-    if (!attr)
+    if (!str_attr)
         return std::nullopt;
+
     try
     {
         return Expression(SymEngine::parse(str_attr.getValue().str()));
@@ -43,65 +43,49 @@ namespace mlir
 {
 namespace symbolic
 {
-OpFoldResult SymOp::fold(SymOp::FoldAdaptor adaptor)
-{
+// OpFoldResult AddOp::fold(AddOp::FoldAdaptor adaptor)
+// {
+//     std::optional<Expression> lhs = attrToExpr(adaptor.getLhs());
+//     std::optional<Expression> rhs = attrToExpr(adaptor.getRhs());
 
-    return StringAttr::get(getContext(), getName().str());
-}
+//     if (!lhs || !rhs)
+//         return {};
 
-OpFoldResult AddOp::fold(AddOp::FoldAdaptor adaptor)
-{
-    std::optional<Expression> lhs = attrToExpr(adaptor.getLhs());
-    std::optional<Expression> rhs = attrToExpr(adaptor.getRhs());
+//     return exprToAttr(getContext(), expand(*lhs + *rhs));
+// }
 
-    if (!lhs || !rhs)
-        return {};
+// OpFoldResult SubOp::fold(SubOp::FoldAdaptor adaptor)
+// {
+//     std::optional<Expression> lhs = attrToExpr(adaptor.getLhs());
+//     std::optional<Expression> rhs = attrToExpr(adaptor.getRhs());
 
-    return exprToAttr(getContext(), expand(*lhs + *rhs));
-}
+//     if (!lhs || !rhs)
+//         return {};
 
-OpFoldResult SubOp::fold(SubOp::FoldAdaptor adaptor)
-{
-    std::optional<Expression> lhs = attrToExpr(adaptor.getLhs());
-    std::optional<Expression> rhs = attrToExpr(adaptor.getRhs());
+//     return exprToAttr(getContext(), expand(*lhs - *rhs));
+// }
 
-    if (!lhs || !rhs)
-        return {};
+// OpFoldResult MulOp::fold(MulOp::FoldAdaptor adaptor)
+// {
+//     std::optional<Expression> lhs = attrToExpr(adaptor.getLhs());
+//     std::optional<Expression> rhs = attrToExpr(adaptor.getRhs());
 
-    return exprToAttr(getContext(), expand(*lhs - *rhs));
-}
+//     if (!lhs || !rhs || (bool)is_zero(*rhs))
+//         return {};
 
-OpFoldResult MulOp::fold(MulOp::FoldAdaptor adaptor)
-{
-    std::optional<Expression> lhs = attrToExpr(adaptor.getLhs());
-    std::optional<Expression> rhs = attrToExpr(adaptor.getRhs());
+//     return exprToAttr(getContext(), expand(*lhs * *rhs));
+// }
 
-    if (!lhs || !rhs || (bool)is_zero(*rhs))
-        return {};
+// OpFoldResult DivOp::fold(DivOp::FoldAdaptor adaptor)
+// {
+//     std::optional<Expression> lhs = attrToExpr(adaptor.getLhs());
+//     std::optional<Expression> rhs = attrToExpr(adaptor.getRhs());
 
-    return exprToAttr(getContext(), expand(*lhs / *rhs));
-}
+//     if (!lhs || !rhs)
+//         return {};
 
-OpFoldResult DivOp::fold(DivOp::FoldAdaptor adaptor)
-{
-    std::optional<Expression> lhs = attrToExpr(adaptor.getLhs());
-    std::optional<Expression> rhs = attrToExpr(adaptor.getRhs());
+//     return exprToAttr(getContext(), expand(*lhs / *rhs));
+// }
 
-    if (!lhs || !rhs)
-        return {};
-
-    return exprToAttr(getContext(), expand(*lhs * *rhs));
-}
-
-OpFoldResult DiffOp::fold(DiffOp::FoldAdaptor adaptor)
-{
-    std::optional<Expression> expr = attrToExpr(adaptor.getExpr());
-
-    if (!expr)
-        return {};
-
-    auto sym = symbol(getSym().str());
-    return exprToAttr(getContext(), expand(diff(*expr, sym)));
-}
 } // namespace symbolic
 } // namespace mlir

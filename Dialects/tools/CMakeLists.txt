@@ -12,9 +12,9 @@ set(LIBS
     MLIRRegisterAllPasses
 )
 
-add_llvm_executable(test-runner test-runner.cpp)
+add_llvm_executable(dialect-driver dialect-driver.cpp)
 
-llvm_update_compile_flags(test-runner)
-target_link_libraries(test-runner PRIVATE ${LIBS})
+llvm_update_compile_flags(dialect-driver)
+target_link_libraries(dialect-driver PRIVATE ${LIBS})
 
-mlir_check_all_link_libraries(test-runner)
+mlir_check_all_link_libraries(dialect-driver)

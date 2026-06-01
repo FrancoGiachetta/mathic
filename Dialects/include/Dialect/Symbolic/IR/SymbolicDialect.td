@@ -3,7 +3,8 @@
 
 include "mlir/IR/DialectBase.td"
 
-def Symbolic_Dialect : Dialect {
+    def Symbolic_Dialect : Dialect
+{
     let name = "symbolic";
     let cppNamespace = "::mlir::symbolic";
     let description = [{

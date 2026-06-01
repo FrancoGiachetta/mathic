@@ -12,10 +12,13 @@ set(LLVM_EXTERNAL_LIT /home/linuxbrew/.linuxbrew/opt/lit/bin/lit CACHE STRING "D
 add_lit_testsuite(check-dialects "Running Symbolic Dialect Tests..."
   ${CMAKE_CURRENT_BINARY_DIR}
 
+  ARGS
+    -a --show-pass --show-xfail
+
   DEPENDS
     FileCheck count not
     mlir-opt
     mlir-runner
-    test-runner
+    dialect-driver
 )
 

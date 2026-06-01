@@ -36,6 +36,6 @@ config.project_tools_dir = os.path.join(config.project_binary_dir, "tools")
 llvm_config.with_environment("PATH", config.llvm_tools_dir, append_path=True)
 
 tool_dirs = [config.project_tools_dir, config.llvm_tools_dir]
-tools = ["mlir-opt", "mlir-cpu-runner", "test-runner"]
+tools = ["mlir-opt", "mlir-cpu-runner", "dialect-driver"]
 
 llvm_config.add_tool_substitutions(tools, tool_dirs)

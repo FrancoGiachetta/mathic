@@ -52,9 +52,9 @@ message(STATUS "Using LIBRARY_DIR ${CMAKE_LIBRARY_OUTPUT_DIRECTORY}")
 
 # ── Subdirectories ────────────────────────────────────────────────────────────
 
-add_subdirectory(tools)
 add_subdirectory(include)
 add_subdirectory(lib)
+add_subdirectory(tools)
 
 # ── Create symlink immediately during configuration ───────────────────────────
 

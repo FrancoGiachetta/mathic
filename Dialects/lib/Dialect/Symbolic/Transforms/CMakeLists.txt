@@ -1,11 +1,17 @@
 add_mlir_library(MLIRSymbolicTransforms
-  SymbolicCanonicalize.cpp
+  SymbolicExtractEval.cpp
 
   DEPENDS
+    MLIRSymbolicDialect
+    MLIRSymbolicOpsIncGen
+    MLIRSymbolicTypesIncGen
     MLIRSymbolicTransformsIncGen
 
+  LINK_COMPONENTS
+    Core
+
   LINK_LIBS PUBLIC
-    MLIRSymbolicDialect
     MLIRTransforms
     MLIRPass
+    MLIRFuncDialect
 )
