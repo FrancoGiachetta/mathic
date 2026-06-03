@@ -8,6 +8,7 @@ set(LIBS
     MLIRPass
     MLIRSymbolicDialect
     MLIRSymbolicTransforms
+    MLIRSymbolicToArith
     MLIRRegisterAllDialects
     MLIRRegisterAllPasses
 )

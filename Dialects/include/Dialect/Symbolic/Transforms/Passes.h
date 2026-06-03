@@ -1,7 +1,6 @@
 #pragma once
 
 #include "Dialect/Symbolic/Transforms/SymbolicExtractEval.h"
-#include "Dialect/Symbolic/Transforms/SymbolicToArith.h"
 
 namespace mlir
 {

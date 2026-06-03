@@ -1,5 +1,5 @@
-#include "Dialect/Symbolic/IR/SymbolicOps.h"
 #include "Dialect/Symbolic/Transforms/SymbolicExtractEval.h"
+#include "Dialect/Symbolic/IR/SymbolicOps.h"
 #include <cstdint>
 #include <llvm/ADT/Hashing.h>
 #include <llvm/Support/Casting.h>
@@ -46,7 +46,7 @@ static std::optional<llvm::hash_code> getExpressionHash(mlir::Value value)
         if (!lhs || !rhs)
             return std::nullopt;
 
-        return llvm::hash_combine(lhs, rhs);
+        return llvm::hash_combine(op, lhs, rhs);
     }
 }
 

@@ -3,12 +3,12 @@ BUILD_DIR=${BUILDS_ROOT}/build
 
 .PHONY: build
 build: clean
-	cmake -S . -B ${BUILD_DIR} --fresh -DCMAKE_POLICY_VERSION_MINIMUM=3.10
+	cmake -S . -B ${BUILD_DIR} -DCMAKE_POLICY_VERSION_MINIMUM=3.10
 	cmake --build ${BUILD_DIR}
 
 .PHONY: test
 test: clean
-	cmake -S . -B ${BUILD_DIR} --fresh -DBUILD_TESTING=ON -DCMAKE_POLICY_VERSION_MINIMUM=3.10
+	cmake -S . -B ${BUILD_DIR} -DBUILD_TESTING=ON -DCMAKE_POLICY_VERSION_MINIMUM=3.10
 	cmake --build ${BUILD_DIR} --target check-dialects
 
 .PHONY: fmt
