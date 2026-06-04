@@ -54,7 +54,6 @@ message(STATUS "Using LIBRARY_DIR ${CMAKE_LIBRARY_OUTPUT_DIRECTORY}")
 
 add_subdirectory(include)
 add_subdirectory(lib)
-add_subdirectory(tools)
 
 # ── Create symlink immediately during configuration ───────────────────────────
 
@@ -68,5 +67,6 @@ execute_process(
 
 if(BUILD_TESTING)
     enable_testing()
+    add_subdirectory(tools)
     add_subdirectory(tests)
 endif()
