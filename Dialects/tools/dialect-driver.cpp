@@ -8,11 +8,18 @@
 #include <mlir/Tools/mlir-opt/MlirOptMain.h>
 #include <mlir/Transforms/Passes.h>
 
-void extractEvalOpsPipeline(mlir::OpPassManager &manager)
+namespace
+{
+void symbolicExtractEvalPipeline(mlir::OpPassManager &manager)
 {
     manager.addPass(mlir::symbolic::createSymbolicExtractEval());
+}
+
+void symbolicToArithPipeline(mlir::OpPassManager &manager)
+{
     manager.addPass(mlir::symbolic::createSymbolicToArith());
 }
+} // namespace
 
 int main(int argc, char **argv)
 {
@@ -24,7 +31,10 @@ int main(int argc, char **argv)
 
     mlir::registerAllPasses();
 
+    mlir::PassPipelineRegistration<>("symbolic-extract-eval",
+                                     "Run pass to pass to convert eval operations in to function calls",
+                                     symbolicExtractEvalPipeline);
     mlir::PassPipelineRegistration<>("symbolic-to-arith", "Run pass to pass to convert symbolic dialect to arith",
-                                     extractEvalOpsPipeline);
+                                     symbolicToArithPipeline);
     return mlir::asMainReturnCode(mlir::MlirOptMain(argc, argv, "Dialect Driver", registry));
 }

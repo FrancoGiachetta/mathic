@@ -10,7 +10,7 @@ func.func @test_basic_extract(%x_val: f64) -> f64 {
     %r2 = symbolic.mul %x2, %x : !symbolic.expr
     %res2 = symbolic.eval %r2, "x", %x_val : f64 -> f64
 
-    %res3 = arith.addf %res, %res2 : f64
+    %res3 = arith.addf %res2, %res : f64
     return %res3 : f64
   }
 }
