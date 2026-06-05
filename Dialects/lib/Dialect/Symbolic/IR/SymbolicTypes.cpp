@@ -4,6 +4,5 @@ namespace mlir
 {
 namespace symbolic
 {
-
 }
 } // namespace mlir

@@ -6,10 +6,9 @@ fn main() {
     let root = PathBuf::from(env::var("CARGO_MANIFEST_DIR").unwrap());
     let dialects_root = root.join("Dialects");
     let build_dir = dialects_root.join("builds/build");
+    let llvm_prefix = env::var("LLVM_SYS_211_PREFIX").unwrap();
 
     std::fs::create_dir_all(&build_dir).unwrap();
-
-    let llvm_prefix = env::var("LLVM_SYS_211_PREFIX").unwrap();
 
     // ── Build ─────────────────────────────────────────────────────────────
 
@@ -37,14 +36,18 @@ fn main() {
     // ── Link ──────────────────────────────────────────────────────────────────
 
     let lib_dir = build_dir.join("lib/");
+
+    // Make the linker aware of the dialect's library dir. 
+    println!("cargo:rustc-link-arg=-Wl,-rpath,{}", lib_dir.display());
     println!("cargo:rustc-link-search=native={}", lib_dir.display());
     println!("cargo:rustc-link-lib=dylib=MLIRSymbolicDialect");
     println!("cargo:rustc-link-lib=dylib=MLIRSymbolicTransforms");
     println!("cargo:rustc-link-lib=dylib=MLIRSymbolicToArith");
+    println!("cargo:rustc-link-lib=dylib=dialect_bindings");
 
     // ── Rerun triggers ────────────────────────────────────────────────────────
 
     println!("cargo:rerun-if-changed=CMakeLists.txt");
-    println!("cargo:rerun-if-changed=include/Dialects");
-    println!("cargo:rerun-if-changed=lib/Dialects");
+    println!("cargo:rerun-if-changed=Dialects/include");
+    println!("cargo:rerun-if-changed=Dialects/lib");
 }

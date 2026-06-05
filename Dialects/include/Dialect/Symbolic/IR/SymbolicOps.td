@@ -1,7 +1,9 @@
 #ifndef DIALECT_SYMBOLIC_OPS_
 #define DIALECT_SYMBOLIC_OPS_
 
-include "SymbolicDialect.td" include "SymbolicTypes.td" include "mlir/Interfaces/SideEffectInterfaces.td"
+include "SymbolicDialect.td"
+include "SymbolicTypes.td"
+include "mlir/Interfaces/SideEffectInterfaces.td"
 
     class Symbolic_BinOp<string mnemonic, list<Trait> traits = []>
     : Op<Symbolic_Dialect, mnemonic, !listconcat([ Pure, SameOperandsAndResultElementType ], traits)>
