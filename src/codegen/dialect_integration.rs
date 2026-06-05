@@ -55,7 +55,6 @@ pub mod symbolic {
         }
     }
 
-
     pub fn sym_expr_type(registry: DialectRegistry) {
         unsafe {
             symbolic_dialect::getSymExprType(registry.to_raw());
