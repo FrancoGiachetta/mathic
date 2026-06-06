@@ -27,11 +27,7 @@ include(HandleLLVMOptions)
 
 # ── SymEngine ────────────────────────────────────────────────────────────────
 
-find_package(SymEngine CONFIG QUIET)
-if(NOT SymEngine_FOUND)
-  find_package(SymEngine REQUIRED)
-endif()
-
+find_package(SymEngine REQUIRED)
 message(STATUS "Using SymEngine from ${SYMENGINE_INCLUDE_DIRS}")
 
 # ── Include paths ─────────────────────────────────────────────────────────────
