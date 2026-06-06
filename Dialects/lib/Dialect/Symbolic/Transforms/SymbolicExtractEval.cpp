@@ -1,5 +1,5 @@
-#include "Dialect/Symbolic/Transforms/SymbolicExtractEval.h"
 #include "Dialect/Symbolic/IR/SymbolicOps.h"
+#include "Dialect/Symbolic/Transforms/SymbolicExtractEval.h"
 #include <cstdint>
 #include <llvm/ADT/Hashing.h>
 #include <llvm/Support/Casting.h>
@@ -23,6 +23,10 @@ namespace
 
 using namespace mlir;
 
+/// Creates the hash of an expression.
+///
+/// This hash is constructed be traversing the expression and calculating the
+/// expressions' hashes as well.
 static std::optional<llvm::hash_code> getExpressionHash(mlir::Value value)
 {
     mlir::Operation *op = value.getDefiningOp();
@@ -50,6 +54,8 @@ static std::optional<llvm::hash_code> getExpressionHash(mlir::Value value)
     }
 }
 
+/// Helper function to move the symbolic operations of an expression into its
+/// associated eval function.
 static Value cloneSymbolicOperationsIntoFunction(Value val, OpBuilder &builder, DenseMap<Value, Value> &valueMap)
 {
     // Already cloned — return cached
@@ -136,6 +142,8 @@ struct EvalOpToFuncPattern : public OpRewritePattern<EvalOp>
         SymbolRefAttr fnName;
         auto func = state.funcs.find(*evalOpHash);
 
+        // Don't create a new function if the expression being evaluated
+        // already has its associated function.
         if (func != state.funcs.end())
             fnName = func->second;
         else
@@ -156,6 +164,8 @@ struct EvalOpToFuncPattern : public OpRewritePattern<EvalOp>
             rewriter.setInsertionPointToStart(fnEntryBLock);
 
             DenseMap<Value, Value> valueMap;
+
+            // Move the symbolic operations to the new function.
             Value result = cloneSymbolicOperationsIntoFunction(op.getExpr(), rewriter, valueMap);
 
             rewriter.create<func::ReturnOp>(op.getLoc(), result);
@@ -165,6 +175,10 @@ struct EvalOpToFuncPattern : public OpRewritePattern<EvalOp>
         }
 
         func::CallOp call = rewriter.create<func::CallOp>(op.getLoc(), fnName, op.getExpr().getType(), op.getValue());
+
+        // In this stage, the function actually return a !symbolic.expr. Since
+        // we need the result to be numeric in the future, this operation acts
+        // as placeholder to legalize the ir.
         mlir::UnrealizedConversionCastOp cast =
             rewriter.create<UnrealizedConversionCastOp>(op.getLoc(), op.getResult().getType(), call.getResult(0));
 
@@ -174,6 +188,11 @@ struct EvalOpToFuncPattern : public OpRewritePattern<EvalOp>
     }
 };
 
+/// Pass to create a function associated to an eval operation.
+///
+/// The operations that conform the expression to evaluate are move into this
+/// function. This is to make it possible to evaluate an expression more than
+//  once without cloned operations.
 struct SymbolicExtractEval : impl::SymbolicExtractEvalBase<SymbolicExtractEval>
 {
     using SymbolicExtractEvalBase::SymbolicExtractEvalBase;

@@ -24,6 +24,7 @@ class SymbolicToArithTypeConverter : public TypeConverter
     SymbolicToArithTypeConverter(MLIRContext *ctx)
     {
         addConversion([](Type ty) { return ty; });
+        /// For now, every !symbolic.expr is converted to float64.
         addConversion([ctx](SymExprType exprTy) -> Type { return Float64Type::get(ctx); });
     }
 };
@@ -104,6 +105,7 @@ struct ConvertDiv : public OpConversionPattern<symbolic::DivOp>
     }
 };
 
+/// Replace symbols witht the function's actual argument to be evaluated.
 struct ConvertSym : public OpConversionPattern<symbolic::SymOp>
 {
     ConvertSym(MLIRContext *ctx) : OpConversionPattern<symbolic::SymOp>(ctx)
@@ -124,6 +126,7 @@ struct ConvertSym : public OpConversionPattern<symbolic::SymOp>
     }
 };
 
+/// Get rid of UnrealizedConversionCast operations.
 struct ConvertCast : public OpConversionPattern<UnrealizedConversionCastOp>
 {
     using OpConversionPattern::OpConversionPattern;
@@ -159,20 +162,25 @@ struct SymbolicToArith : impl::SymbolicToArithBase<SymbolicToArith>
         SymbolicToArithTypeConverter typeConverter(ctx);
 
         target.addLegalDialect<arith::ArithDialect>();
+        // After this pass, there shouldn't be any reference to the symbolic
+        // dialect.
         target.addIllegalDialect<SymbolicDialect>();
 
         mlir::RewritePatternSet patterns(&getContext());
 
         patterns.add<ConvertAdd, ConvertSub, ConvertMul, ConvertDiv, ConvertSym, ConvertCast>(typeConverter, ctx);
 
+        // Propagate the type convertions across functions' signatures.
         populateFunctionOpInterfaceTypeConversionPattern<func::FuncOp>(patterns, typeConverter);
         target.addDynamicallyLegalOp<func::FuncOp>([&](func::FuncOp op) {
             return typeConverter.isSignatureLegal(op.getFunctionType()) && typeConverter.isLegal(&op.getBody());
         });
 
+        // Propagate the type convertions across call operations.
         populateCallOpTypeConversionPattern(patterns, typeConverter);
         target.addDynamicallyLegalOp<func::CallOp>([&](func::CallOp op) { return typeConverter.isLegal(op); });
 
+        // Propagate the type convertions across return operations.
         populateReturnOpTypeConversionPattern(patterns, typeConverter);
         target.addDynamicallyLegalOp<func::ReturnOp>([&](func::ReturnOp op) { return typeConverter.isLegal(op); });
 
