@@ -39,6 +39,7 @@ fn main() {
 
     // Make the linker aware of the dialect's library dir.
     println!("cargo:rustc-link-arg=-Wl,-rpath,{}", lib_dir.display());
+    println!("cargo:rustc-link-arg=-Wl,-rpath,{}/lib", llvm_prefix);
     println!("cargo:rustc-link-search=native={}", lib_dir.display());
     println!("cargo:rustc-link-lib=dylib=MLIRSymbolicDialect");
     println!("cargo:rustc-link-lib=dylib=MLIRSymbolicTransforms");
