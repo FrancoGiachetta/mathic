@@ -25,11 +25,6 @@ include(AddLLVM)
 include(AddMLIR)
 include(HandleLLVMOptions)
 
-# ── SymEngine ────────────────────────────────────────────────────────────────
-
-find_package(SymEngine REQUIRED)
-message(STATUS "Using SymEngine from ${SYMENGINE_INCLUDE_DIRS}")
-
 # ── Include paths ─────────────────────────────────────────────────────────────
 
 include_directories(${LLVM_INCLUDE_DIRS})

@@ -54,9 +54,6 @@ jobs:
             - name: Install LLVM Dependencies
               run: brew install llvm@21
 
-            - name: Install SymEngine
-              run: brew install symengine
-
             - name: Set LLVM environment
               run: |
                   echo "LLVM_SYS_211_PREFIX=$(brew --prefix llvm@21)" >> $GITHUB_ENV

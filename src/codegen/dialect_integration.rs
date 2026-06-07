@@ -19,42 +19,45 @@ pub mod symbolic {
     use crate::ffi::dialect_integration::symbolic_dialect;
 
     pub mod operation {
-        use melior::{
-            Context,
-            ir::{Location, Operation, operation::OperationBuilder},
-        };
+        use melior::ir::{Location, Operation, operation::OperationBuilder};
 
-        pub fn add<'ctx>(ctx: &'ctx Context, location: Location<'ctx>) -> Operation<'ctx> {
+        #[allow(dead_code)]
+        pub fn add<'ctx>(location: Location<'ctx>) -> Operation<'ctx> {
             OperationBuilder::new("symbolic.add", location)
                 .build()
                 .expect("valid operation")
         }
 
-        pub fn sub<'ctx>(ctx: &'ctx Context, location: Location<'ctx>) -> Operation<'ctx> {
+        #[allow(dead_code)]
+        pub fn sub<'ctx>(location: Location<'ctx>) -> Operation<'ctx> {
             OperationBuilder::new("symbolic.sub", location)
                 .build()
                 .expect("valid operation")
         }
 
-        pub fn mul<'ctx>(ctx: &'ctx Context, location: Location<'ctx>) -> Operation<'ctx> {
+        #[allow(dead_code)]
+        pub fn mul<'ctx>(location: Location<'ctx>) -> Operation<'ctx> {
             OperationBuilder::new("symbolic.mul", location)
                 .build()
                 .expect("valid operation")
         }
 
-        pub fn div<'ctx>(ctx: &'ctx Context, location: Location<'ctx>) -> Operation<'ctx> {
+        #[allow(dead_code)]
+        pub fn div<'ctx>(location: Location<'ctx>) -> Operation<'ctx> {
             OperationBuilder::new("symbolic.div", location)
                 .build()
                 .expect("valid operation")
         }
 
-        pub fn eval<'ctx>(ctx: &'ctx Context, location: Location<'ctx>) -> Operation<'ctx> {
+        #[allow(dead_code)]
+        pub fn eval<'ctx>(location: Location<'ctx>) -> Operation<'ctx> {
             OperationBuilder::new("symbolic.eval", location)
                 .build()
                 .expect("valid operation")
         }
     }
 
+    #[allow(dead_code)]
     pub fn sym_expr_type(registry: DialectRegistry) {
         unsafe {
             symbolic_dialect::getSymExprType(registry.to_raw());

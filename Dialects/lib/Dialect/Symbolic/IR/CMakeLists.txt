@@ -12,5 +12,4 @@ add_mlir_library(MLIRSymbolicDialect
     MLIRIR
     MLIRSupport
     MLIRParser
-    symengine
 )
