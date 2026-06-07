@@ -16,7 +16,6 @@ fn main() {
         .arg(&dialects_root)
         .arg(format!("-DMLIR_DIR={}/lib/cmake/mlir", llvm_prefix))
         .arg(format!("-DLLVM_DIR={}/lib/cmake/llvm", llvm_prefix))
-        .arg("-DBUILD_SHARED_LIBS=ON")
         .arg("-S")
         .arg(&dialects_root)
         .arg("-B")
@@ -42,7 +41,7 @@ fn main() {
     println!("cargo:rustc-link-arg=-Wl,-rpath,{}/lib", llvm_prefix);
 
     #[cfg(target_arch = "aarch64")]
-    println!("cargo:rustc-link-arg=-Wl,-rpath,/opt/homebrew/lib");    
+    println!("cargo:rustc-link-arg=-Wl,-rpath,/opt/homebrew/lib");
 
     println!("cargo:rustc-link-search=native={}", lib_dir.display());
     println!("cargo:rustc-link-lib=dylib=MLIRSymbolicDialect");

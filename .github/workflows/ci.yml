@@ -48,7 +48,6 @@ jobs:
         runs-on: macos-14
         env:
           LIBRARY_PATH: /opt/homebrew/lib
-          MLIR_SYS_LINK_SHARED: "1"
         steps:
             - uses: actions/checkout@v6
 
