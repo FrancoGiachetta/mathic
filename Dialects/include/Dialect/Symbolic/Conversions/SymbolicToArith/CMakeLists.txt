@@ -1,0 +1,6 @@
+set(LLVM_TARGET_DEFINITIONS SymbolicToArith.td)
+mlir_tablegen(SymbolicToArith.h.inc -gen-pass-decls -name SymbolicToArith)
+add_dependencies(mlir-headers MLIRSymbolicDialectIncGen)
+add_dependencies(mlir-headers MLIRSymbolicOpsIncGen)
+add_dependencies(mlir-headers MLIRSymbolicTypesIncGen)
+add_public_tablegen_target(MLIRSymbolicToArithPassIncGen)

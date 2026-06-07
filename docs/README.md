@@ -4,6 +4,7 @@
 |---------|-------------|
 | [Project Structure](#project-structure) | Tree view of the source code organization |
 | [Pipeline](#pipeline) | Visual diagram of the compilation stages |
+| [Dialects](Dialects.md) | The `symbolic` MLIR dialect and its lowering pipeline |
 
 ## Project Structure
 

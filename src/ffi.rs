@@ -29,6 +29,8 @@ use melior::{
 
 use crate::{compiler::OptLvl, diagnostics::CodegenError};
 
+pub mod dialect_integration;
+
 pub fn create_module<'ctx>(
     ctx: &'ctx Context,
     opt_lvl: OptLvl,
@@ -81,6 +83,7 @@ pub fn create_context() -> Result<Context, CodegenError> {
 fn create_dialect_registry() -> DialectRegistry {
     let registry = DialectRegistry::new();
 
+    dialect_integration::symbolic_dialect::register_symbolic_dialect(&registry);
     register_all_dialects(&registry);
 
     registry
