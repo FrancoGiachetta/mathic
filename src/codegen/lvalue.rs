@@ -92,6 +92,7 @@ impl MathicCodeGen<'_> {
 
                 block.store(self.ctx, location, ptr, val)?;
             }
+            LValInstruct::Sym { local_idx, span } => {}
         }
 
         Ok(())

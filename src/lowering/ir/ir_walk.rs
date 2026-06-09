@@ -197,6 +197,9 @@ pub mod instructions {
                 write!(f, "%{}{}", local_idx, modifier_str)?;
                 write_rval_instruct(value, f, indent)
             }
+            LValInstruct::Sym { local_idx, .. } => {
+                write!(f, "{}sym %{};", inner_indent, local_idx)
+            }
         }
     }
 }
@@ -324,6 +327,7 @@ pub mod types {
                 MathicType::Float(ty) => write!(f, "{}", ty),
                 MathicType::Bool => write!(f, "bool"),
                 MathicType::Str => write!(f, "str"),
+                MathicType::SymbolicExpr => write!(f, "sym"),
                 MathicType::Char => write!(f, "char"),
                 MathicType::Void => write!(f, "void"),
                 MathicType::Adt { index, .. } => write!(f, "Adt({index})"),

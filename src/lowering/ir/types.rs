@@ -45,6 +45,7 @@ pub enum MathicType {
     Char,
     Float(FloatTy),
     Str,
+    SymbolicExpr,
     Uint(UintTy),
     Sint(SintTy),
     Void,
@@ -134,10 +135,11 @@ impl MathicType {
             Self::Bool => 1,
             Self::Char => 8,
             Self::Void => 0,
-            Self::Str | Self::Adt { .. } => todo!(),
+            Self::Str | Self::SymbolicExpr | Self::Adt { .. } => todo!(),
         }
     }
 
+    /// Returns the align of a type expressed in bits.
     pub fn align(&self, ir: &Ir, func: &Function) -> usize {
         match self {
             Self::Sint(ty) => match ty {
@@ -163,6 +165,7 @@ impl MathicType {
             Self::Bool => 1,
             Self::Str => 8,
             Self::Char => 8,
+            Self::SymbolicExpr => 64,
             Self::Void => 0,
             Self::Adt { index, is_local } => {
                 let adt_fields_tys: Vec<MathicType> = {

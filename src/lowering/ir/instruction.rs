@@ -24,6 +24,10 @@ pub enum LValInstruct {
         modifier: Vec<ValueModifier>,
         span: Option<Span>,
     },
+    Sym {
+        local_idx: usize,
+        span: Option<Span>,
+    },
 }
 
 #[derive(Debug, Clone)]

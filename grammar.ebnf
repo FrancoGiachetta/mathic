@@ -34,7 +34,7 @@ declaration = func_decl
             ;
 
 var_decl = 'let' IDENT ':' IDENT '=' expr ';' ;
-sym_decl = 'sym' IDENT '=' IDENT ';' ;
+sym_decl = 'sym' IDENT';' ;
 
 
 (* ================================================================ *)

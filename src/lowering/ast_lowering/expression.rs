@@ -489,6 +489,7 @@ fn lower_primary_value(
                     | MathicType::Void
                     | MathicType::Char
                     | MathicType::Str
+                    | MathicType::SymbolicExpr
                     | MathicType::Adt { .. } => {
                         unreachable!()
                     }

@@ -46,9 +46,10 @@ impl<'a> MathicParser<'a> {
                 let span = Span::from_merged_spans(start_span, self.current_span());
                 (StmtKind::Decl(DeclStmt::Struct(struct_decl)), span)
             }
-
             Token::Sym => {
-                todo!()
+                let sym = self.parse_sym_decl()?;
+                let span = Span::from_merged_spans(start_span, self.current_span());
+                (StmtKind::Decl(DeclStmt::Sym(sym)), span)
             }
             Token::Return => {
                 let expr = self.parse_return()?;

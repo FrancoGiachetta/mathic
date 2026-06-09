@@ -14,7 +14,7 @@ pub mod symbolic {
     //     ]
     // }
 
-    use melior::dialect::DialectRegistry;
+    use melior::{Context, ir::Type};
 
     use crate::ffi::dialect_integration::symbolic_dialect;
 
@@ -57,10 +57,7 @@ pub mod symbolic {
         }
     }
 
-    #[allow(dead_code)]
-    pub fn sym_expr_type(registry: DialectRegistry) {
-        unsafe {
-            symbolic_dialect::getSymExprType(registry.to_raw());
-        }
+    pub fn sym_expr_type(ctx: &Context) -> Type<'_> {
+        unsafe { Type::from_raw(symbolic_dialect::getSymExprType(ctx.to_raw())) }
     }
 }

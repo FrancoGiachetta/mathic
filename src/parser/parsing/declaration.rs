@@ -1,7 +1,7 @@
 use crate::parser::{
     MathicParser, ParserResult, Span,
     ast::{
-        declaration::{AstType, FuncDecl, Param, StructDecl, StructField, VarDecl},
+        declaration::{AstType, FuncDecl, Param, StructDecl, StructField, SymDecl, VarDecl},
         statement::BlockStmt,
     },
     token::Token,
@@ -69,6 +69,17 @@ impl<'a> MathicParser<'a> {
         self.consume_token(Token::Semicolon)?;
 
         Ok(VarDecl { name, ty, expr })
+    }
+
+    pub fn parse_sym_decl(&self) -> ParserResult<SymDecl> {
+        self.next()?;
+
+        let ident = self.consume_token(Token::Ident)?;
+        let name = ident.lexeme.to_string();
+
+        self.consume_token(Token::Semicolon)?;
+
+        Ok(SymDecl { name })
     }
 
     pub fn parse_struct(&self) -> ParserResult<StructDecl> {

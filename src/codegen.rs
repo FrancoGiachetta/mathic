@@ -9,7 +9,7 @@ use melior::{
 
 use crate::{
     MathicResult,
-    codegen::compiler_helper::CompilerHelper,
+    codegen::{compiler_helper::CompilerHelper, dialect_integration::symbolic},
     diagnostics::{CodegenError, MathicError},
     lowering::ir::{
         Ir,
@@ -135,6 +135,7 @@ impl<'ctx> MathicCodeGen<'ctx> {
             MathicType::Bool => IntegerType::new(self.ctx, 1).into(),
             MathicType::Char => IntegerType::new(self.ctx, 8).into(),
             MathicType::Str => llvm::r#type::pointer(self.ctx, 0),
+            MathicType::SymbolicExpr => symbolic::sym_expr_type(self.ctx),
             MathicType::Void => Type::none(self.ctx),
             MathicType::Adt { index, is_local } => {
                 let adt = if is_local {
