@@ -2,6 +2,7 @@
 #include "Dialect/Symbolic/IR/SymbolicDialect.h"
 #include "Dialect/Symbolic/IR/SymbolicOps.h"
 #include "Dialect/Symbolic/IR/SymbolicTypes.h"
+#include "llvm/Support/Casting.h"
 #include <llvm/Support/LogicalResult.h>
 #include <mlir/Dialect/Arith/IR/Arith.h>
 #include <mlir/Dialect/Func/IR/FuncOps.h>
@@ -25,7 +26,7 @@ class SymbolicToArithTypeConverter : public TypeConverter
     {
         addConversion([](Type ty) { return ty; });
         /// For now, every !symbolic.expr is converted to float64.
-        addConversion([ctx](SymExprType exprTy) -> Type { return Float64Type::get(ctx); });
+        addConversion([](SymExprType exprTy) -> Type { return exprTy.getInnerType(); });
     }
 };
 
@@ -40,7 +41,7 @@ struct ConvertAdd : public OpConversionPattern<symbolic::AddOp>
     llvm::LogicalResult matchAndRewrite(symbolic::AddOp op, OpAdaptor adaptor,
                                         ConversionPatternRewriter &rewriter) const override
     {
-        arith::AddFOp addOp = rewriter.create<arith::AddFOp>(op.getLoc(), adaptor.getLhs(), adaptor.getRhs());
+        arith::AddIOp addOp = rewriter.create<arith::AddIOp>(op.getLoc(), adaptor.getLhs(), adaptor.getRhs());
 
         rewriter.replaceOp(op.getOperation(), addOp);
 
@@ -59,7 +60,7 @@ struct ConvertSub : public OpConversionPattern<symbolic::SubOp>
     llvm::LogicalResult matchAndRewrite(symbolic::SubOp op, OpAdaptor adaptor,
                                         ConversionPatternRewriter &rewriter) const override
     {
-        arith::SubFOp subOp = rewriter.create<arith::SubFOp>(op.getLoc(), adaptor.getLhs(), adaptor.getRhs());
+        arith::SubIOp subOp = rewriter.create<arith::SubIOp>(op.getLoc(), adaptor.getLhs(), adaptor.getRhs());
 
         rewriter.replaceOp(op.getOperation(), subOp);
 
@@ -78,7 +79,7 @@ struct ConvertMul : public OpConversionPattern<symbolic::MulOp>
     llvm::LogicalResult matchAndRewrite(symbolic::MulOp op, OpAdaptor adaptor,
                                         ConversionPatternRewriter &rewriter) const override
     {
-        arith::MulFOp mulOp = rewriter.create<arith::MulFOp>(op.getLoc(), adaptor.getLhs(), adaptor.getRhs());
+        arith::MulIOp mulOp = rewriter.create<arith::MulIOp>(op.getLoc(), adaptor.getLhs(), adaptor.getRhs());
 
         rewriter.replaceOp(op.getOperation(), mulOp);
 
@@ -97,9 +98,18 @@ struct ConvertDiv : public OpConversionPattern<symbolic::DivOp>
     llvm::LogicalResult matchAndRewrite(symbolic::DivOp op, OpAdaptor adaptor,
                                         ConversionPatternRewriter &rewriter) const override
     {
-        arith::DivFOp divOp = rewriter.create<arith::DivFOp>(op.getLoc(), adaptor.getLhs(), adaptor.getRhs());
+        SymExprType exprTy = llvm::cast<SymExprType>(op.getLhs().getType());
 
-        rewriter.replaceOp(op.getOperation(), divOp);
+        if (exprTy.getIsSigned())
+        {
+            arith::DivSIOp divOp = rewriter.create<arith::DivSIOp>(op.getLoc(), adaptor.getLhs(), adaptor.getRhs());
+            rewriter.replaceOp(op.getOperation(), divOp);
+        }
+        else
+        {
+            arith::DivUIOp divOp = rewriter.create<arith::DivUIOp>(op.getLoc(), adaptor.getLhs(), adaptor.getRhs());
+            rewriter.replaceOp(op.getOperation(), divOp);
+        }
 
         return llvm::success();
     }

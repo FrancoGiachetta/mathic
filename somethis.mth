@@ -1,0 +1,5 @@
+df main() {
+	sym x;
+
+	let y: expr<f64> = x + x;
+}

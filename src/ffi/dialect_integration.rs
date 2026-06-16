@@ -5,7 +5,7 @@ pub mod symbolic_dialect {
     #[link(name = "dialect_bindings")]
     unsafe extern "C" {
         fn registerSymbolicDialect(registry: MlirDialectRegistry);
-        pub fn getSymExprType(ctx: MlirContext) -> MlirType;
+        pub fn getSymExprType(ctx: MlirContext, inner_type: MlirType, is_signed: bool) -> MlirType;
     }
 
     pub fn register_symbolic_dialect(registry: &DialectRegistry) {

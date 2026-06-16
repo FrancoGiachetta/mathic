@@ -14,7 +14,10 @@ pub mod symbolic {
     //     ]
     // }
 
-    use melior::{Context, ir::Type};
+    use melior::{
+        Context,
+        ir::{Type, TypeLike},
+    };
 
     use crate::ffi::dialect_integration::symbolic_dialect;
 
@@ -57,7 +60,17 @@ pub mod symbolic {
         }
     }
 
-    pub fn sym_expr_type(ctx: &Context) -> Type<'_> {
-        unsafe { Type::from_raw(symbolic_dialect::getSymExprType(ctx.to_raw())) }
+    pub fn sym_expr_type<'ctx>(
+        ctx: &'ctx Context,
+        inner_type: Type<'ctx>,
+        is_signed: bool,
+    ) -> Type<'ctx> {
+        unsafe {
+            Type::from_raw(symbolic_dialect::getSymExprType(
+                ctx.to_raw(),
+                inner_type.to_raw(),
+                is_signed,
+            ))
+        }
     }
 }

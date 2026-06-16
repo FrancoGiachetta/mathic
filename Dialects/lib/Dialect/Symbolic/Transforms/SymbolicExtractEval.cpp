@@ -1,5 +1,6 @@
-#include "Dialect/Symbolic/Transforms/SymbolicExtractEval.h"
 #include "Dialect/Symbolic/IR/SymbolicOps.h"
+#include "Dialect/Symbolic/IR/SymbolicTypes.h"
+#include "Dialect/Symbolic/Transforms/SymbolicExtractEval.h"
 #include <cstdint>
 #include <llvm/ADT/Hashing.h>
 #include <llvm/Support/Casting.h>
@@ -154,7 +155,10 @@ struct EvalOpToFuncPattern : public OpRewritePattern<EvalOp>
 
             fnName = SymbolRefAttr::get(op.getContext(), "__eval_op_" + std::to_string(evalOpHash.value()));
 
-            FunctionType fnType = rewriter.getFunctionType(rewriter.getF64Type(), op.getExpr().getType());
+            SymExprType exprTy = llvm::cast<SymExprType>(op.getExpr().getType());
+            Type innerTy = exprTy.getInnerType();
+
+            FunctionType fnType = rewriter.getFunctionType(innerTy, op.getExpr().getType());
             func::FuncOp fnOp = rewriter.create<func::FuncOp>(op.getLoc(), fnName.getLeafReference(), fnType);
 
             fnOp.setPrivate();

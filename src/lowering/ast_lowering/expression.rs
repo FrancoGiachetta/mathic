@@ -7,7 +7,7 @@ use crate::{
         function::{FunctionBuilder, LocalKind},
         instruction::{InitInstruct, LValInstruct, RValInstruct, RValueKind},
         symbols::TypeIndex,
-        types::{FloatTy, MathicType, SintTy, UintTy, lower_inner_ast_type},
+        types::{FloatTy, MathicType, NumericTy, SintTy, UintTy, lower_inner_ast_type},
         value::{ConstExpr, NumericConst, Value, ValueModifier},
     },
     parser::{
@@ -437,7 +437,7 @@ fn lower_primary_value(
         PrimaryExpr::Num(n) => match ty_hint {
             Some(ty) => (
                 Value::Const(match func.get_type(ty, span)? {
-                    MathicType::Uint(uint_ty) => match uint_ty {
+                    MathicType::Numeric(NumericTy::Uint(uint_ty)) => match uint_ty {
                         UintTy::Usize => {
                             ConstExpr::Numeric(NumericConst::Usize(n.parse::<usize>().unwrap()))
                         }
@@ -457,7 +457,7 @@ fn lower_primary_value(
                             ConstExpr::Numeric(NumericConst::U128(n.parse::<u128>().unwrap()))
                         }
                     },
-                    MathicType::Sint(uint_ty) => match uint_ty {
+                    MathicType::Numeric(NumericTy::Sint(sint_ty)) => match sint_ty {
                         SintTy::Isize => {
                             ConstExpr::Numeric(NumericConst::Isize(n.parse::<isize>().unwrap()))
                         }
@@ -477,7 +477,7 @@ fn lower_primary_value(
                             ConstExpr::Numeric(NumericConst::I128(n.parse::<i128>().unwrap()))
                         }
                     },
-                    MathicType::Float(float_ty) => match float_ty {
+                    MathicType::Numeric(NumericTy::Float(float_ty)) => match float_ty {
                         FloatTy::F32 => {
                             ConstExpr::Numeric(NumericConst::F32(n.parse::<f32>().unwrap()))
                         }
@@ -489,7 +489,7 @@ fn lower_primary_value(
                     | MathicType::Void
                     | MathicType::Char
                     | MathicType::Str
-                    | MathicType::SymbolicExpr
+                    | MathicType::SymbolicExpr(_)
                     | MathicType::Adt { .. } => {
                         unreachable!()
                     }
@@ -500,7 +500,7 @@ fn lower_primary_value(
                 Value::Const(ConstExpr::Numeric(NumericConst::I32(
                     n.parse::<i32>().unwrap(),
                 ))),
-                func.get_or_insert_global_type_idx(MathicType::Sint(SintTy::I32)),
+                func.get_or_insert_global_type_idx(MathicType::Numeric(NumericTy::Sint(SintTy::I32))),
             ),
         },
         PrimaryExpr::Bool(b) => (
@@ -542,7 +542,7 @@ fn lower_expression_type(
             PrimaryExpr::Ident(name) => func.sym_table.get_local_from_name(name, span)?.ty,
             PrimaryExpr::Num(_) => match ty_hint {
                 Some(ty) => ty,
-                None => func.get_or_insert_global_type_idx(MathicType::Sint(SintTy::I32)),
+                None => func.get_or_insert_global_type_idx(MathicType::Numeric(NumericTy::Sint(SintTy::I32))),
             },
             PrimaryExpr::Str(_) => func.get_or_insert_global_type_idx(MathicType::Str),
             PrimaryExpr::Char(_) => func.get_or_insert_global_type_idx(MathicType::Char),

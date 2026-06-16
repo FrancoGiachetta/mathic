@@ -282,7 +282,7 @@ pub mod basic_block {
 pub mod types {
     use std::fmt;
 
-    use crate::lowering::ir::types::{FloatTy, MathicType, SintTy, UintTy};
+    use crate::lowering::ir::types::{FloatTy, MathicType, NumericTy, SintTy, UintTy};
 
     impl fmt::Display for UintTy {
         fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
@@ -319,15 +319,23 @@ pub mod types {
         }
     }
 
+    impl fmt::Display for NumericTy {
+        fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+            match self {
+                NumericTy::Uint(ty) => write!(f, "{ty}"),
+                NumericTy::Sint(ty) => write!(f, "{ty}"),
+                NumericTy::Float(ty) => write!(f, "{ty}"),
+            }
+        }
+    }
+
     impl fmt::Display for MathicType {
         fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
             match self {
-                MathicType::Uint(ty) => write!(f, "{}", ty),
-                MathicType::Sint(ty) => write!(f, "{}", ty),
-                MathicType::Float(ty) => write!(f, "{}", ty),
+                MathicType::Numeric(ty) => write!(f, "{ty}"),
                 MathicType::Bool => write!(f, "bool"),
                 MathicType::Str => write!(f, "str"),
-                MathicType::SymbolicExpr => write!(f, "sym"),
+                MathicType::SymbolicExpr(inner_ty) => write!(f, "expr<{inner_ty}>"),
                 MathicType::Char => write!(f, "char"),
                 MathicType::Void => write!(f, "void"),
                 MathicType::Adt { index, .. } => write!(f, "Adt({index})"),
