@@ -500,7 +500,9 @@ fn lower_primary_value(
                 Value::Const(ConstExpr::Numeric(NumericConst::I32(
                     n.parse::<i32>().unwrap(),
                 ))),
-                func.get_or_insert_global_type_idx(MathicType::Numeric(NumericTy::Sint(SintTy::I32))),
+                func.get_or_insert_global_type_idx(MathicType::Numeric(NumericTy::Sint(
+                    SintTy::I32,
+                ))),
             ),
         },
         PrimaryExpr::Bool(b) => (
@@ -542,7 +544,9 @@ fn lower_expression_type(
             PrimaryExpr::Ident(name) => func.sym_table.get_local_from_name(name, span)?.ty,
             PrimaryExpr::Num(_) => match ty_hint {
                 Some(ty) => ty,
-                None => func.get_or_insert_global_type_idx(MathicType::Numeric(NumericTy::Sint(SintTy::I32))),
+                None => func.get_or_insert_global_type_idx(MathicType::Numeric(NumericTy::Sint(
+                    SintTy::I32,
+                ))),
             },
             PrimaryExpr::Str(_) => func.get_or_insert_global_type_idx(MathicType::Str),
             PrimaryExpr::Char(_) => func.get_or_insert_global_type_idx(MathicType::Char),

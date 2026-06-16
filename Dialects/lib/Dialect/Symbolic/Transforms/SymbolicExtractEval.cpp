@@ -1,6 +1,6 @@
+#include "Dialect/Symbolic/Transforms/SymbolicExtractEval.h"
 #include "Dialect/Symbolic/IR/SymbolicOps.h"
 #include "Dialect/Symbolic/IR/SymbolicTypes.h"
-#include "Dialect/Symbolic/Transforms/SymbolicExtractEval.h"
 #include <cstdint>
 #include <llvm/ADT/Hashing.h>
 #include <llvm/Support/Casting.h>
