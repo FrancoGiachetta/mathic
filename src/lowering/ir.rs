@@ -4,7 +4,7 @@ use crate::{
         adts::Adt,
         function::Function,
         symbols::{DeclTable, SymbolTableBuilder, TypeIndex},
-        types::MathicType,
+        types::{FloatTy, MathicType, NumericTy, SintTy, UintTy},
     },
     parser::Span,
 };

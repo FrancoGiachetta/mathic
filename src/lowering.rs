@@ -132,8 +132,8 @@ pub fn lower_top_level_ast_type(
     span: Span,
 ) -> Result<TypeIndex, LoweringError> {
     Ok(match ty {
-        AstType::Type(name) => {
-            match name.as_str() {
+        AstType::Type { ty, inner } => {
+            match ty.as_str() {
                 "isz" => ir_builder
                     .get_or_insert_type_idx(MathicType::Numeric(NumericTy::Sint(SintTy::Isize))),
                 "i8" => ir_builder
@@ -161,6 +161,24 @@ pub fn lower_top_level_ast_type(
                 "str" => ir_builder.get_or_insert_type_idx(MathicType::Str),
                 "char" => ir_builder.get_or_insert_type_idx(MathicType::Char),
                 "bool" => ir_builder.get_or_insert_type_idx(MathicType::Bool),
+                "expr" => {
+                    let Some(inner_ty) = inner else { panic!() };
+                    let inner_ty_idx = lower_top_level_ast_type(ir_builder, inner_ty, span)?;
+                    let inner_ty = ir_builder.get_type(inner_ty_idx, span)?;
+
+                    match inner_ty {
+                        MathicType::Numeric(num_ty) => {
+                            ir_builder.get_or_insert_type_idx(MathicType::SymbolicExpr(num_ty))
+                        }
+                        other => {
+                            return Err(LoweringError::MismatchedType {
+                                expected: other,
+                                found: other,
+                                span,
+                            });
+                        }
+                    }
+                }
                 other => {
                     if let Some(ty) = ir_builder.get_user_def_type(other) {
                         return Ok(ty);

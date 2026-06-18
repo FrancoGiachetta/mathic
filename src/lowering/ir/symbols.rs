@@ -114,6 +114,10 @@ impl SymbolTableBuilder {
         self.types.get(idx)
     }
 
+    pub fn insert_type(&mut self, ty: MathicType) {
+        self.types.insert(ty);
+    }
+
     pub fn get_or_insert_type(&mut self, ty: MathicType, is_local: bool) -> TypeIndex {
         self.get_type_index(ty, is_local)
             .unwrap_or_else(|| TypeIndex {

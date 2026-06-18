@@ -19,7 +19,7 @@
 program = top_decl { top_decl } ;
 
 top_decl    = func_decl | struct_decl ;
-func_decl   = 'df' IDENT '(' [ param_list ] ')' [ IDENT ] block ;
+func_decl   = 'df' IDENT '(' [ param_list ] ')' [ type ] block ;
 struct_decl = 'struct' IDENT '{' [ struct_fields ] '}' ;
 
 
@@ -97,9 +97,10 @@ primary     = 'true' | 'false' | IDENT | INT | FLOAT | STRING | '(' expr ')' ;
 (* Utilities                                                        *)
 (* ================================================================ *)
 
-param_list    = ( IDENT ':' IDENT ) { ',' ( IDENT ':' IDENT ) } ;
-struct_fields = [ 'pub' ] IDENT ':' IDENT { ',' [ 'pub' ] IDENT ':' IDENT } ;
+param_list    = ( IDENT ':' type ) { ',' ( IDENT ':' type ) } ;
+struct_fields = [ 'pub' ] IDENT ':' type { ',' [ 'pub' ] IDENT ':' type } ;
 arg_list      = expr { ',' expr } ;
+type = IDENT { '<' IDENT '>' }
 
 (* ---- Terminal token classes ---- *)
 (* IDENT    : [a-zA-Z_][a-zA-Z0-9_]*                                *)

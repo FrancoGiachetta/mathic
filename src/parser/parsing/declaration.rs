@@ -11,7 +11,18 @@ impl<'a> MathicParser<'a> {
     pub fn parse_type(&self) -> ParserResult<AstType> {
         let ident = self.consume_token(Token::Ident)?;
 
-        let ty = AstType::Type(ident.lexeme.to_string());
+        let ty = AstType::Type {
+            ty: ident.lexeme.to_string(),
+            inner: if self.match_token(Token::Less)?.is_some() {
+                let inner = self.parse_type()?;
+
+                self.consume_token(Token::Greater)?;
+
+                Some(Box::new(inner))
+            } else {
+                None
+            },
+        };
 
         Ok(ty)
     }

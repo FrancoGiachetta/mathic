@@ -59,5 +59,8 @@ pub struct Param {
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum AstType {
-    Type(String),
+    Type {
+        ty: String,
+        inner: Option<Box<AstType>>,
+    },
 }

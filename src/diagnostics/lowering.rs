@@ -49,6 +49,9 @@ pub enum LoweringError {
 
     #[error("the struct initialization is missing some fields")]
     MissingStructFields { missing: String, span: Span },
+
+    #[error("Type '{name}' requires a type parameter")]
+    TypeRequiresTypeParameter { name: String, span: Span },
 }
 
 pub fn format_lowering_error<'err>(
@@ -106,6 +109,11 @@ pub fn format_lowering_error<'err>(
         LoweringError::MissingStructFields { missing, span } => (
             "S010",
             format!("initialize the missing fields: {missing}"),
+            span,
+        ),
+        LoweringError::TypeRequiresTypeParameter { name, span } => (
+            "S011",
+            format!("provide a type parameter if '{0}' requires one, otherwise remove the angle brackets", name),
             span,
         ),
     };
