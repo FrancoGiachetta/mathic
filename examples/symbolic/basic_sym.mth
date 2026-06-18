@@ -1,0 +1,11 @@
+df main() i32 {
+    sym x: expr<i32>;
+    sym y: expr<i32>;
+
+    let sum: expr<i32> = x + y;
+    let product: expr<i32> = x * y;
+    let diff: expr<i32> = x - y;
+    let quot: expr<i32> = x / y;
+
+    return 0;
+}

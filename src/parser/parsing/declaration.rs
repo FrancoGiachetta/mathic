@@ -88,9 +88,13 @@ impl<'a> MathicParser<'a> {
         let ident = self.consume_token(Token::Ident)?;
         let name = ident.lexeme.to_string();
 
+        self.consume_token(Token::Colon)?;
+
+        let ty = self.parse_type()?;
+
         self.consume_token(Token::Semicolon)?;
 
-        Ok(SymDecl { name })
+        Ok(SymDecl { name, ty })
     }
 
     pub fn parse_struct(&self) -> ParserResult<StructDecl> {

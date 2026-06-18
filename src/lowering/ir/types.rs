@@ -93,7 +93,7 @@ pub fn lower_inner_ast_type(
             "expr" => {
                 let Some(inner_ty) = inner else {
                     return Err(LoweringError::TypeRequiresTypeParameter {
-                        name: "expr".into(),
+                        name: ty.clone(),
                         span,
                     });
                 };

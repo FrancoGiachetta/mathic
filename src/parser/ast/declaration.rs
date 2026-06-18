@@ -24,6 +24,7 @@ pub struct VarDecl {
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct SymDecl {
     pub name: String,
+    pub ty: AstType,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
