@@ -182,18 +182,32 @@ fn lower_binary_op(
         });
     }
 
+    let ty = func.get_type(lhs_ty_idx, span)?;
+
     let inst_ty_idx = match op {
         BinaryOp::Compare(_) => func.get_or_insert_global_type_idx(MathicType::Bool),
         BinaryOp::Arithmetic(_) => lhs_ty_idx,
     };
 
-    Ok(RValInstruct {
-        kind: RValueKind::Binary {
+    let kind = match op {
+        BinaryOp::Arithmetic(arith) if matches!(ty, MathicType::SymbolicExpr(_)) => {
+            RValueKind::SymbolicBinary {
+                op: arith,
+                lhs: Box::new(lhs),
+                rhs: Box::new(rhs),
+                span,
+            }
+        }
+        _ => RValueKind::Binary {
             op,
             lhs: Box::new(lhs),
             rhs: Box::new(rhs),
             span,
         },
+    };
+
+    Ok(RValInstruct {
+        kind,
         ty: inst_ty_idx,
     })
 }
@@ -426,13 +440,19 @@ fn lower_primary_value(
     let (value, ty) = match expr {
         PrimaryExpr::Ident(name) => {
             let local = func.sym_table.get_local_from_name(name, span)?;
-            (
+            let local_ty = func.get_type(local.ty, span)?;
+            // Use Symbol variant for symbolic expressions (SSA, no memory).
+            let value = if matches!(local_ty, MathicType::SymbolicExpr(_)) {
+                Value::Symbol {
+                    local_idx: local.local_idx,
+                }
+            } else {
                 Value::InMemory {
                     local_idx: local.local_idx,
                     modifier: vec![],
-                },
-                local.ty,
-            )
+                }
+            };
+            (value, local.ty)
         }
         PrimaryExpr::Num(n) => match ty_hint {
             Some(ty) => (

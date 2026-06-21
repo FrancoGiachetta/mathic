@@ -53,6 +53,7 @@ pub mod value {
 
                     write!(f, "%{}{}", local_idx, modifier_str)
                 }
+                Self::Symbol { local_idx } => write!(f, "sym%{}", local_idx),
                 Self::Const(c) => write!(f, "{}", c),
             }
         }
@@ -143,6 +144,9 @@ pub mod instructions {
                 write!(f, "{}}}", indent)
             }
             RValueKind::Binary { op, lhs, rhs, .. } => write!(f, "{} {} {}", lhs, op, rhs),
+            RValueKind::SymbolicBinary { op, lhs, rhs, .. } => {
+                write!(f, "{} {} {}", lhs, BinaryOp::Arithmetic(*op), rhs)
+            }
             RValueKind::Unary { op, rhs, .. } => write!(f, "{}{}", op, rhs),
             RValueKind::Logical { op, lhs, rhs, .. } => write!(f, "{} {} {}", lhs, op, rhs),
         }

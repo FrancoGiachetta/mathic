@@ -113,7 +113,10 @@ pub fn format_lowering_error<'err>(
         ),
         LoweringError::TypeRequiresTypeParameter { name, span } => (
             "S011",
-            format!("provide a type parameter if '{0}' requires one, otherwise remove the angle brackets", name),
+            format!(
+                "provide a type parameter if '{0}' requires one, otherwise remove the angle brackets",
+                name
+            ),
             span,
         ),
     };

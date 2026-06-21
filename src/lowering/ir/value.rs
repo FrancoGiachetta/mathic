@@ -6,6 +6,10 @@ pub enum Value {
         modifier: Vec<ValueModifier>,
     },
 
+    Symbol {
+        local_idx: usize,
+    },
+
     // Holds the value as-is
     Const(ConstExpr),
 }

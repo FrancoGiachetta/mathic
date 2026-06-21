@@ -5,7 +5,10 @@ use melior::{
 };
 
 use crate::{
-    codegen::{MathicCodeGen, compiler_helper::CompilerHelper, function_ctx::FunctionCtx},
+    codegen::{
+        MathicCodeGen, compiler_helper::CompilerHelper, dialect_integration::symbolic,
+        function_ctx::FunctionCtx,
+    },
     diagnostics::CodegenError,
     lowering::ir::{
         adts::Adt,
@@ -36,6 +39,8 @@ impl MathicCodeGen<'_> {
             RValueKind::Binary {
                 op, lhs, rhs, span, ..
             } => self.compile_binop(fn_ctx, block, lhs, *op, rhs, *span, helper),
+            RValueKind::SymbolicBinary { op, lhs, rhs, span } =>
+                self.compile_symbolic_binop(fn_ctx, block, lhs, *op, rhs, *span, helper),
             RValueKind::Unary { op, rhs, span, .. } => {
                 self.compile_unary(fn_ctx, block, *op, rhs, *span, helper)
             }
@@ -181,10 +186,38 @@ impl MathicCodeGen<'_> {
                         block.divui(lhs_val, rhs_val, location)?
                     }
                 }
-
                 ArithOp::Mod => todo!(),
             },
         })
+    }
+
+    fn compile_symbolic_binop<'ctx, 'func>(
+        &'func self,
+        fn_ctx: &mut FunctionCtx<'ctx, 'func>,
+        block: &'func Block<'ctx>,
+        lhs: &RValInstruct,
+        op: ArithOp,
+        rhs: &RValInstruct,
+        span: Span,
+        helper: &mut CompilerHelper,
+    ) -> Result<Value<'ctx, 'func>, CodegenError>
+    where
+        'func: 'ctx,
+    {
+        let location = self.get_location(Some(span))?;
+
+        let lhs_val = self.compile_rvalue(fn_ctx, block, lhs, helper)?;
+        let rhs_val = self.compile_rvalue(fn_ctx, block, rhs, helper)?;
+
+        let op = match op {
+            ArithOp::Add => symbolic::operation::add(location, lhs_val, rhs_val),
+            ArithOp::Sub => symbolic::operation::sub(location, lhs_val, rhs_val),
+            ArithOp::Mul => symbolic::operation::mul(location, lhs_val, rhs_val),
+            ArithOp::Div => symbolic::operation::div(location, lhs_val, rhs_val),
+            ArithOp::Mod => todo!(),
+        };
+
+        Ok(block.append_op_result(op)?)
     }
 
     fn compile_unary<'func, 'ctx>(
@@ -228,11 +261,16 @@ impl MathicCodeGen<'_> {
         let location = self.get_location(None)?;
 
         Ok(match value {
+            IRValue::Symbol { local_idx } => fn_ctx
+                .get_sym_expr(*local_idx)
+                .expect(&format!("Invalid local symbol idx: {}", local_idx)),
             IRValue::InMemory {
                 local_idx,
                 modifier,
             } => {
-                let (ptr, mut ty_idx) = fn_ctx.get_local(*local_idx).expect("Invalid local idx");
+                let (ptr, mut ty_idx) = fn_ctx
+                    .get_local(*local_idx)
+                    .expect(&format!("Invalid local idx: {}", local_idx));
 
                 let mut val = block.load(
                     self.ctx,

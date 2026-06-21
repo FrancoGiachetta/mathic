@@ -5,7 +5,10 @@ use melior::{
 };
 
 use crate::{
-    codegen::{MathicCodeGen, compiler_helper::CompilerHelper, function_ctx::FunctionCtx},
+    codegen::{
+        MathicCodeGen, compiler_helper::CompilerHelper, dialect_integration::symbolic,
+        function_ctx::FunctionCtx,
+    },
     diagnostics::CodegenError,
     lowering::ir::{
         adts::Adt, basic_block::Terminator, instruction::LValInstruct, types::MathicType,
@@ -33,8 +36,15 @@ impl MathicCodeGen<'_> {
                 let location = self.get_location(*span)?;
 
                 let init_val = self.compile_rvalue(fn_ctx, block, init, helper)?;
-                let init_mlir_ty = self.get_compiled_type(fn_ctx.get_ir_func(), init.ty)?;
                 let init_ty = self.get_type(fn_ctx.get_ir_func(), init.ty)?;
+
+                // Symbolic expressions are SSA values, no alloca/store.
+                if matches!(init_ty, MathicType::SymbolicExpr(_)) {
+                    fn_ctx.define_sym_expr(init_val);
+                    return Ok(());
+                }
+
+                let init_mlir_ty = self.get_compiled_type(fn_ctx.get_ir_func(), init.ty)?;
                 let ptr = block.alloca1(
                     self.ctx,
                     location,
@@ -55,6 +65,14 @@ impl MathicCodeGen<'_> {
                 let location = self.get_location(*span)?;
 
                 let val = self.compile_rvalue(fn_ctx, block, value, helper)?;
+                let val_ty = self.get_type(fn_ctx.get_ir_func(), value.ty)?;
+
+                // Symbolic expressions are SSA values, no alloca/store.
+                if matches!(val_ty, MathicType::SymbolicExpr(_)) {
+                    fn_ctx.assign_sym_expr(*local_idx, val);
+                    return Ok(());
+                }
+
                 let (mut ptr, mut ty_idx) =
                     fn_ctx.get_local(*local_idx).expect("invalid local idx");
 
@@ -92,7 +110,24 @@ impl MathicCodeGen<'_> {
 
                 block.store(self.ctx, location, ptr, val)?;
             }
-            LValInstruct::Sym { local_idx, span } => {}
+            LValInstruct::Sym {
+                local_idx: _,
+                sym_name,
+                ty,
+                span,
+            } => {
+                let func_ir = fn_ctx.get_ir_func();
+                let location = self.get_location(*span)?;
+
+                let sym = block.append_op_result(symbolic::operation::sym(
+                    self.ctx,
+                    location,
+                    sym_name,
+                    self.get_compiled_type(func_ir, *ty)?,
+                ))?;
+
+                fn_ctx.define_sym_expr(sym);
+            }
         }
 
         Ok(())

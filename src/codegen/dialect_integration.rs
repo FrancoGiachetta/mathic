@@ -22,39 +22,102 @@ pub mod symbolic {
     use crate::ffi::dialect_integration::symbolic_dialect;
 
     pub mod operation {
-        use melior::ir::{Location, Operation, operation::OperationBuilder};
+        use melior::{
+            Context,
+            ir::{
+                Identifier, Location, Operation, Type, Value, ValueLike,
+                attribute::StringAttribute, operation::OperationBuilder,
+            },
+        };
+
+        pub fn sym<'ctx>(
+            ctx: &'ctx Context,
+            location: Location<'ctx>,
+            name: &str,
+            result_type: Type<'ctx>,
+        ) -> Operation<'ctx> {
+            OperationBuilder::new("symbolic.sym", location)
+                .add_attributes(&[(
+                    Identifier::new(ctx, "name"),
+                    StringAttribute::new(ctx, name).into(),
+                )])
+                .add_results(&[result_type])
+                .build()
+                .expect("valid operation")
+        }
 
         #[allow(dead_code)]
-        pub fn add<'ctx>(location: Location<'ctx>) -> Operation<'ctx> {
+        pub fn add<'ctx>(
+            location: Location<'ctx>,
+            lhs: Value<'ctx, '_>,
+            rhs: Value<'ctx, '_>,
+        ) -> Operation<'ctx> {
+            let result_type = lhs.r#type();
             OperationBuilder::new("symbolic.add", location)
+                .add_operands(&[lhs, rhs])
+                .add_results(&[result_type])
                 .build()
                 .expect("valid operation")
         }
 
         #[allow(dead_code)]
-        pub fn sub<'ctx>(location: Location<'ctx>) -> Operation<'ctx> {
+        pub fn sub<'ctx>(
+            location: Location<'ctx>,
+            lhs: Value<'ctx, '_>,
+            rhs: Value<'ctx, '_>,
+        ) -> Operation<'ctx> {
+            let result_type = lhs.r#type();
             OperationBuilder::new("symbolic.sub", location)
+                .add_operands(&[lhs, rhs])
+                .add_results(&[result_type])
                 .build()
                 .expect("valid operation")
         }
 
         #[allow(dead_code)]
-        pub fn mul<'ctx>(location: Location<'ctx>) -> Operation<'ctx> {
+        pub fn mul<'ctx>(
+            location: Location<'ctx>,
+            lhs: Value<'ctx, '_>,
+            rhs: Value<'ctx, '_>,
+        ) -> Operation<'ctx> {
+            let result_type = lhs.r#type();
             OperationBuilder::new("symbolic.mul", location)
+                .add_operands(&[lhs, rhs])
+                .add_results(&[result_type])
                 .build()
                 .expect("valid operation")
         }
 
         #[allow(dead_code)]
-        pub fn div<'ctx>(location: Location<'ctx>) -> Operation<'ctx> {
+        pub fn div<'ctx>(
+            location: Location<'ctx>,
+            lhs: Value<'ctx, '_>,
+            rhs: Value<'ctx, '_>,
+        ) -> Operation<'ctx> {
+            let result_type = lhs.r#type();
             OperationBuilder::new("symbolic.div", location)
+                .add_operands(&[lhs, rhs])
+                .add_results(&[result_type])
                 .build()
                 .expect("valid operation")
         }
 
         #[allow(dead_code)]
-        pub fn eval<'ctx>(location: Location<'ctx>) -> Operation<'ctx> {
+        pub fn eval<'ctx>(
+            ctx: &'ctx Context,
+            location: Location<'ctx>,
+            expr: Value<'ctx, '_>,
+            sym_name: &str,
+            value: Value<'ctx, '_>,
+        ) -> Operation<'ctx> {
+            let result_type = value.r#type();
             OperationBuilder::new("symbolic.eval", location)
+                .add_operands(&[expr, value])
+                .add_attributes(&[(
+                    Identifier::new(ctx, "sym"),
+                    StringAttribute::new(ctx, sym_name).into(),
+                )])
+                .add_results(&[result_type])
                 .build()
                 .expect("valid operation")
         }

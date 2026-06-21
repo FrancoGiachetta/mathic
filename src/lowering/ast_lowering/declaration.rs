@@ -6,7 +6,7 @@ use crate::{
             adts::{Adt, StructAdt, StructField},
             function::{FunctionBuilder, LocalKind},
             instruction::LValInstruct,
-            types::{MathicType, NumericTy, SintTy, lower_inner_ast_type},
+            types::{MathicType, lower_inner_ast_type},
         },
     },
     parser::{
@@ -60,17 +60,18 @@ pub fn lower_sym_decl(
     sym_decl: &SymDecl,
     span: Span,
 ) -> Result<(), LoweringError> {
-    let sym_ty_idx = lower_inner_ast_type(func, &sym_decl.ty, span)?;
+    let SymDecl { name, ty } = sym_decl;
 
-    let local_idx = func.sym_table.add_local(
-        Some(sym_decl.name.clone()),
-        sym_ty_idx,
-        Some(span),
-        LocalKind::Temp,
-    )?;
+    let sym_ty_idx = lower_inner_ast_type(func, ty, span)?;
+
+    let local_idx =
+        func.sym_table
+            .add_local(Some(name.clone()), sym_ty_idx, Some(span), LocalKind::Sym)?;
 
     func.push_instruction(LValInstruct::Sym {
         local_idx,
+        sym_name: name.clone(),
+        ty: sym_ty_idx,
         span: Some(span),
     });
 
