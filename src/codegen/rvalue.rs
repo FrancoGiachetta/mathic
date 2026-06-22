@@ -39,8 +39,9 @@ impl MathicCodeGen<'_> {
             RValueKind::Binary {
                 op, lhs, rhs, span, ..
             } => self.compile_binop(fn_ctx, block, lhs, *op, rhs, *span, helper),
-            RValueKind::SymbolicBinary { op, lhs, rhs, span } =>
-                self.compile_symbolic_binop(fn_ctx, block, lhs, *op, rhs, *span, helper),
+            RValueKind::SymbolicBinary { op, lhs, rhs, span } => {
+                self.compile_symbolic_binop(fn_ctx, block, lhs, *op, rhs, *span, helper)
+            }
             RValueKind::Unary { op, rhs, span, .. } => {
                 self.compile_unary(fn_ctx, block, *op, rhs, *span, helper)
             }
