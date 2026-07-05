@@ -10,3 +10,5 @@ env.sh
 
 **/*.mathir
 **/*.o
+# Only at root level.
+*.mlir

@@ -16,7 +16,13 @@ use crate::{
     MathicResult,
     codegen::{MathicCodeGen, compiler_helper::CompilerHelper},
     diagnostics::{self, CodegenError},
-    ffi, lowering,
+    ffi::{
+        self,
+        dialect_integration::symbolic_dialect::{
+            create_symbolic_extract_eval, create_symbolic_to_arith,
+        },
+    },
+    lowering,
     parser::MathicParser,
 };
 
@@ -144,9 +150,11 @@ impl MathicCompiler {
         let pass_manager = PassManager::new(ctx);
 
         pass_manager.enable_verifier(true);
-        pass_manager.add_pass(create_canonicalizer());
+        // pass_manager.add_pass(create_canonicalizer());
         pass_manager.add_pass(create_scf_to_control_flow()); // needed because to_llvm doesn't include it.
-        pass_manager.add_pass(create_to_llvm());
+        pass_manager.add_pass(create_symbolic_extract_eval());
+        pass_manager.add_pass(create_symbolic_to_arith());
+        // pass_manager.add_pass(create_to_llvm());
 
         pass_manager.run(module)?;
 
