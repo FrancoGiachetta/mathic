@@ -262,9 +262,12 @@ impl MathicCodeGen<'_> {
         let location = self.get_location(None)?;
 
         Ok(match value {
-            IRValue::Symbol { local_idx } => fn_ctx
-                .get_sym_expr(*local_idx)
-                .expect(&format!("Invalid local symbol idx: {}", local_idx)),
+            IRValue::Symbol { local_idx } => {
+                let (v, _) = fn_ctx
+                    .get_local(*local_idx)
+                    .expect(&format!("Invalid local idx: {}", local_idx));
+                v
+            }
             IRValue::InMemory {
                 local_idx,
                 modifier,

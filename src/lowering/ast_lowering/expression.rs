@@ -200,7 +200,7 @@ fn lower_eval_builtin(
                 .sym_table
                 .get_local_from_name(name, func_args[1].span)?;
             let local_ty = func.get_type(local.ty, func_args[1].span)?;
-            if !matches!(local_ty, MathicType::SymbolicExpr(_)) {
+            if !local_ty.is_symbolic() {
                 return Err(LoweringError::MismatchedType {
                     expected: expr_mty,
                     found: local_ty,
@@ -289,7 +289,7 @@ fn lower_binary_op(
     };
 
     let kind = match op {
-        BinaryOp::Arithmetic(arith) if matches!(ty, MathicType::SymbolicExpr(_)) => {
+        BinaryOp::Arithmetic(arith) if ty.is_symbolic() => {
             RValueKind::SymbolicBinary {
                 op: arith,
                 lhs: Box::new(lhs),
@@ -541,7 +541,7 @@ fn lower_primary_value(
             let local = func.sym_table.get_local_from_name(name, span)?;
             let local_ty = func.get_type(local.ty, span)?;
             // Use Symbol variant for symbolic expressions (SSA, no memory).
-            let value = if matches!(local_ty, MathicType::SymbolicExpr(_)) {
+            let value = if local_ty.is_symbolic() {
                 Value::Symbol {
                     local_idx: local.local_idx,
                 }

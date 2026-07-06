@@ -22,13 +22,12 @@ use crate::{
 ///
 /// ## Fields
 ///
-/// **locals**: alloca-backed variables defined within the function context.
-/// **sym_exprs**: SSA values of symbolic expressions (no alloca/store).
+/// **locals**: variables defined within the function context. Stores either
+/// symbols or pointers to stack allocated variables.
 /// **mlir_blocks**: the MLIR Blocks that the function will use.
 #[derive(Debug)]
 pub struct FunctionCtx<'ctx, 'this> {
     locals: Vec<(MlirValue, TypeIndex)>,
-    sym_exprs: Vec<MlirValue>,
     mlir_blocks: &'this [BlockRef<'ctx, 'this>],
     ir_func: &'this Function,
 }
@@ -37,7 +36,6 @@ impl<'ctx, 'this> FunctionCtx<'ctx, 'this> {
     pub fn new(mlir_blocks: &'this [BlockRef<'ctx, 'this>], ir_func: &'this Function) -> Self {
         Self {
             locals: Vec::new(),
-            sym_exprs: Vec::new(),
             mlir_blocks,
             ir_func,
         }
@@ -47,34 +45,17 @@ impl<'ctx, 'this> FunctionCtx<'ctx, 'this> {
         self.locals.push((value.to_raw(), ty));
     }
 
-    pub fn get_local(&self, idx: usize) -> Option<(Value<'ctx, '_>, TypeIndex)> {
+    pub fn assign_local(&mut self, idx: usize, value: Value<'ctx, '_>) {
+        if let Some(entry) = self.locals.get_mut(idx) {
+            *entry = (value.to_raw(), entry.1);
+        }
+    }
+
+    pub fn get_local(&self, idx: usize) -> Option<(Value<'ctx, 'this>, TypeIndex)> {
         self.locals
             .get(idx)
             .copied()
             .map(|(v, t)| (unsafe { Value::from_raw(v) }, t))
-    }
-
-    /// Push a new symbolic expression SSA value (first definition).
-    pub fn define_sym_expr(&mut self, value: Value) {
-        self.sym_exprs.push(value.to_raw());
-    }
-
-    /// Replace an existing symbolic expression SSA value (reassignment).
-    pub fn assign_sym_expr(&mut self, idx: usize, value: Value<'ctx, '_>) {
-        if let Some(entry) = self.sym_exprs.get_mut(idx) {
-            *entry = value.to_raw();
-        }
-    }
-
-    /// Retrieve a symbolic expression SSA value by local index.
-    pub fn get_sym_expr<'func>(&self, idx: usize) -> Option<Value<'ctx, 'func>>
-    where
-        'func: 'ctx,
-    {
-        self.sym_exprs
-            .get(idx)
-            .copied()
-            .map(|v| unsafe { Value::from_raw(v) })
     }
 
     pub fn get_block(&self, idx: usize) -> BlockRef<'_, '_> {

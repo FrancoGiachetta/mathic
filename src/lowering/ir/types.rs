@@ -267,4 +267,9 @@ impl MathicType {
     pub fn is_bool(&self) -> bool {
         matches!(self, Self::Bool)
     }
+
+    #[inline(always)]
+    pub fn is_symbolic(&self) -> bool {
+        matches!(self, Self::SymbolicExpr(_))
+    }
 }

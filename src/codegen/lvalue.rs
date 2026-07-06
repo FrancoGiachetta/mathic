@@ -38,9 +38,8 @@ impl MathicCodeGen<'_> {
                 let init_val = self.compile_rvalue(fn_ctx, block, init, helper)?;
                 let init_ty = self.get_type(fn_ctx.get_ir_func(), init.ty)?;
 
-                // Symbolic expressions are SSA values, no alloca/store.
-                if matches!(init_ty, MathicType::SymbolicExpr(_)) {
-                    fn_ctx.define_sym_expr(init_val);
+                if init_ty.is_symbolic() {
+                    fn_ctx.define_local(init_val, init.ty);
                     return Ok(());
                 }
 
@@ -67,9 +66,8 @@ impl MathicCodeGen<'_> {
                 let val = self.compile_rvalue(fn_ctx, block, value, helper)?;
                 let val_ty = self.get_type(fn_ctx.get_ir_func(), value.ty)?;
 
-                // Symbolic expressions are SSA values, no alloca/store.
-                if matches!(val_ty, MathicType::SymbolicExpr(_)) {
-                    fn_ctx.assign_sym_expr(*local_idx, val);
+                if val_ty.is_symbolic() {
+                    fn_ctx.assign_local(*local_idx, val);
                     return Ok(());
                 }
 
@@ -126,7 +124,7 @@ impl MathicCodeGen<'_> {
                     self.get_compiled_type(func_ir, *ty)?,
                 ))?;
 
-                fn_ctx.define_sym_expr(sym);
+                fn_ctx.define_local(sym, *ty);
             }
         }
 
