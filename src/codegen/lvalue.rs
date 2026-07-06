@@ -235,10 +235,13 @@ impl MathicCodeGen<'_> {
 
                 let expr = self.compile_rvalue(fn_ctx, block, expr, helper)?;
                 let value = self.compile_rvalue(fn_ctx, block, value, helper)?;
-                let return_value = block.append_op_result(
-                    symbolic::operation::eval(self.ctx, unknown_location, expr, sym_name, value)
-                        .into(),
-                )?;
+                let return_value = block.append_op_result(symbolic::operation::eval(
+                    self.ctx,
+                    unknown_location,
+                    expr,
+                    sym_name,
+                    value,
+                ))?;
 
                 let return_ptr = block.alloca1(
                     self.ctx,

@@ -289,14 +289,12 @@ fn lower_binary_op(
     };
 
     let kind = match op {
-        BinaryOp::Arithmetic(arith) if ty.is_symbolic() => {
-            RValueKind::SymbolicBinary {
-                op: arith,
-                lhs: Box::new(lhs),
-                rhs: Box::new(rhs),
-                span,
-            }
-        }
+        BinaryOp::Arithmetic(arith) if ty.is_symbolic() => RValueKind::SymbolicBinary {
+            op: arith,
+            lhs: Box::new(lhs),
+            rhs: Box::new(rhs),
+            span,
+        },
         _ => RValueKind::Binary {
             op,
             lhs: Box::new(lhs),

@@ -192,6 +192,7 @@ impl MathicCodeGen<'_> {
         })
     }
 
+    #[allow(clippy::too_many_arguments)]
     fn compile_symbolic_binop<'ctx, 'func>(
         &'func self,
         fn_ctx: &mut FunctionCtx<'ctx, 'func>,
@@ -262,19 +263,17 @@ impl MathicCodeGen<'_> {
         let location = self.get_location(None)?;
 
         Ok(match value {
-            IRValue::Symbol { local_idx } => {
-                let (v, _) = fn_ctx
-                    .get_local(*local_idx)
-                    .expect(&format!("Invalid local idx: {}", local_idx));
-                v
-            }
+            IRValue::Symbol { local_idx } => fn_ctx
+                .get_local(*local_idx)
+                .map(|(v, _)| v)
+                .unwrap_or_else(|| panic!("Invalid symbolic local idx: {}", local_idx)),
             IRValue::InMemory {
                 local_idx,
                 modifier,
             } => {
                 let (ptr, mut ty_idx) = fn_ctx
                     .get_local(*local_idx)
-                    .expect(&format!("Invalid local idx: {}", local_idx));
+                    .unwrap_or_else(|| panic!("Invalid local idx: {}", local_idx));
 
                 let mut val = block.load(
                     self.ctx,
