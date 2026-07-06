@@ -26,7 +26,7 @@ use crate::{
     parser::MathicParser,
 };
 
-#[derive(Default)]
+#[derive(Debug, Default, Clone, Copy)]
 #[repr(u8)]
 pub enum OptLvl {
     None,

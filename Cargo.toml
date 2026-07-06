@@ -47,3 +47,11 @@ opt-level = 2
 
 [package.metadata.cargo-machete]
 ignored = ["libc"]
+
+[dev-dependencies]
+criterion = { version = "0.5", features = ["html_reports"] }
+pyo3 = { version = "0.23", features = ["auto-initialize"] }
+
+[[bench]]
+name = "eval"
+harness = false

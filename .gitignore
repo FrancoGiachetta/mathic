@@ -8,7 +8,12 @@ target/
 .cargo/
 env.sh
 
+# Compilation
+
 **/*.mathir
 **/*.o
-# Only at root level.
+# only at root level.
 *.mlir
+
+# Samply
+profile.json.gz
