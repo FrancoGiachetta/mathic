@@ -272,6 +272,20 @@ pub mod basic_block {
                         return_dest, callee, args_str, dest_block
                     )
                 }
+                Self::Eval {
+                    expr,
+                    sym_name,
+                    value,
+                    return_dest,
+                    dest_block,
+                    ..
+                } => {
+                    write!(
+                        f,
+                        "{} = call eval({expr}, {sym_name}, {value}) block{}",
+                        return_dest, dest_block
+                    )
+                }
             }
         }
     }

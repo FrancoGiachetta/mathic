@@ -63,7 +63,6 @@ pub fn lower_sym_decl(
     let SymDecl { name, ty } = sym_decl;
 
     let sym_ty_idx = lower_inner_ast_type(func, ty, span)?;
-
     let local_idx =
         func.sym_table
             .add_local(Some(name.clone()), sym_ty_idx, Some(span), LocalKind::Sym)?;

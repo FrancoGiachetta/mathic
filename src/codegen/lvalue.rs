@@ -220,6 +220,45 @@ impl MathicCodeGen<'_> {
                     self.get_location(None)?,
                 ))
             }
+            Terminator::Eval {
+                expr,
+                sym_name,
+                value,
+                span,
+                return_dest: _,
+                return_ty_idx,
+                dest_block,
+            } => {
+                let unknown_location = self.get_location(*span)?;
+
+                let mlir_return_ty =
+                    self.get_compiled_type(fn_ctx.get_ir_func(), *return_ty_idx)?;
+                let return_ty = self.get_type(fn_ctx.get_ir_func(), *return_ty_idx)?;
+
+                let expr = self.compile_rvalue(fn_ctx, block, expr, helper)?;
+                let value = self.compile_rvalue(fn_ctx, block, value, helper)?;
+                let return_value = block.append_op_result(
+                    symbolic::operation::eval(self.ctx, unknown_location, expr, sym_name, value)
+                        .into(),
+                )?;
+
+                let return_ptr = block.alloca1(
+                    self.ctx,
+                    unknown_location,
+                    mlir_return_ty,
+                    return_ty.align(self.ir, fn_ctx.get_ir_func()),
+                )?;
+
+                block.store(self.ctx, unknown_location, return_ptr, return_value)?;
+
+                fn_ctx.define_local(return_ptr, *return_ty_idx);
+
+                block.append_operation(cf::br(
+                    &fn_ctx.get_block(*dest_block),
+                    &[],
+                    self.get_location(None)?,
+                ))
+            }
         };
 
         Ok(())

@@ -150,11 +150,11 @@ impl MathicCompiler {
         let pass_manager = PassManager::new(ctx);
 
         pass_manager.enable_verifier(true);
-        // pass_manager.add_pass(create_canonicalizer());
+        pass_manager.add_pass(create_canonicalizer());
         pass_manager.add_pass(create_scf_to_control_flow()); // needed because to_llvm doesn't include it.
         pass_manager.add_pass(create_symbolic_extract_eval());
         pass_manager.add_pass(create_symbolic_to_arith());
-        // pass_manager.add_pass(create_to_llvm());
+        pass_manager.add_pass(create_to_llvm());
 
         pass_manager.run(module)?;
 

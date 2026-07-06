@@ -25,6 +25,7 @@ use crate::{
 /// **locals**: alloca-backed variables defined within the function context.
 /// **sym_exprs**: SSA values of symbolic expressions (no alloca/store).
 /// **mlir_blocks**: the MLIR Blocks that the function will use.
+#[derive(Debug)]
 pub struct FunctionCtx<'ctx, 'this> {
     locals: Vec<(MlirValue, TypeIndex)>,
     sym_exprs: Vec<MlirValue>,

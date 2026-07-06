@@ -28,7 +28,12 @@ pub fn lower_expr(
         ExprStmtKind::Group(expr) => {
             return lower_expr(func, expr, ty_hint);
         }
-        ExprStmtKind::Call { callee, args } => lower_call(func, callee.clone(), args, expr.span)?,
+        ExprStmtKind::Call { callee, args } => {
+            if callee == "eval" {
+                return lower_eval_builtin(func, args, expr.span);
+            }
+            lower_call(func, callee.clone(), args, expr.span)?
+        }
         ExprStmtKind::Assign {
             name,
             expr: assign_expr,
@@ -61,7 +66,6 @@ fn lower_assignment(
 ) -> Result<RValInstruct, LoweringError> {
     let local = func.sym_table.get_local_from_name(name, span)?;
     let (value, expr_ty_idx) = lower_expr(func, expr, Some(local.ty))?;
-
     // The new value should be of the same type as the local's.
     if local.ty != expr_ty_idx {
         return Err(LoweringError::MismatchedType {
@@ -161,6 +165,101 @@ fn lower_call(
         },
         ty: return_ty_idx,
     })
+}
+
+fn lower_eval_builtin(
+    func: &mut FunctionBuilder,
+    func_args: &[ExprStmt],
+    span: Span,
+) -> Result<(RValInstruct, TypeIndex), LoweringError> {
+    if func_args.len() != 3 {
+        return Err(LoweringError::WrongArgumentCount {
+            name: "eval".into(),
+            expected: 3,
+            got: func_args.len(),
+            span,
+        });
+    }
+
+    let (expr_rv, expr_ty_idx) = lower_expr(func, &func_args[0], None)?;
+    let expr_mty = func.get_type(expr_ty_idx, func_args[0].span)?;
+    let inner_ty = match expr_mty {
+        MathicType::SymbolicExpr(num_ty) => num_ty,
+        _ => {
+            return Err(LoweringError::MismatchedType {
+                expected: expr_mty,
+                found: expr_mty,
+                span: func_args[0].span,
+            });
+        }
+    };
+
+    let sym_name = match &func_args[1].kind {
+        ExprStmtKind::Primary(PrimaryExpr::Ident(name)) => {
+            let local = func
+                .sym_table
+                .get_local_from_name(name, func_args[1].span)?;
+            let local_ty = func.get_type(local.ty, func_args[1].span)?;
+            if !matches!(local_ty, MathicType::SymbolicExpr(_)) {
+                return Err(LoweringError::MismatchedType {
+                    expected: expr_mty,
+                    found: local_ty,
+                    span: func_args[1].span,
+                });
+            }
+            name.clone()
+        }
+        _ => {
+            return Err(LoweringError::MismatchedType {
+                expected: expr_mty,
+                found: expr_mty,
+                span: func_args[1].span,
+            });
+        }
+    };
+
+    let inner_ty_idx = func.get_or_insert_global_type_idx(MathicType::Numeric(inner_ty));
+    let (value_rv, val_ty_idx) = lower_expr(func, &func_args[2], Some(inner_ty_idx))?;
+    if val_ty_idx != inner_ty_idx {
+        return Err(LoweringError::MismatchedType {
+            expected: func.get_type(inner_ty_idx, func_args[2].span)?,
+            found: func.get_type(val_ty_idx, func_args[2].span)?,
+            span: func_args[2].span,
+        });
+    }
+
+    let local_idx = func
+        .sym_table
+        .add_local(None, inner_ty_idx, None, LocalKind::Temp)?;
+    let dest_block_idx = func.last_block_idx() + 1;
+
+    func.get_basic_block_mut(func.last_block_idx()).terminator = Terminator::Eval {
+        expr: expr_rv,
+        sym_name,
+        value: value_rv,
+        return_dest: Value::InMemory {
+            local_idx,
+            modifier: vec![],
+        },
+        return_ty_idx: inner_ty_idx,
+        dest_block: dest_block_idx,
+        span: Some(span),
+    };
+    func.add_block(Terminator::Return(None, None), None);
+
+    Ok((
+        RValInstruct {
+            kind: RValueKind::Use {
+                value: Value::InMemory {
+                    local_idx,
+                    modifier: vec![],
+                },
+                span: None,
+            },
+            ty: inner_ty_idx,
+        },
+        inner_ty_idx,
+    ))
 }
 
 fn lower_binary_op(
@@ -574,7 +673,7 @@ fn lower_expression_type(
         },
         ExprStmtKind::Binary { lhs, op, .. } => match op {
             BinaryOp::Compare(_) => func.get_or_insert_global_type_idx(MathicType::Bool),
-            BinaryOp::Arithmetic(_) => lower_expression_type(func, &lhs.kind, None, span)?,
+            BinaryOp::Arithmetic(_) => lower_expression_type(func, &lhs.kind, ty_hint, span)?,
         },
         ExprStmtKind::Call { callee, .. } => {
             let func_decl = func.get_function_decl(callee, span)?;
