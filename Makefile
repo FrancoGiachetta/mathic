@@ -14,7 +14,7 @@ clean: clean-dumps
 
 .PHONY: clean-dumps
 clean-dumps:
-	rm -f *.mlir *.mathir
+	rm -f *.mlir *.mathir profile.json.gz
 
 .PHONY: fmt
 fmt:

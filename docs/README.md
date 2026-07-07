@@ -12,34 +12,34 @@
 ```
 src/
 ├── bin/
-│   └── euler.rs              # Binary entry point
-├── codegen/                  # MLIR code generation
+│   └── euler.rs                   # Binary entry point
+├── codegen/                       # MLIR code generation
 │   ├── compiler_helper/
 │   │   └── debugging.rs
 │   ├── compiler_helper.rs
-│   ├── dialect_integration.rs # MLIR op builders for symbolic dialect
-│   ├── function_ctx.rs       # Function context (locals, blocks)
-│   ├── lvalue.rs             # Statement compilation
-│   └── rvalue.rs             # Expression / symbolic compilation
-├── codegen.rs                # Module re-export
-├── compiler.rs               # Compiler driver
-├── diagnostics/              # Error types
+│   ├── dialect_integration.rs     # MLIR op builders for symbolic dialect
+│   ├── function_ctx.rs            # Function context (locals, blocks)
+│   ├── lvalue.rs                  # Statement compilation
+│   └── rvalue.rs                  # Expression / symbolic compilation
+├── codegen.rs                     # Module re-export
+├── compiler.rs                    # Compiler driver
+├── diagnostics/                   # Error types
 │   ├── codegen.rs
 │   ├── lowering.rs
 │   └── parse.rs
-├── diagnostics.rs            # Module re-export
-├── executor.rs               # JIT execution
-├── ffi/                      # C FFI to shared libraries
+├── diagnostics.rs                 # Module re-export
+├── executor.rs                    # JIT execution
+├── ffi/                           # C FFI to shared libraries
 │   └── dialect_integration.rs
-├── ffi.rs                    # LLVM FFI bindings
-├── lib.rs                    # Crate root
-├── lowering/                 # AST → MATHIR lowering
-│   ├── ast_lowering/        # AST → MATHIR transformation
+├── ffi.rs                         # LLVM FFI bindings
+├── lib.rs                         # Crate root
+├── lowering/                      # AST → MATHIR lowering
+│   ├── ast_lowering/              # AST → MATHIR transformation
 │   │   ├── control_flow.rs
 │   │   ├── declaration.rs
 │   │   ├── expression.rs
 │   │   └── statement.rs
-│   ├── ir/                  # MATHIR definitions
+│   ├── ir/                        # MATHIR definitions
 │   │   ├── adts.rs
 │   │   ├── basic_block.rs
 │   │   ├── function.rs
@@ -50,14 +50,14 @@ src/
 │   │   └── value.rs
 │   ├── ast_lowering.rs
 │   └── ir.rs
-├── lowering.rs               # Module re-export
-├── parser/                   # Frontend: lexing and parsing
-│   ├── ast/                 # AST nodes
+├── lowering.rs                    # Module re-export
+├── parser/                        # Frontend: lexing and parsing
+│   ├── ast/                       # AST nodes
 │   │   ├── control_flow.rs
 │   │   ├── declaration.rs
 │   │   ├── expression.rs
 │   │   └── statement.rs
-│   ├── parsing/             # Recursive descent parser
+│   ├── parsing/                   # Recursive descent parser
 │   │   ├── control_flow.rs
 │   │   ├── declaration.rs
 │   │   ├── expression.rs
@@ -66,7 +66,10 @@ src/
 │   ├── lexer.rs
 │   ├── parsing.rs
 │   └── token.rs
-└── parser.rs                 # Module re-export
+└── parser.rs                      # Module re-export
+Dialects/                          # Custom MLIR dialect (C++)
+└── Symbolic/                      # The `symbolic` dialect (see dialects/Symbolic.md)
+tests/                             # Integration tests
 ```
 
 ## Pipeline
@@ -74,35 +77,38 @@ src/
 ```mermaid
 flowchart TD
     subgraph Frontend["📝 Frontend"]
-        Source[Source Code<br/>.mth]
-        Lexer[Lexer]
-        Parser[Parser]
-        AST[AST]
-        Source --> Lexer --> Parser --> AST
+        direction LR
+        Source[Source Code .mth] --> Lexer --> Parser --> AST
     end
 
-    subgraph Lowering["⚙️ Lowering"]
-        AST --> Lowerer[Lowerer]
-        Lowerer --> IR[MATHIR]
+    subgraph Lowering["🔧 Lowering"]
+        direction LR
+        Lowerer --> MATHIR
     end
 
-    subgraph Codegen["🔧 Codegen"]
-        IR --> MLIRGen[MLIR Codegen]
-        MLIRGen --> Symbolic[MLIR + symbolic dialect]
+    subgraph Codegen["⚙️ Codegen"]
+        direction LR
+        MLIR[MLIR Codegen + Symbolic Dialect]
+        MLIR --> Output[MLIR]
     end
 
-    subgraph Passes["C++ Passes"]
-        Symbolic --> ExtractEval[symbolic-extract-eval]
-        ExtractEval --> ToArith[symbolic-to-arith]
+    subgraph Passes["⚡ Passes"]
+        direction LR
+        Canonicalizer --> ExtractEval[symbolic-extract-eval] --> ToArith[symbolic-to-arith] --> LLVM[Convert to LLVM IR]
     end
 
-    subgraph LLVMBackend["LLVM Backend"]
-        ToArith --> LLVM[LLVM IR]
-        LLVM --> JIT[JIT Execution]
+    subgraph Execution["🚀 Execution"]
+        direction LR
+        LLVMIR --> JIT[JIT Execution]
     end
+
+    Frontend --> Lowering --> Codegen
+    Codegen --> Passes
+    Passes --> Execution
 ```
 
-- **MATHIR**: Mathic Intermediate Representation that sits between AST and MLIR.
-- **MLIR + symbolic dialect**: Standard MLIR dialects plus the custom `symbolic` dialect for symbolic expressions.
-- **symbolic-extract-eval / symbolic-to-arith**: C++ passes that lower the `symbolic` dialect to standard MLIR. See [Symbolic Passes](dialects/SymbolicPasses.md).
-- **LLVM IR**: The compilation target. Low-level intermediate representation optimized by LLVM passes.
+- **📝 Frontend**: Lexes and parses `.mth` source files into an AST.
+- **🔧 Lowering**: Transforms the AST into MATHIR (Mathic IR).
+- **⚙️ Codegen**: Lowers MATHIR to MLIR with the custom `symbolic` dialect.
+- **⚡ Passes**: Canonicalization, symbolic lowering, and conversion to LLVM IR. See [Symbolic Passes](dialects/SymbolicPasses.md).
+- **🚀 Execution**: JIT-compiles LLVM IR and runs the program.

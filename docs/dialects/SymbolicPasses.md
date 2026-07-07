@@ -82,8 +82,7 @@ func.func @main() -> i32 {
 
 Uses MLIR's `DialectConversion` framework:
 
-1. **Type conversion**: `!symbolic.expr<T>` is replaced by `T` via
-   `SymExprType::getInnerType()`.
+1. **Type conversion**: `!symbolic.expr<T>` is replaced by `T`.
 2. **Operation conversion**: Each symbolic op has a pattern that rewrites it
    to the corresponding `arith` operation (`add` → `addi`, `sub` → `subi`,
    `mul` → `muli`, `div` → `divsi`/`divui` depending on signedness).

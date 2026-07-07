@@ -1,6 +1,6 @@
 <div align="center">
 
-# Mathic
+# 🧮 Mathic
 
 *A programming language with built-in symbolic algebra, powered by LLVM/MLIR*
 
