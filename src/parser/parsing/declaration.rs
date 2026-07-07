@@ -1,7 +1,7 @@
 use crate::parser::{
     MathicParser, ParserResult, Span,
     ast::{
-        declaration::{AstType, FuncDecl, Param, StructDecl, StructField, VarDecl},
+        declaration::{AstType, FuncDecl, Param, StructDecl, StructField, SymDecl, VarDecl},
         statement::BlockStmt,
     },
     token::Token,
@@ -11,7 +11,18 @@ impl<'a> MathicParser<'a> {
     pub fn parse_type(&self) -> ParserResult<AstType> {
         let ident = self.consume_token(Token::Ident)?;
 
-        let ty = AstType::Type(ident.lexeme.to_string());
+        let ty = AstType::Type {
+            ty: ident.lexeme.to_string(),
+            inner: if self.match_token(Token::Less)?.is_some() {
+                let inner = self.parse_type()?;
+
+                self.consume_token(Token::Greater)?;
+
+                Some(Box::new(inner))
+            } else {
+                None
+            },
+        };
 
         Ok(ty)
     }
@@ -69,6 +80,21 @@ impl<'a> MathicParser<'a> {
         self.consume_token(Token::Semicolon)?;
 
         Ok(VarDecl { name, ty, expr })
+    }
+
+    pub fn parse_sym_decl(&self) -> ParserResult<SymDecl> {
+        self.next()?;
+
+        let ident = self.consume_token(Token::Ident)?;
+        let name = ident.lexeme.to_string();
+
+        self.consume_token(Token::Colon)?;
+
+        let ty = self.parse_type()?;
+
+        self.consume_token(Token::Semicolon)?;
+
+        Ok(SymDecl { name, ty })
     }
 
     pub fn parse_struct(&self) -> ParserResult<StructDecl> {

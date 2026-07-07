@@ -7,7 +7,7 @@ use crate::{
         function::{FunctionBuilder, LocalKind},
         instruction::{InitInstruct, LValInstruct, RValInstruct, RValueKind},
         symbols::TypeIndex,
-        types::{FloatTy, MathicType, SintTy, UintTy, lower_inner_ast_type},
+        types::{FloatTy, MathicType, NumericTy, SintTy, UintTy, lower_inner_ast_type},
         value::{ConstExpr, NumericConst, Value, ValueModifier},
     },
     parser::{
@@ -28,7 +28,12 @@ pub fn lower_expr(
         ExprStmtKind::Group(expr) => {
             return lower_expr(func, expr, ty_hint);
         }
-        ExprStmtKind::Call { callee, args } => lower_call(func, callee.clone(), args, expr.span)?,
+        ExprStmtKind::Call { callee, args } => {
+            if callee == "eval" {
+                return lower_eval_builtin(func, args, expr.span);
+            }
+            lower_call(func, callee.clone(), args, expr.span)?
+        }
         ExprStmtKind::Assign {
             name,
             expr: assign_expr,
@@ -61,7 +66,6 @@ fn lower_assignment(
 ) -> Result<RValInstruct, LoweringError> {
     let local = func.sym_table.get_local_from_name(name, span)?;
     let (value, expr_ty_idx) = lower_expr(func, expr, Some(local.ty))?;
-
     // The new value should be of the same type as the local's.
     if local.ty != expr_ty_idx {
         return Err(LoweringError::MismatchedType {
@@ -163,6 +167,101 @@ fn lower_call(
     })
 }
 
+fn lower_eval_builtin(
+    func: &mut FunctionBuilder,
+    func_args: &[ExprStmt],
+    span: Span,
+) -> Result<(RValInstruct, TypeIndex), LoweringError> {
+    if func_args.len() != 3 {
+        return Err(LoweringError::WrongArgumentCount {
+            name: "eval".into(),
+            expected: 3,
+            got: func_args.len(),
+            span,
+        });
+    }
+
+    let (expr_rv, expr_ty_idx) = lower_expr(func, &func_args[0], None)?;
+    let expr_mty = func.get_type(expr_ty_idx, func_args[0].span)?;
+    let inner_ty = match expr_mty {
+        MathicType::SymbolicExpr(num_ty) => num_ty,
+        _ => {
+            return Err(LoweringError::MismatchedType {
+                expected: expr_mty,
+                found: expr_mty,
+                span: func_args[0].span,
+            });
+        }
+    };
+
+    let sym_name = match &func_args[1].kind {
+        ExprStmtKind::Primary(PrimaryExpr::Ident(name)) => {
+            let local = func
+                .sym_table
+                .get_local_from_name(name, func_args[1].span)?;
+            let local_ty = func.get_type(local.ty, func_args[1].span)?;
+            if !local_ty.is_symbolic() {
+                return Err(LoweringError::MismatchedType {
+                    expected: expr_mty,
+                    found: local_ty,
+                    span: func_args[1].span,
+                });
+            }
+            name.clone()
+        }
+        _ => {
+            return Err(LoweringError::MismatchedType {
+                expected: expr_mty,
+                found: expr_mty,
+                span: func_args[1].span,
+            });
+        }
+    };
+
+    let inner_ty_idx = func.get_or_insert_global_type_idx(MathicType::Numeric(inner_ty));
+    let (value_rv, val_ty_idx) = lower_expr(func, &func_args[2], Some(inner_ty_idx))?;
+    if val_ty_idx != inner_ty_idx {
+        return Err(LoweringError::MismatchedType {
+            expected: func.get_type(inner_ty_idx, func_args[2].span)?,
+            found: func.get_type(val_ty_idx, func_args[2].span)?,
+            span: func_args[2].span,
+        });
+    }
+
+    let local_idx = func
+        .sym_table
+        .add_local(None, inner_ty_idx, None, LocalKind::Temp)?;
+    let dest_block_idx = func.last_block_idx() + 1;
+
+    func.get_basic_block_mut(func.last_block_idx()).terminator = Terminator::Eval {
+        expr: expr_rv,
+        sym_name,
+        value: value_rv,
+        return_dest: Value::InMemory {
+            local_idx,
+            modifier: vec![],
+        },
+        return_ty_idx: inner_ty_idx,
+        dest_block: dest_block_idx,
+        span: Some(span),
+    };
+    func.add_block(Terminator::Return(None, None), None);
+
+    Ok((
+        RValInstruct {
+            kind: RValueKind::Use {
+                value: Value::InMemory {
+                    local_idx,
+                    modifier: vec![],
+                },
+                span: None,
+            },
+            ty: inner_ty_idx,
+        },
+        inner_ty_idx,
+    ))
+}
+
 fn lower_binary_op(
     func: &mut FunctionBuilder,
     lhs: &ExprStmt,
@@ -171,30 +270,76 @@ fn lower_binary_op(
     span: Span,
 ) -> Result<RValInstruct, LoweringError> {
     let (lhs, lhs_ty_idx) = lower_expr(func, lhs, None)?;
-    let (rhs, rhs_ty_idx) = lower_expr(func, rhs, Some(lhs_ty_idx))?;
+    let lhs_ty = func.get_type(lhs_ty_idx, span)?;
 
-    // Operands' types must match.
-    if lhs_ty_idx != rhs_ty_idx {
-        return Err(LoweringError::MismatchedType {
-            expected: func.get_type(lhs_ty_idx, span)?,
-            found: func.get_type(rhs_ty_idx, span)?,
-            span,
-        });
-    }
-
-    let inst_ty_idx = match op {
-        BinaryOp::Compare(_) => func.get_or_insert_global_type_idx(MathicType::Bool),
-        BinaryOp::Arithmetic(_) => lhs_ty_idx,
-    };
-
-    Ok(RValInstruct {
-        kind: RValueKind::Binary {
-            op,
-            lhs: Box::new(lhs),
-            rhs: Box::new(rhs),
-            span,
+    let (rhs, rhs_ty_idx) = lower_expr(
+        func,
+        rhs,
+        // If lhs_ty is symbolic, we don't want to add a ty_hint.
+        if !lhs_ty.is_symbolic() {
+            Some(lhs_ty_idx)
+        } else {
+            None
         },
-        ty: inst_ty_idx,
+    )?;
+
+    let rhs_ty = func.get_type(rhs_ty_idx, span)?;
+
+    let is_symbolic = lhs_ty.is_symbolic() || rhs_ty.is_symbolic();
+
+    Ok(match op {
+        BinaryOp::Arithmetic(arith) if is_symbolic => {
+            if lhs_ty.is_symbolic() && rhs_ty.is_symbolic() && lhs_ty_idx != rhs_ty_idx {
+                return Err(LoweringError::MismatchedType {
+                    expected: lhs_ty,
+                    found: rhs_ty,
+                    span,
+                });
+            }
+
+            let kind = RValueKind::SymbolicBinary {
+                op: arith,
+                lhs: Box::new(lhs),
+                rhs: Box::new(rhs),
+                span,
+            };
+
+            RValInstruct {
+                kind,
+                ty: if lhs_ty.is_symbolic() {
+                    lhs_ty_idx
+                } else {
+                    rhs_ty_idx
+                },
+            }
+        }
+        _ => {
+            let inst_ty_idx = match op {
+                BinaryOp::Compare(_) => func.get_or_insert_global_type_idx(MathicType::Bool),
+                BinaryOp::Arithmetic(_) => lhs_ty_idx,
+            };
+
+            // Operands' types must match.
+            if lhs_ty_idx != rhs_ty_idx {
+                return Err(LoweringError::MismatchedType {
+                    expected: func.get_type(lhs_ty_idx, span)?,
+                    found: func.get_type(rhs_ty_idx, span)?,
+                    span,
+                });
+            }
+
+            let kind = RValueKind::Binary {
+                op,
+                lhs: Box::new(lhs),
+                rhs: Box::new(rhs),
+                span,
+            };
+
+            RValInstruct {
+                kind,
+                ty: inst_ty_idx,
+            }
+        }
     })
 }
 
@@ -426,18 +571,24 @@ fn lower_primary_value(
     let (value, ty) = match expr {
         PrimaryExpr::Ident(name) => {
             let local = func.sym_table.get_local_from_name(name, span)?;
-            (
+            let local_ty = func.get_type(local.ty, span)?;
+            // Use Symbol variant for symbolic expressions (SSA, no memory).
+            let value = if local_ty.is_symbolic() {
+                Value::Symbol {
+                    local_idx: local.local_idx,
+                }
+            } else {
                 Value::InMemory {
                     local_idx: local.local_idx,
                     modifier: vec![],
-                },
-                local.ty,
-            )
+                }
+            };
+            (value, local.ty)
         }
         PrimaryExpr::Num(n) => match ty_hint {
             Some(ty) => (
                 Value::Const(match func.get_type(ty, span)? {
-                    MathicType::Uint(uint_ty) => match uint_ty {
+                    MathicType::Numeric(NumericTy::Uint(uint_ty)) => match uint_ty {
                         UintTy::Usize => {
                             ConstExpr::Numeric(NumericConst::Usize(n.parse::<usize>().unwrap()))
                         }
@@ -457,7 +608,7 @@ fn lower_primary_value(
                             ConstExpr::Numeric(NumericConst::U128(n.parse::<u128>().unwrap()))
                         }
                     },
-                    MathicType::Sint(uint_ty) => match uint_ty {
+                    MathicType::Numeric(NumericTy::Sint(sint_ty)) => match sint_ty {
                         SintTy::Isize => {
                             ConstExpr::Numeric(NumericConst::Isize(n.parse::<isize>().unwrap()))
                         }
@@ -477,7 +628,7 @@ fn lower_primary_value(
                             ConstExpr::Numeric(NumericConst::I128(n.parse::<i128>().unwrap()))
                         }
                     },
-                    MathicType::Float(float_ty) => match float_ty {
+                    MathicType::Numeric(NumericTy::Float(float_ty)) => match float_ty {
                         FloatTy::F32 => {
                             ConstExpr::Numeric(NumericConst::F32(n.parse::<f32>().unwrap()))
                         }
@@ -489,6 +640,7 @@ fn lower_primary_value(
                     | MathicType::Void
                     | MathicType::Char
                     | MathicType::Str
+                    | MathicType::SymbolicExpr(_)
                     | MathicType::Adt { .. } => {
                         unreachable!()
                     }
@@ -499,7 +651,9 @@ fn lower_primary_value(
                 Value::Const(ConstExpr::Numeric(NumericConst::I32(
                     n.parse::<i32>().unwrap(),
                 ))),
-                func.get_or_insert_global_type_idx(MathicType::Sint(SintTy::I32)),
+                func.get_or_insert_global_type_idx(MathicType::Numeric(NumericTy::Sint(
+                    SintTy::I32,
+                ))),
             ),
         },
         PrimaryExpr::Bool(b) => (
@@ -541,15 +695,31 @@ fn lower_expression_type(
             PrimaryExpr::Ident(name) => func.sym_table.get_local_from_name(name, span)?.ty,
             PrimaryExpr::Num(_) => match ty_hint {
                 Some(ty) => ty,
-                None => func.get_or_insert_global_type_idx(MathicType::Sint(SintTy::I32)),
+                None => func.get_or_insert_global_type_idx(MathicType::Numeric(NumericTy::Sint(
+                    SintTy::I32,
+                ))),
             },
             PrimaryExpr::Str(_) => func.get_or_insert_global_type_idx(MathicType::Str),
             PrimaryExpr::Char(_) => func.get_or_insert_global_type_idx(MathicType::Char),
             PrimaryExpr::Bool(_) => func.get_or_insert_global_type_idx(MathicType::Bool),
         },
-        ExprStmtKind::Binary { lhs, op, .. } => match op {
+        ExprStmtKind::Binary { lhs, op, rhs } => match op {
             BinaryOp::Compare(_) => func.get_or_insert_global_type_idx(MathicType::Bool),
-            BinaryOp::Arithmetic(_) => lower_expression_type(func, &lhs.kind, None, span)?,
+            BinaryOp::Arithmetic(_) => {
+                // We need to check if either of the operans is symbolic since
+                // the distinction is done through the type.
+                let lhs_ty_idx = lower_expression_type(func, &lhs.kind, ty_hint, span)?;
+                if func.get_type(lhs_ty_idx, span)?.is_symbolic() {
+                    return Ok(lhs_ty_idx);
+                }
+
+                let rhs_ty_idx = lower_expression_type(func, &rhs.kind, ty_hint, span)?;
+                if func.get_type(rhs_ty_idx, span)?.is_symbolic() {
+                    return Ok(rhs_ty_idx);
+                }
+
+                lhs_ty_idx
+            }
         },
         ExprStmtKind::Call { callee, .. } => {
             let func_decl = func.get_function_decl(callee, span)?;

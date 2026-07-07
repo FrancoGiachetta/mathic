@@ -9,13 +9,13 @@ use melior::{
 
 use crate::{
     MathicResult,
-    codegen::compiler_helper::CompilerHelper,
+    codegen::{compiler_helper::CompilerHelper, dialect_integration::symbolic},
     diagnostics::{CodegenError, MathicError},
     lowering::ir::{
         Ir,
         function::Function,
         symbols::TypeIndex,
-        types::{FloatTy, MathicType},
+        types::{FloatTy, MathicType, NumericTy},
     },
     parser::Span,
 };
@@ -125,16 +125,26 @@ impl<'ctx> MathicCodeGen<'ctx> {
         let ty = self.get_type(func, ty_idx)?;
 
         Ok(match ty {
-            MathicType::Uint(_) | MathicType::Sint(_) => {
+            MathicType::Numeric(NumericTy::Sint(_) | NumericTy::Uint(_)) => {
                 IntegerType::new(self.ctx, ty.bit_width()).into()
             }
-            MathicType::Float(float_ty) => match float_ty {
+            MathicType::Numeric(NumericTy::Float(float_ty)) => match float_ty {
                 FloatTy::F32 => Type::float32(self.ctx),
                 FloatTy::F64 => Type::float64(self.ctx),
             },
             MathicType::Bool => IntegerType::new(self.ctx, 1).into(),
             MathicType::Char => IntegerType::new(self.ctx, 8).into(),
             MathicType::Str => llvm::r#type::pointer(self.ctx, 0),
+            MathicType::SymbolicExpr(inner_ty) => {
+                let inner_type = match inner_ty {
+                    NumericTy::Sint(_) | NumericTy::Uint(_) => {
+                        IntegerType::new(self.ctx, inner_ty.bit_width()).into()
+                    }
+                    NumericTy::Float(FloatTy::F32) => Type::float32(self.ctx),
+                    NumericTy::Float(FloatTy::F64) => Type::float64(self.ctx),
+                };
+                symbolic::sym_expr_type(self.ctx, inner_type, inner_ty.is_signed())
+            }
             MathicType::Void => Type::none(self.ctx),
             MathicType::Adt { index, is_local } => {
                 let adt = if is_local {

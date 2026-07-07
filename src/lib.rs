@@ -8,4 +8,4 @@ mod ffi;
 mod lowering;
 mod parser;
 
-pub type MathicResult<T> = std::result::Result<T, MathicError>;
+pub type MathicResult<T> = Result<T, MathicError>;

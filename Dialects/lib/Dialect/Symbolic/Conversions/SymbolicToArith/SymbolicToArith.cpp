@@ -2,6 +2,7 @@
 #include "Dialect/Symbolic/IR/SymbolicDialect.h"
 #include "Dialect/Symbolic/IR/SymbolicOps.h"
 #include "Dialect/Symbolic/IR/SymbolicTypes.h"
+#include "llvm/Support/Casting.h"
 #include <llvm/Support/LogicalResult.h>
 #include <mlir/Dialect/Arith/IR/Arith.h>
 #include <mlir/Dialect/Func/IR/FuncOps.h>
@@ -25,66 +26,13 @@ class SymbolicToArithTypeConverter : public TypeConverter
     {
         addConversion([](Type ty) { return ty; });
         /// For now, every !symbolic.expr is converted to float64.
-        addConversion([ctx](SymExprType exprTy) -> Type { return Float64Type::get(ctx); });
+        addConversion([](SymExprType exprTy) -> Type { return exprTy.getInnerType(); });
     }
 };
 
-struct ConvertAdd : public OpConversionPattern<symbolic::AddOp>
-{
-    ConvertAdd(MLIRContext *ctx) : OpConversionPattern<symbolic::AddOp>(ctx)
-    {
-    }
-
-    using OpConversionPattern::OpConversionPattern;
-
-    llvm::LogicalResult matchAndRewrite(symbolic::AddOp op, OpAdaptor adaptor,
-                                        ConversionPatternRewriter &rewriter) const override
-    {
-        arith::AddFOp addOp = rewriter.create<arith::AddFOp>(op.getLoc(), adaptor.getLhs(), adaptor.getRhs());
-
-        rewriter.replaceOp(op.getOperation(), addOp);
-
-        return llvm::success();
-    }
-};
-
-struct ConvertSub : public OpConversionPattern<symbolic::SubOp>
-{
-    ConvertSub(MLIRContext *ctx) : OpConversionPattern<symbolic::SubOp>(ctx)
-    {
-    }
-
-    using OpConversionPattern::OpConversionPattern;
-
-    llvm::LogicalResult matchAndRewrite(symbolic::SubOp op, OpAdaptor adaptor,
-                                        ConversionPatternRewriter &rewriter) const override
-    {
-        arith::SubFOp subOp = rewriter.create<arith::SubFOp>(op.getLoc(), adaptor.getLhs(), adaptor.getRhs());
-
-        rewriter.replaceOp(op.getOperation(), subOp);
-
-        return llvm::success();
-    }
-};
-
-struct ConvertMul : public OpConversionPattern<symbolic::MulOp>
-{
-    ConvertMul(MLIRContext *ctx) : OpConversionPattern<symbolic::MulOp>(ctx)
-    {
-    }
-
-    using OpConversionPattern::OpConversionPattern;
-
-    llvm::LogicalResult matchAndRewrite(symbolic::MulOp op, OpAdaptor adaptor,
-                                        ConversionPatternRewriter &rewriter) const override
-    {
-        arith::MulFOp mulOp = rewriter.create<arith::MulFOp>(op.getLoc(), adaptor.getLhs(), adaptor.getRhs());
-
-        rewriter.replaceOp(op.getOperation(), mulOp);
-
-        return llvm::success();
-    }
-};
+BINARY_OP_CONVERTER(Add, AddIOp)
+BINARY_OP_CONVERTER(Sub, SubIOp)
+BINARY_OP_CONVERTER(Mul, MulIOp)
 
 struct ConvertDiv : public OpConversionPattern<symbolic::DivOp>
 {
@@ -97,9 +45,18 @@ struct ConvertDiv : public OpConversionPattern<symbolic::DivOp>
     llvm::LogicalResult matchAndRewrite(symbolic::DivOp op, OpAdaptor adaptor,
                                         ConversionPatternRewriter &rewriter) const override
     {
-        arith::DivFOp divOp = rewriter.create<arith::DivFOp>(op.getLoc(), adaptor.getLhs(), adaptor.getRhs());
+        SymExprType exprTy = llvm::cast<SymExprType>(op.getLhs().getType());
 
-        rewriter.replaceOp(op.getOperation(), divOp);
+        if (exprTy.getIsSigned())
+        {
+            arith::DivSIOp divOp = rewriter.create<arith::DivSIOp>(op.getLoc(), adaptor.getLhs(), adaptor.getRhs());
+            rewriter.replaceOp(op.getOperation(), divOp);
+        }
+        else
+        {
+            arith::DivUIOp divOp = rewriter.create<arith::DivUIOp>(op.getLoc(), adaptor.getLhs(), adaptor.getRhs());
+            rewriter.replaceOp(op.getOperation(), divOp);
+        }
 
         return llvm::success();
     }
@@ -118,7 +75,7 @@ struct ConvertSym : public OpConversionPattern<symbolic::SymOp>
                                         ConversionPatternRewriter &rewriter) const override
     {
         auto func = op->getParentOfType<func::FuncOp>();
-        if (!func || func.getNumArguments() != 1)
+        if (!func || func.getNumArguments() < 1)
             return llvm::failure();
 
         rewriter.replaceOp(op, func.getArgument(0));

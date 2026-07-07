@@ -10,7 +10,7 @@ use crate::{
             adts::{Adt, StructAdt, StructField},
             function::FunctionBuilder,
             symbols::TypeIndex,
-            types::{MathicType, SintTy, UintTy},
+            types::{MathicType, NumericTy, SintTy, UintTy},
         },
     },
     parser::{
@@ -132,40 +132,72 @@ pub fn lower_top_level_ast_type(
     span: Span,
 ) -> Result<TypeIndex, LoweringError> {
     Ok(match ty {
-        AstType::Type(name) => match name.as_str() {
-            "isz" => ir_builder.get_or_insert_type_idx(MathicType::Sint(SintTy::Isize)),
-            "i8" => ir_builder.get_or_insert_type_idx(MathicType::Sint(SintTy::I8)),
-            "i16" => ir_builder.get_or_insert_type_idx(MathicType::Sint(SintTy::I16)),
-            "i32" => ir_builder.get_or_insert_type_idx(MathicType::Sint(SintTy::I32)),
-            "i64" => ir_builder.get_or_insert_type_idx(MathicType::Sint(SintTy::I64)),
-            "i128" => ir_builder.get_or_insert_type_idx(MathicType::Sint(SintTy::I128)),
-            "usz" => ir_builder.get_or_insert_type_idx(MathicType::Uint(UintTy::Usize)),
-            "u8" => ir_builder.get_or_insert_type_idx(MathicType::Uint(UintTy::U8)),
-            "u16" => ir_builder.get_or_insert_type_idx(MathicType::Uint(UintTy::U16)),
-            "u32" => ir_builder.get_or_insert_type_idx(MathicType::Uint(UintTy::U32)),
-            "u64" => ir_builder.get_or_insert_type_idx(MathicType::Uint(UintTy::U64)),
-            "u128" => ir_builder.get_or_insert_type_idx(MathicType::Uint(UintTy::U128)),
-            "str" => ir_builder.get_or_insert_type_idx(MathicType::Str),
-            "char" => ir_builder.get_or_insert_type_idx(MathicType::Char),
-            "bool" => ir_builder.get_or_insert_type_idx(MathicType::Bool),
-            other => {
-                if let Some(ty) = ir_builder.get_user_def_type(other) {
-                    return Ok(ty);
-                }
+        AstType::Type { ty, inner } => {
+            match ty.as_str() {
+                "isz" => ir_builder
+                    .get_or_insert_type_idx(MathicType::Numeric(NumericTy::Sint(SintTy::Isize))),
+                "i8" => ir_builder
+                    .get_or_insert_type_idx(MathicType::Numeric(NumericTy::Sint(SintTy::I8))),
+                "i16" => ir_builder
+                    .get_or_insert_type_idx(MathicType::Numeric(NumericTy::Sint(SintTy::I16))),
+                "i32" => ir_builder
+                    .get_or_insert_type_idx(MathicType::Numeric(NumericTy::Sint(SintTy::I32))),
+                "i64" => ir_builder
+                    .get_or_insert_type_idx(MathicType::Numeric(NumericTy::Sint(SintTy::I64))),
+                "i128" => ir_builder
+                    .get_or_insert_type_idx(MathicType::Numeric(NumericTy::Sint(SintTy::I128))),
+                "usz" => ir_builder
+                    .get_or_insert_type_idx(MathicType::Numeric(NumericTy::Uint(UintTy::Usize))),
+                "u8" => ir_builder
+                    .get_or_insert_type_idx(MathicType::Numeric(NumericTy::Uint(UintTy::U8))),
+                "u16" => ir_builder
+                    .get_or_insert_type_idx(MathicType::Numeric(NumericTy::Uint(UintTy::U16))),
+                "u32" => ir_builder
+                    .get_or_insert_type_idx(MathicType::Numeric(NumericTy::Uint(UintTy::U32))),
+                "u64" => ir_builder
+                    .get_or_insert_type_idx(MathicType::Numeric(NumericTy::Uint(UintTy::U64))),
+                "u128" => ir_builder
+                    .get_or_insert_type_idx(MathicType::Numeric(NumericTy::Uint(UintTy::U128))),
+                "str" => ir_builder.get_or_insert_type_idx(MathicType::Str),
+                "char" => ir_builder.get_or_insert_type_idx(MathicType::Char),
+                "bool" => ir_builder.get_or_insert_type_idx(MathicType::Bool),
+                "expr" => {
+                    let Some(inner_ty) = inner else { panic!() };
+                    let inner_ty_idx = lower_top_level_ast_type(ir_builder, inner_ty, span)?;
+                    let inner_ty = ir_builder.get_type(inner_ty_idx, span)?;
 
-                match ir_builder.decl_table.get_struct_decl(other).cloned() {
-                    Some(d) => {
-                        let adt_index = lower_top_level_struct(ir_builder, &d)?;
-                        ir_builder.get_or_insert_type_idx(MathicType::Adt {
-                            index: adt_index,
-                            is_local: false,
-                        })
+                    match inner_ty {
+                        MathicType::Numeric(num_ty) => {
+                            ir_builder.get_or_insert_type_idx(MathicType::SymbolicExpr(num_ty))
+                        }
+                        other => {
+                            return Err(LoweringError::MismatchedType {
+                                expected: other,
+                                found: other,
+                                span,
+                            });
+                        }
                     }
-                    None => {
-                        return Err(LoweringError::UndeclaredType { span });
+                }
+                other => {
+                    if let Some(ty) = ir_builder.get_user_def_type(other) {
+                        return Ok(ty);
+                    }
+
+                    match ir_builder.decl_table.get_struct_decl(other).cloned() {
+                        Some(d) => {
+                            let adt_index = lower_top_level_struct(ir_builder, &d)?;
+                            ir_builder.get_or_insert_type_idx(MathicType::Adt {
+                                index: adt_index,
+                                is_local: false,
+                            })
+                        }
+                        None => {
+                            return Err(LoweringError::UndeclaredType { span });
+                        }
                     }
                 }
             }
-        },
+        }
     })
 }

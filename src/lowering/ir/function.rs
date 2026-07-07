@@ -19,6 +19,7 @@ use crate::{
 pub enum LocalKind {
     Param,
     Temp,
+    Sym,
 }
 
 /// MATHIR's representation of local variables.

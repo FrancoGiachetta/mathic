@@ -1,13 +1,15 @@
-#include "Dialect/Symbolic/Transforms/SymbolicExtractEval.h"
-#include "Dialect/Symbolic/IR/SymbolicOps.h"
 #include <cstdint>
 #include <llvm/ADT/Hashing.h>
+#include <llvm/ADT/TypeSwitch.h>
 #include <llvm/Support/Casting.h>
+#include <mlir/Dialect/Arith/IR/Arith.h>
 #include <mlir/Dialect/Func/IR/FuncOps.h>
+#include <mlir/Dialect/LLVMIR/LLVMDialect.h>
 #include <mlir/IR/Block.h>
 #include <mlir/IR/BuiltinAttributes.h>
 #include <mlir/IR/BuiltinOps.h>
 #include <mlir/IR/BuiltinTypes.h>
+#include <mlir/IR/IRMapping.h>
 #include <mlir/IR/MLIRContext.h>
 #include <mlir/IR/OperationSupport.h>
 #include <mlir/IR/PatternMatch.h>
@@ -18,10 +20,14 @@
 #include <string>
 #include <utility>
 
+#include "Dialect/Symbolic/IR/SymbolicOps.h"
+#include "Dialect/Symbolic/IR/SymbolicTypes.h"
+#include "Dialect/Symbolic/Transforms/SymbolicExtractEval.h"
+
 namespace
 {
-
 using namespace mlir;
+using namespace symbolic;
 
 /// Creates the hash of an expression.
 ///
@@ -32,81 +38,60 @@ static std::optional<llvm::hash_code> getExpressionHash(mlir::Value value)
     mlir::Operation *op = value.getDefiningOp();
 
     if (!op)
-        return std::nullopt;
+        return llvm::hash_combine(value.getType());
 
-    if (llvm::isa<symbolic::SymOp>(op))
-    {
-
-        llvm::StringRef sym = llvm::dyn_cast<symbolic::SymOp>(op).getName();
-        return llvm::hash_combine(sym);
-    }
-
-    if (llvm::isa<symbolic::AddOp>(op) || llvm::isa<symbolic::SubOp>(op) || llvm::isa<symbolic::MulOp>(op) ||
-        llvm::isa<symbolic::DivOp>(op))
-    {
-        std::optional<llvm::hash_code> lhs = getExpressionHash(op->getOperand(0));
-        std::optional<llvm::hash_code> rhs = getExpressionHash(op->getOperand(1));
-
-        if (!lhs || !rhs)
-            return std::nullopt;
-
-        return llvm::hash_combine(op, lhs, rhs);
-    }
+    return llvm::TypeSwitch<Operation *, std::optional<llvm::hash_code>>(op)
+        .Case<arith::ConstantOp>([&](auto cst) { return llvm::hash_combine(cst.getValue()); })
+        .Case<symbolic::SymOp>([&](auto sym) { return llvm::hash_combine(sym.getName()); })
+        .Case<symbolic::AddOp, symbolic::SubOp, symbolic::MulOp, symbolic::DivOp>(
+            [&](Operation *binop) -> std::optional<llvm::hash_code> {
+                std::optional<llvm::hash_code> lhs = getExpressionHash(binop->getOperand(0));
+                if (!lhs)
+                    return std::nullopt;
+                std::optional<llvm::hash_code> rhs = getExpressionHash(binop->getOperand(1));
+                if (!rhs)
+                    return std::nullopt;
+                return llvm::hash_combine(binop, lhs, rhs);
+            })
+        .Default([](Operation *defaultOp) { return llvm::hash_combine(defaultOp->getResult(0).getType()); });
 }
 
-/// Helper function to move the symbolic operations of an expression into its
-/// associated eval function.
-static Value cloneSymbolicOperationsIntoFunction(Value val, OpBuilder &builder, DenseMap<Value, Value> &valueMap)
+/// Walk the expression tree collecting values that can't be cloned
+/// (LLVM::LoadOp results and block arguments) as free variables.
+static void collectFreeVars(Value val, DenseSet<Value> &freeVars)
 {
-    // Already cloned — return cached
-    auto it = valueMap.find(val);
+    Operation *op = val.getDefiningOp();
 
-    if (it != valueMap.end())
-        return it->second;
+    if (!op || isa<LLVM::LoadOp>(op))
+    {
+        freeVars.insert(val);
+        return;
+    }
+
+    for (Value operand : op->getOperands())
+        collectFreeVars(operand, freeVars);
+}
+
+/// Recursively clones the expression tree into the current builder insertion
+/// point, using `mapper` to deduplicate already-cloned values.
+/// Free variables must already be mapped to function arguments before calling.
+static Value cloneExpression(Value val, OpBuilder &builder, IRMapping &mapper)
+{
+    if (Value mapped = mapper.lookupOrNull(val))
+        return mapped;
 
     Operation *op = val.getDefiningOp();
-    Type opExprType = op->getResult(0).getType();
 
     if (!op)
         return Value();
 
-    Value result;
+    for (Value operand : op->getOperands())
+        cloneExpression(operand, builder, mapper);
 
-    if (isa<symbolic::SymOp>(op))
-    {
-        // Clone SymOp as-is — same name, no substitution
-        result = builder.create<symbolic::SymOp>(op->getLoc(), opExprType, dyn_cast<symbolic::SymOp>(op).getNameAttr());
-    }
-    else if (isa<symbolic::AddOp>(op))
-    {
-        Value lhs = cloneSymbolicOperationsIntoFunction(op->getOperand(0), builder, valueMap);
-        Value rhs = cloneSymbolicOperationsIntoFunction(op->getOperand(1), builder, valueMap);
-        result = builder.create<symbolic::AddOp>(op->getLoc(), opExprType, lhs, rhs);
-    }
-    else if (isa<symbolic::SubOp>(op))
-    {
-        Value lhs = cloneSymbolicOperationsIntoFunction(op->getOperand(0), builder, valueMap);
-        Value rhs = cloneSymbolicOperationsIntoFunction(op->getOperand(1), builder, valueMap);
-        result = builder.create<symbolic::SubOp>(op->getLoc(), opExprType, lhs, rhs);
-    }
-    else if (isa<symbolic::MulOp>(op))
-    {
-        Value lhs = cloneSymbolicOperationsIntoFunction(op->getOperand(0), builder, valueMap);
-        Value rhs = cloneSymbolicOperationsIntoFunction(op->getOperand(1), builder, valueMap);
-        result = builder.create<symbolic::MulOp>(op->getLoc(), opExprType, lhs, rhs);
-    }
-    else if (isa<symbolic::DivOp>(op))
-    {
-        Value lhs = cloneSymbolicOperationsIntoFunction(op->getOperand(0), builder, valueMap);
-        Value rhs = cloneSymbolicOperationsIntoFunction(op->getOperand(1), builder, valueMap);
-        result = builder.create<symbolic::DivOp>(op->getLoc(), opExprType, lhs, rhs);
-    }
-    else
-    {
-        return Value();
-    }
+    Operation *cloned = builder.clone(*op, mapper);
+    Value result = cloned->getResult(0);
 
-    valueMap[val] = result;
+    mapper.map(val, result);
 
     return result;
 }
@@ -124,11 +109,48 @@ struct EvalToFuncState
     DenseMap<uint32_t, SymbolRefAttr> funcs;
 };
 
+static void createEvalFunction(PatternRewriter &rewriter, EvalOp op, SymbolRefAttr fnName, Type innerTy,
+                               const DenseSet<Value> &freeVars)
+{
+    ModuleOp module = op->getParentOfType<ModuleOp>();
+
+    rewriter.setInsertionPointToStart(module.getBody());
+
+    SmallVector<Type> inputTypes;
+
+    inputTypes.reserve(1 + freeVars.size());
+    inputTypes.push_back(innerTy);
+
+    for (Value fv : freeVars)
+        inputTypes.push_back(fv.getType());
+
+    FunctionType fnType = rewriter.getFunctionType(inputTypes, op.getExpr().getType());
+    func::FuncOp fnOp = func::FuncOp::create(rewriter, op.getLoc(), fnName.getLeafReference(), fnType);
+
+    fnOp.setPrivate();
+
+    Block *fnEntryBLock = fnOp.addEntryBlock();
+
+    rewriter.setInsertionPointToStart(fnEntryBLock);
+
+    IRMapping mapper;
+
+    size_t i = 1;
+    for (Value fv : freeVars)
+        mapper.map(fv, fnEntryBLock->getArgument(i++));
+
+    Value result = cloneExpression(op.getExpr(), rewriter, mapper);
+
+    func::ReturnOp::create(rewriter, op.getLoc(), result);
+    rewriter.setInsertionPoint(op);
+}
+
 struct EvalOpToFuncPattern : public OpRewritePattern<EvalOp>
 {
     mutable EvalToFuncState state;
 
-    EvalOpToFuncPattern(MLIRContext *ctx, EvalToFuncState &state) : OpRewritePattern<EvalOp>(ctx), state(state)
+    EvalOpToFuncPattern(MLIRContext *ctx, EvalToFuncState &initState)
+        : OpRewritePattern<EvalOp>(ctx), state(std::move(initState))
     {
     }
 
@@ -139,48 +161,40 @@ struct EvalOpToFuncPattern : public OpRewritePattern<EvalOp>
         if (!evalOpHash)
             return failure();
 
-        SymbolRefAttr fnName;
-        auto func = state.funcs.find(*evalOpHash);
+        SymExprType exprTy = llvm::cast<SymExprType>(op.getExpr().getType());
+        Type innerTy = exprTy.getInnerType();
+        DenseSet<Value> freeVars;
 
-        // Don't create a new function if the expression being evaluated
-        // already has its associated function.
+        collectFreeVars(op.getExpr(), freeVars);
+
+        uint32_t hash = static_cast<uint32_t>(*evalOpHash);
+        SymbolRefAttr fnName;
+        auto func = state.funcs.find(hash);
+
         if (func != state.funcs.end())
+        {
             fnName = func->second;
+        }
         else
         {
-            ModuleOp module = op->getParentOfType<ModuleOp>();
-
-            rewriter.setInsertionPointToStart(module.getBody());
-
-            fnName = SymbolRefAttr::get(op.getContext(), "__eval_op_" + std::to_string(evalOpHash.value()));
-
-            FunctionType fnType = rewriter.getFunctionType(rewriter.getF64Type(), op.getExpr().getType());
-            func::FuncOp fnOp = rewriter.create<func::FuncOp>(op.getLoc(), fnName.getLeafReference(), fnType);
-
-            fnOp.setPrivate();
-
-            Block *fnEntryBLock = fnOp.addEntryBlock();
-
-            rewriter.setInsertionPointToStart(fnEntryBLock);
-
-            DenseMap<Value, Value> valueMap;
-
-            // Move the symbolic operations to the new function.
-            Value result = cloneSymbolicOperationsIntoFunction(op.getExpr(), rewriter, valueMap);
-
-            rewriter.create<func::ReturnOp>(op.getLoc(), result);
-            rewriter.setInsertionPoint(op);
-
-            state.funcs[static_cast<int32_t>(*evalOpHash)] = fnName;
+            fnName = SymbolRefAttr::get(op.getContext(), "__eval_op_" + std::to_string(hash));
+            createEvalFunction(rewriter, op, fnName, innerTy, freeVars);
+            state.funcs[hash] = fnName;
         }
 
-        func::CallOp call = rewriter.create<func::CallOp>(op.getLoc(), fnName, op.getExpr().getType(), op.getValue());
+        SmallVector<Value> callArgs;
 
-        // In this stage, the function actually return a !symbolic.expr. Since
-        // we need the result to be numeric in the future, this operation acts
-        // as placeholder to legalize the ir.
+        callArgs.reserve(1 + freeVars.size());
+        callArgs.push_back(op.getValue());
+        callArgs.append(freeVars.begin(), freeVars.end());
+
+        func::CallOp call = func::CallOp::create(rewriter, op.getLoc(), fnName, op.getExpr().getType(), callArgs);
+
+        // This is a workarround to prevent the pass from failing since the
+        // call result should be a numeric value. This is corrected in the
+        // SymbolicToArith pass.
         mlir::UnrealizedConversionCastOp cast =
-            rewriter.create<UnrealizedConversionCastOp>(op.getLoc(), op.getResult().getType(), call.getResult(0));
+            UnrealizedConversionCastOp::create(rewriter, op.getLoc(), op.getResult().getType(), call.getResult(0));
 
         rewriter.replaceOp(op, cast.getResult(0));
 

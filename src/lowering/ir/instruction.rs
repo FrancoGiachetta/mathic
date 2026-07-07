@@ -3,7 +3,7 @@ use crate::{
     lowering::ir::{symbols::TypeIndex, value::ValueModifier},
     parser::{
         Span,
-        ast::expression::{BinaryOp, LogicalOp, UnaryOp},
+        ast::expression::{ArithOp, BinaryOp, LogicalOp, UnaryOp},
     },
 };
 
@@ -24,6 +24,12 @@ pub enum LValInstruct {
         modifier: Vec<ValueModifier>,
         span: Option<Span>,
     },
+    Sym {
+        local_idx: usize,
+        sym_name: String,
+        ty: TypeIndex,
+        span: Option<Span>,
+    },
 }
 
 #[derive(Debug, Clone)]
@@ -39,6 +45,12 @@ pub enum RValueKind {
     },
     Binary {
         op: BinaryOp,
+        lhs: Box<RValInstruct>,
+        rhs: Box<RValInstruct>,
+        span: Span,
+    },
+    SymbolicBinary {
+        op: ArithOp,
         lhs: Box<RValInstruct>,
         rhs: Box<RValInstruct>,
         span: Span,

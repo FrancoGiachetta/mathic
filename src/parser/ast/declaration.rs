@@ -7,9 +7,9 @@ pub enum TopLevelItem {
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
-#[allow(dead_code)]
 pub enum DeclStmt {
     Var(VarDecl),
+    Sym(SymDecl),
     Struct(StructDecl),
     Func(FuncDecl),
 }
@@ -18,6 +18,12 @@ pub enum DeclStmt {
 pub struct VarDecl {
     pub name: String,
     pub expr: ExprStmt,
+    pub ty: AstType,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct SymDecl {
+    pub name: String,
     pub ty: AstType,
 }
 
@@ -54,5 +60,8 @@ pub struct Param {
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum AstType {
-    Type(String),
+    Type {
+        ty: String,
+        inner: Option<Box<AstType>>,
+    },
 }

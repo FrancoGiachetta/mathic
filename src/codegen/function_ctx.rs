@@ -22,8 +22,10 @@ use crate::{
 ///
 /// ## Fields
 ///
-/// **locals**: variables defined within the function context.
+/// **locals**: variables defined within the function context. Stores either
+/// symbols or pointers to stack allocated variables.
 /// **mlir_blocks**: the MLIR Blocks that the function will use.
+#[derive(Debug)]
 pub struct FunctionCtx<'ctx, 'this> {
     locals: Vec<(MlirValue, TypeIndex)>,
     mlir_blocks: &'this [BlockRef<'ctx, 'this>],
@@ -43,7 +45,13 @@ impl<'ctx, 'this> FunctionCtx<'ctx, 'this> {
         self.locals.push((value.to_raw(), ty));
     }
 
-    pub fn get_local(&self, idx: usize) -> Option<(Value<'ctx, '_>, TypeIndex)> {
+    pub fn assign_local(&mut self, idx: usize, value: Value<'ctx, '_>) {
+        if let Some(entry) = self.locals.get_mut(idx) {
+            *entry = (value.to_raw(), entry.1);
+        }
+    }
+
+    pub fn get_local(&self, idx: usize) -> Option<(Value<'ctx, 'this>, TypeIndex)> {
         self.locals
             .get(idx)
             .copied()

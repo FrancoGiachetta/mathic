@@ -11,6 +11,7 @@ target_link_libraries(dialect_bindings
     MLIRPass
     MLIRSymbolicDialect
     MLIRSymbolicTransforms
+    MLIRSymbolicToArith
   PRIVATE
     MLIRSupport
 )

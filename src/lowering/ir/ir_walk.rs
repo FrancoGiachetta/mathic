@@ -53,6 +53,7 @@ pub mod value {
 
                     write!(f, "%{}{}", local_idx, modifier_str)
                 }
+                Self::Symbol { local_idx } => write!(f, "sym%{}", local_idx),
                 Self::Const(c) => write!(f, "{}", c),
             }
         }
@@ -143,6 +144,9 @@ pub mod instructions {
                 write!(f, "{}}}", indent)
             }
             RValueKind::Binary { op, lhs, rhs, .. } => write!(f, "{} {} {}", lhs, op, rhs),
+            RValueKind::SymbolicBinary { op, lhs, rhs, .. } => {
+                write!(f, "{} {} {}", lhs, BinaryOp::Arithmetic(*op), rhs)
+            }
             RValueKind::Unary { op, rhs, .. } => write!(f, "{}{}", op, rhs),
             RValueKind::Logical { op, lhs, rhs, .. } => write!(f, "{} {} {}", lhs, op, rhs),
         }
@@ -196,6 +200,9 @@ pub mod instructions {
                 write!(f, " = ")?;
                 write!(f, "%{}{}", local_idx, modifier_str)?;
                 write_rval_instruct(value, f, indent)
+            }
+            LValInstruct::Sym { local_idx, .. } => {
+                write!(f, "{}sym %{};", inner_indent, local_idx)
             }
         }
     }
@@ -265,6 +272,20 @@ pub mod basic_block {
                         return_dest, callee, args_str, dest_block
                     )
                 }
+                Self::Eval {
+                    expr,
+                    sym_name,
+                    value,
+                    return_dest,
+                    dest_block,
+                    ..
+                } => {
+                    write!(
+                        f,
+                        "{} = call eval({expr}, {sym_name}, {value}) block{}",
+                        return_dest, dest_block
+                    )
+                }
             }
         }
     }
@@ -279,7 +300,7 @@ pub mod basic_block {
 pub mod types {
     use std::fmt;
 
-    use crate::lowering::ir::types::{FloatTy, MathicType, SintTy, UintTy};
+    use crate::lowering::ir::types::{FloatTy, MathicType, NumericTy, SintTy, UintTy};
 
     impl fmt::Display for UintTy {
         fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
@@ -316,14 +337,23 @@ pub mod types {
         }
     }
 
+    impl fmt::Display for NumericTy {
+        fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+            match self {
+                NumericTy::Uint(ty) => write!(f, "{ty}"),
+                NumericTy::Sint(ty) => write!(f, "{ty}"),
+                NumericTy::Float(ty) => write!(f, "{ty}"),
+            }
+        }
+    }
+
     impl fmt::Display for MathicType {
         fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
             match self {
-                MathicType::Uint(ty) => write!(f, "{}", ty),
-                MathicType::Sint(ty) => write!(f, "{}", ty),
-                MathicType::Float(ty) => write!(f, "{}", ty),
+                MathicType::Numeric(ty) => write!(f, "{ty}"),
                 MathicType::Bool => write!(f, "bool"),
                 MathicType::Str => write!(f, "str"),
+                MathicType::SymbolicExpr(inner_ty) => write!(f, "expr<{inner_ty}>"),
                 MathicType::Char => write!(f, "char"),
                 MathicType::Void => write!(f, "void"),
                 MathicType::Adt { index, .. } => write!(f, "Adt({index})"),

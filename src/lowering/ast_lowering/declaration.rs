@@ -12,7 +12,7 @@ use crate::{
     parser::{
         Span,
         ast::{
-            declaration::{DeclStmt, FuncDecl, StructDecl, VarDecl},
+            declaration::{DeclStmt, FuncDecl, StructDecl, SymDecl, VarDecl},
             statement::StmtKind,
         },
     },
@@ -55,8 +55,30 @@ pub fn lower_var_declaration(
     Ok(())
 }
 
+pub fn lower_sym_decl(
+    func: &mut FunctionBuilder,
+    sym_decl: &SymDecl,
+    span: Span,
+) -> Result<(), LoweringError> {
+    let SymDecl { name, ty } = sym_decl;
+
+    let sym_ty_idx = lower_inner_ast_type(func, ty, span)?;
+    let local_idx =
+        func.sym_table
+            .add_local(Some(name.clone()), sym_ty_idx, Some(span), LocalKind::Sym)?;
+
+    func.push_instruction(LValInstruct::Sym {
+        local_idx,
+        sym_name: name.clone(),
+        ty: sym_ty_idx,
+        span: Some(span),
+    });
+
+    Ok(())
+}
+
 pub fn lower_inner_struct(
-    func_builder: &mut FunctionBuilder,
+    func: &mut FunctionBuilder,
     struct_decl: &StructDecl,
 ) -> Result<usize, LoweringError> {
     let StructDecl { name, fields, span } = struct_decl;
@@ -70,12 +92,12 @@ pub fn lower_inner_struct(
     for field in fields {
         adt.fields.push(StructField {
             name: field.name.clone(),
-            ty: lower_inner_ast_type(func_builder, &field.ty, field.span)?,
+            ty: lower_inner_ast_type(func, &field.ty, field.span)?,
             _is_pub: field.is_pub,
         });
     }
 
-    let idx = func_builder.add_adt(adt.name.clone(), Adt::Struct(adt));
+    let idx = func.add_adt(adt.name.clone(), Adt::Struct(adt));
 
     Ok(idx)
 }

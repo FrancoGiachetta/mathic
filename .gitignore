@@ -5,8 +5,14 @@ target/
 
 *.pdb
 
-.cargo/
 env.sh
+
+# Compilation
 
 **/*.mathir
 **/*.o
+# only at root level.
+*.mlir
+
+# Samply
+profile.json.gz

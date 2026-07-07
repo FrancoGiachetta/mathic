@@ -16,18 +16,57 @@ use crate::{
     MathicResult,
     codegen::{MathicCodeGen, compiler_helper::CompilerHelper},
     diagnostics::{self, CodegenError},
-    ffi, lowering,
+    ffi::{
+        self,
+        dialect_integration::symbolic_dialect::{
+            create_symbolic_extract_eval, create_symbolic_to_arith,
+        },
+    },
+    lowering,
     parser::MathicParser,
 };
 
-#[derive(Default)]
+#[derive(Debug, Default, Clone, Copy)]
 #[repr(u8)]
 pub enum OptLvl {
     None,
-    #[default]
     O1,
+    #[default]
     O2,
     O3,
+}
+
+impl From<usize> for OptLvl {
+    fn from(value: usize) -> Self {
+        match value {
+            0 => OptLvl::None,
+            1 => OptLvl::O1,
+            2 => OptLvl::O2,
+            _ => OptLvl::O3,
+        }
+    }
+}
+
+impl From<OptLvl> for usize {
+    fn from(val: OptLvl) -> Self {
+        match val {
+            OptLvl::None => 0,
+            OptLvl::O1 => 1,
+            OptLvl::O2 => 2,
+            OptLvl::O3 => 3,
+        }
+    }
+}
+
+impl From<u8> for OptLvl {
+    fn from(value: u8) -> Self {
+        match value {
+            0 => OptLvl::None,
+            1 => OptLvl::O1,
+            2 => OptLvl::O2,
+            _ => OptLvl::O3,
+        }
+    }
 }
 
 pub struct MathicCompiler {
@@ -146,6 +185,8 @@ impl MathicCompiler {
         pass_manager.enable_verifier(true);
         pass_manager.add_pass(create_canonicalizer());
         pass_manager.add_pass(create_scf_to_control_flow()); // needed because to_llvm doesn't include it.
+        pass_manager.add_pass(create_symbolic_extract_eval());
+        pass_manager.add_pass(create_symbolic_to_arith());
         pass_manager.add_pass(create_to_llvm());
 
         pass_manager.run(module)?;

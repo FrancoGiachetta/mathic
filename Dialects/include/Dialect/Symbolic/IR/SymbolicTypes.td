@@ -13,7 +13,8 @@ include "mlir/IR/AttrTypeBase.td"
 def SymExpr : Symbolic_Type<"SymExpr", "expr">
 {
     let summary = "A symbolic expression";
-    let assemblyFormat = "";
+    let parameters = (ins "mlir::IntegerType":$innerType, "bool":$isSigned);
+    let assemblyFormat = "`<` $innerType `,` struct($isSigned) `>`";
 }
 
 #endif // DIALECT_SYMBOLIC_TYPES_

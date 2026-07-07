@@ -59,4 +59,13 @@ pub enum Terminator {
         return_ty: TypeIndex,
         dest_block: usize,
     },
+    Eval {
+        expr: RValInstruct,
+        sym_name: String,
+        value: RValInstruct,
+        span: Option<Span>,
+        return_dest: Value,
+        return_ty_idx: TypeIndex,
+        dest_block: usize,
+    },
 }

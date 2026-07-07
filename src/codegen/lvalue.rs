@@ -5,7 +5,10 @@ use melior::{
 };
 
 use crate::{
-    codegen::{MathicCodeGen, compiler_helper::CompilerHelper, function_ctx::FunctionCtx},
+    codegen::{
+        MathicCodeGen, compiler_helper::CompilerHelper, dialect_integration::symbolic,
+        function_ctx::FunctionCtx,
+    },
     diagnostics::CodegenError,
     lowering::ir::{
         adts::Adt, basic_block::Terminator, instruction::LValInstruct, types::MathicType,
@@ -33,8 +36,14 @@ impl MathicCodeGen<'_> {
                 let location = self.get_location(*span)?;
 
                 let init_val = self.compile_rvalue(fn_ctx, block, init, helper)?;
-                let init_mlir_ty = self.get_compiled_type(fn_ctx.get_ir_func(), init.ty)?;
                 let init_ty = self.get_type(fn_ctx.get_ir_func(), init.ty)?;
+
+                if init_ty.is_symbolic() {
+                    fn_ctx.define_local(init_val, init.ty);
+                    return Ok(());
+                }
+
+                let init_mlir_ty = self.get_compiled_type(fn_ctx.get_ir_func(), init.ty)?;
                 let ptr = block.alloca1(
                     self.ctx,
                     location,
@@ -55,6 +64,13 @@ impl MathicCodeGen<'_> {
                 let location = self.get_location(*span)?;
 
                 let val = self.compile_rvalue(fn_ctx, block, value, helper)?;
+                let val_ty = self.get_type(fn_ctx.get_ir_func(), value.ty)?;
+
+                if val_ty.is_symbolic() {
+                    fn_ctx.assign_local(*local_idx, val);
+                    return Ok(());
+                }
+
                 let (mut ptr, mut ty_idx) =
                     fn_ctx.get_local(*local_idx).expect("invalid local idx");
 
@@ -91,6 +107,24 @@ impl MathicCodeGen<'_> {
                 }
 
                 block.store(self.ctx, location, ptr, val)?;
+            }
+            LValInstruct::Sym {
+                local_idx: _,
+                sym_name,
+                ty,
+                span,
+            } => {
+                let func_ir = fn_ctx.get_ir_func();
+                let location = self.get_location(*span)?;
+
+                let sym = block.append_op_result(symbolic::operation::sym(
+                    self.ctx,
+                    location,
+                    sym_name,
+                    self.get_compiled_type(func_ir, *ty)?,
+                ))?;
+
+                fn_ctx.define_local(sym, *ty);
             }
         }
 
@@ -173,6 +207,48 @@ impl MathicCodeGen<'_> {
                     &[mlir_return_ty],
                     self.get_location(*span)?,
                 ))?;
+
+                block.store(self.ctx, unknown_location, return_ptr, return_value)?;
+
+                fn_ctx.define_local(return_ptr, *return_ty_idx);
+
+                block.append_operation(cf::br(
+                    &fn_ctx.get_block(*dest_block),
+                    &[],
+                    self.get_location(None)?,
+                ))
+            }
+            Terminator::Eval {
+                expr,
+                sym_name,
+                value,
+                span,
+                return_dest: _,
+                return_ty_idx,
+                dest_block,
+            } => {
+                let unknown_location = self.get_location(*span)?;
+
+                let mlir_return_ty =
+                    self.get_compiled_type(fn_ctx.get_ir_func(), *return_ty_idx)?;
+                let return_ty = self.get_type(fn_ctx.get_ir_func(), *return_ty_idx)?;
+
+                let expr = self.compile_rvalue(fn_ctx, block, expr, helper)?;
+                let value = self.compile_rvalue(fn_ctx, block, value, helper)?;
+                let return_value = block.append_op_result(symbolic::operation::eval(
+                    self.ctx,
+                    unknown_location,
+                    expr,
+                    sym_name,
+                    value,
+                ))?;
+
+                let return_ptr = block.alloca1(
+                    self.ctx,
+                    unknown_location,
+                    mlir_return_ty,
+                    return_ty.align(self.ir, fn_ctx.get_ir_func()),
+                )?;
 
                 block.store(self.ctx, unknown_location, return_ptr, return_value)?;
 
