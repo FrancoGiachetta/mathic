@@ -7,9 +7,12 @@ include "mlir/Interfaces/SideEffectInterfaces.td"
 include "mlir/IR/CommonTypeConstraints.td"
 
 class Symbolic_BinOp<string mnemonic, list<Trait> traits = []>
-    : Op<Symbolic_Dialect, mnemonic, !listconcat([ Pure, SameOperandsAndResultElementType ], traits)>
+    : Op<Symbolic_Dialect, mnemonic, !listconcat([ Pure ], traits)>
 {
-    let arguments = (ins SymExpr:$lhs, SymExpr:$rhs);
+    let arguments = (ins
+        AnyTypeOf<[SymExpr, AnyInteger]>:$lhs,
+        AnyTypeOf<[SymExpr, AnyInteger]>:$rhs
+    );
     let results = (outs SymExpr:$res);
     let assemblyFormat = "$lhs `,` $rhs attr-dict `:` `(` qualified(type($lhs)) `,` qualified(type($rhs)) `)` `->` qualified(type($res))";
 }

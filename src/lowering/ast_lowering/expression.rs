@@ -270,42 +270,58 @@ fn lower_binary_op(
     span: Span,
 ) -> Result<RValInstruct, LoweringError> {
     let (lhs, lhs_ty_idx) = lower_expr(func, lhs, None)?;
-    let (rhs, rhs_ty_idx) = lower_expr(func, rhs, Some(lhs_ty_idx))?;
+    let (rhs, rhs_ty_idx) = lower_expr(func, rhs, None)?;
 
-    // Operands' types must match.
-    if lhs_ty_idx != rhs_ty_idx {
-        return Err(LoweringError::MismatchedType {
-            expected: func.get_type(lhs_ty_idx, span)?,
-            found: func.get_type(rhs_ty_idx, span)?,
-            span,
-        });
-    }
+    let lhs_ty = func.get_type(lhs_ty_idx, span)?;
+    let rhs_ty = func.get_type(rhs_ty_idx, span)?;
 
-    let ty = func.get_type(lhs_ty_idx, span)?;
+    let is_symbolic = lhs_ty.is_symbolic() || rhs_ty.is_symbolic();
 
-    let inst_ty_idx = match op {
-        BinaryOp::Compare(_) => func.get_or_insert_global_type_idx(MathicType::Bool),
-        BinaryOp::Arithmetic(_) => lhs_ty_idx,
-    };
+    Ok(match op {
+        BinaryOp::Arithmetic(arith) if is_symbolic => {
+            let kind = RValueKind::SymbolicBinary {
+                op: arith,
+                lhs: Box::new(lhs),
+                rhs: Box::new(rhs),
+                span,
+            };
 
-    let kind = match op {
-        BinaryOp::Arithmetic(arith) if ty.is_symbolic() => RValueKind::SymbolicBinary {
-            op: arith,
-            lhs: Box::new(lhs),
-            rhs: Box::new(rhs),
-            span,
-        },
-        _ => RValueKind::Binary {
-            op,
-            lhs: Box::new(lhs),
-            rhs: Box::new(rhs),
-            span,
-        },
-    };
+            RValInstruct {
+                kind,
+                ty: if lhs_ty.is_symbolic() {
+                    lhs_ty_idx
+                } else {
+                    rhs_ty_idx
+                },
+            }
+        }
+        _ => {
+            let inst_ty_idx = match op {
+                BinaryOp::Compare(_) => func.get_or_insert_global_type_idx(MathicType::Bool),
+                BinaryOp::Arithmetic(_) => lhs_ty_idx,
+            };
 
-    Ok(RValInstruct {
-        kind,
-        ty: inst_ty_idx,
+            // Operands' types must match.
+            if lhs_ty_idx != rhs_ty_idx {
+                return Err(LoweringError::MismatchedType {
+                    expected: func.get_type(lhs_ty_idx, span)?,
+                    found: func.get_type(rhs_ty_idx, span)?,
+                    span,
+                });
+            }
+
+            let kind = RValueKind::Binary {
+                op,
+                lhs: Box::new(lhs),
+                rhs: Box::new(rhs),
+                span,
+            };
+
+            RValInstruct {
+                kind,
+                ty: inst_ty_idx,
+            }
+        }
     })
 }
 
@@ -669,9 +685,23 @@ fn lower_expression_type(
             PrimaryExpr::Char(_) => func.get_or_insert_global_type_idx(MathicType::Char),
             PrimaryExpr::Bool(_) => func.get_or_insert_global_type_idx(MathicType::Bool),
         },
-        ExprStmtKind::Binary { lhs, op, .. } => match op {
+        ExprStmtKind::Binary { lhs, op, rhs } => match op {
             BinaryOp::Compare(_) => func.get_or_insert_global_type_idx(MathicType::Bool),
-            BinaryOp::Arithmetic(_) => lower_expression_type(func, &lhs.kind, ty_hint, span)?,
+            BinaryOp::Arithmetic(_) => {
+                // We need to check if either of the operans is symbolic since
+                // the distinction is done through the type.
+                let lhs_ty_idx = lower_expression_type(func, &lhs.kind, ty_hint, span)?;
+                if func.get_type(lhs_ty_idx, span)?.is_symbolic() {
+                    return Ok(lhs_ty_idx);
+                }
+
+                let rhs_ty_idx = lower_expression_type(func, &rhs.kind, ty_hint, span)?;
+                if func.get_type(rhs_ty_idx, span)?.is_symbolic() {
+                    return Ok(rhs_ty_idx);
+                }
+
+                lhs_ty_idx
+            }
         },
         ExprStmtKind::Call { callee, .. } => {
             let func_decl = func.get_function_decl(callee, span)?;

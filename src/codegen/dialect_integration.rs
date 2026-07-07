@@ -46,13 +46,12 @@ pub mod symbolic {
                 .expect("valid operation")
         }
 
-        #[allow(dead_code)]
         pub fn add<'ctx>(
             location: Location<'ctx>,
             lhs: Value<'ctx, '_>,
             rhs: Value<'ctx, '_>,
+            result_type: Type<'ctx>,
         ) -> Operation<'ctx> {
-            let result_type = lhs.r#type();
             OperationBuilder::new("symbolic.add", location)
                 .add_operands(&[lhs, rhs])
                 .add_results(&[result_type])
@@ -60,13 +59,12 @@ pub mod symbolic {
                 .expect("valid operation")
         }
 
-        #[allow(dead_code)]
         pub fn sub<'ctx>(
             location: Location<'ctx>,
             lhs: Value<'ctx, '_>,
             rhs: Value<'ctx, '_>,
+            result_type: Type<'ctx>,
         ) -> Operation<'ctx> {
-            let result_type = lhs.r#type();
             OperationBuilder::new("symbolic.sub", location)
                 .add_operands(&[lhs, rhs])
                 .add_results(&[result_type])
@@ -74,13 +72,12 @@ pub mod symbolic {
                 .expect("valid operation")
         }
 
-        #[allow(dead_code)]
         pub fn mul<'ctx>(
             location: Location<'ctx>,
             lhs: Value<'ctx, '_>,
             rhs: Value<'ctx, '_>,
+            result_type: Type<'ctx>,
         ) -> Operation<'ctx> {
-            let result_type = lhs.r#type();
             OperationBuilder::new("symbolic.mul", location)
                 .add_operands(&[lhs, rhs])
                 .add_results(&[result_type])
@@ -88,13 +85,12 @@ pub mod symbolic {
                 .expect("valid operation")
         }
 
-        #[allow(dead_code)]
         pub fn div<'ctx>(
             location: Location<'ctx>,
             lhs: Value<'ctx, '_>,
             rhs: Value<'ctx, '_>,
+            result_type: Type<'ctx>,
         ) -> Operation<'ctx> {
-            let result_type = lhs.r#type();
             OperationBuilder::new("symbolic.div", location)
                 .add_operands(&[lhs, rhs])
                 .add_results(&[result_type])

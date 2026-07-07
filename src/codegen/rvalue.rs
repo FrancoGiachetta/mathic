@@ -40,7 +40,7 @@ impl MathicCodeGen<'_> {
                 op, lhs, rhs, span, ..
             } => self.compile_binop(fn_ctx, block, lhs, *op, rhs, *span, helper),
             RValueKind::SymbolicBinary { op, lhs, rhs, span } => {
-                self.compile_symbolic_binop(fn_ctx, block, lhs, *op, rhs, *span, helper)
+                self.compile_symbolic_binop(fn_ctx, block, lhs, *op, rhs, *span, rvalue.ty, helper)
             }
             RValueKind::Unary { op, rhs, span, .. } => {
                 self.compile_unary(fn_ctx, block, *op, rhs, *span, helper)
@@ -201,6 +201,7 @@ impl MathicCodeGen<'_> {
         op: ArithOp,
         rhs: &RValInstruct,
         span: Span,
+        result_ty_idx: TypeIndex,
         helper: &mut CompilerHelper,
     ) -> Result<Value<'ctx, 'func>, CodegenError>
     where
@@ -210,12 +211,13 @@ impl MathicCodeGen<'_> {
 
         let lhs_val = self.compile_rvalue(fn_ctx, block, lhs, helper)?;
         let rhs_val = self.compile_rvalue(fn_ctx, block, rhs, helper)?;
+        let mlir_result_ty = self.get_compiled_type(fn_ctx.get_ir_func(), result_ty_idx)?;
 
         let op = match op {
-            ArithOp::Add => symbolic::operation::add(location, lhs_val, rhs_val),
-            ArithOp::Sub => symbolic::operation::sub(location, lhs_val, rhs_val),
-            ArithOp::Mul => symbolic::operation::mul(location, lhs_val, rhs_val),
-            ArithOp::Div => symbolic::operation::div(location, lhs_val, rhs_val),
+            ArithOp::Add => symbolic::operation::add(location, lhs_val, rhs_val, mlir_result_ty),
+            ArithOp::Sub => symbolic::operation::sub(location, lhs_val, rhs_val, mlir_result_ty),
+            ArithOp::Mul => symbolic::operation::mul(location, lhs_val, rhs_val, mlir_result_ty),
+            ArithOp::Div => symbolic::operation::div(location, lhs_val, rhs_val, mlir_result_ty),
             ArithOp::Mod => todo!(),
         };
 

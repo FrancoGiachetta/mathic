@@ -4,6 +4,7 @@
 #include <cstdint>
 #include <llvm/ADT/Hashing.h>
 #include <llvm/Support/Casting.h>
+#include <mlir/Dialect/Arith/IR/Arith.h>
 #include <mlir/Dialect/Func/IR/FuncOps.h>
 #include <mlir/IR/Block.h>
 #include <mlir/IR/BuiltinAttributes.h>
@@ -34,6 +35,9 @@ static std::optional<llvm::hash_code> getExpressionHash(mlir::Value value)
 
     if (!op)
         return std::nullopt;
+
+    if (llvm::isa<arith::ConstantOp>(op))
+        return llvm::hash_combine(llvm::cast<arith::ConstantOp>(op).getValue());
 
     if (llvm::isa<symbolic::SymOp>(op))
     {
@@ -66,18 +70,23 @@ static Value cloneSymbolicOperationsIntoFunction(Value val, OpBuilder &builder, 
         return it->second;
 
     Operation *op = val.getDefiningOp();
-    Type opExprType = op->getResult(0).getType();
 
     if (!op)
         return Value();
 
+    Type opExprType = op->getResult(0).getType();
+
     Value result;
+
+    if (llvm::isa<arith::ConstantOp>(op))
+        return builder.create<arith::ConstantOp>(op->getLoc(), llvm::cast<arith::ConstantOp>(op).getValue());
 
     if (isa<symbolic::SymOp>(op))
     {
         // Clone SymOp as-is — same name, no substitution
         result = builder.create<symbolic::SymOp>(op->getLoc(), opExprType, dyn_cast<symbolic::SymOp>(op).getNameAttr());
     }
+
     else if (isa<symbolic::AddOp>(op))
     {
         Value lhs = cloneSymbolicOperationsIntoFunction(op->getOperand(0), builder, valueMap);
