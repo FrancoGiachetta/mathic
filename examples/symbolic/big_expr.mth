@@ -1,0 +1,8 @@
+df main() i32 {
+    sym x: expr<i32>;
+
+    let e: expr<i32> = x * x + 2 * x + 1;
+    let r: i32 = eval(e, x, 10);
+
+    return r;
+}
