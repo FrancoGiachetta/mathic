@@ -98,7 +98,6 @@ pub mod symbolic {
                 .expect("valid operation")
         }
 
-        #[allow(dead_code)]
         pub fn eval<'ctx>(
             ctx: &'ctx Context,
             location: Location<'ctx>,

@@ -289,6 +289,14 @@ fn lower_binary_op(
 
     Ok(match op {
         BinaryOp::Arithmetic(arith) if is_symbolic => {
+            if lhs_ty.is_symbolic() && rhs_ty.is_symbolic() && lhs_ty_idx != rhs_ty_idx {
+                return Err(LoweringError::MismatchedType {
+                    expected: lhs_ty,
+                    found: rhs_ty,
+                    span,
+                });
+            }
+
             let kind = RValueKind::SymbolicBinary {
                 op: arith,
                 lhs: Box::new(lhs),

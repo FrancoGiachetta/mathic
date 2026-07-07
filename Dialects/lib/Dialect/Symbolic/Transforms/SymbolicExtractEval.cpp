@@ -22,8 +22,10 @@
 
 namespace
 {
-
 using namespace mlir;
+using namespace symbolic;
+
+static Value cloneSymbolicOperationsIntoFunction(Value val, OpBuilder &builder, DenseMap<Value, Value> &valueMap);
 
 /// Creates the hash of an expression.
 ///
@@ -40,23 +42,35 @@ static std::optional<llvm::hash_code> getExpressionHash(mlir::Value value)
         return llvm::hash_combine(llvm::cast<arith::ConstantOp>(op).getValue());
 
     if (llvm::isa<symbolic::SymOp>(op))
-    {
+        return llvm::hash_combine(llvm::dyn_cast<symbolic::SymOp>(op).getName());
 
-        llvm::StringRef sym = llvm::dyn_cast<symbolic::SymOp>(op).getName();
-        return llvm::hash_combine(sym);
-    }
-
-    if (llvm::isa<symbolic::AddOp>(op) || llvm::isa<symbolic::SubOp>(op) || llvm::isa<symbolic::MulOp>(op) ||
-        llvm::isa<symbolic::DivOp>(op))
+    if (llvm::isa<AddOp, SubOp, MulOp, DivOp>(op))
     {
         std::optional<llvm::hash_code> lhs = getExpressionHash(op->getOperand(0));
-        std::optional<llvm::hash_code> rhs = getExpressionHash(op->getOperand(1));
+        if (!lhs)
+            return std::nullopt;
 
-        if (!lhs || !rhs)
+        std::optional<llvm::hash_code> rhs = getExpressionHash(op->getOperand(1));
+        if (!rhs)
             return std::nullopt;
 
         return llvm::hash_combine(op, lhs, rhs);
     }
+}
+
+static Value cloneBinop(Operation *op, Type opExprType, OpBuilder &builder, DenseMap<Value, Value> &valueMap)
+{
+    Value lhs = cloneSymbolicOperationsIntoFunction(op->getOperand(0), builder, valueMap);
+    Value rhs = cloneSymbolicOperationsIntoFunction(op->getOperand(1), builder, valueMap);
+
+    using namespace symbolic;
+    if (isa<AddOp>(op))
+        return builder.create<AddOp>(op->getLoc(), opExprType, lhs, rhs);
+    if (isa<SubOp>(op))
+        return builder.create<SubOp>(op->getLoc(), opExprType, lhs, rhs);
+    if (isa<MulOp>(op))
+        return builder.create<MulOp>(op->getLoc(), opExprType, lhs, rhs);
+    return builder.create<DivOp>(op->getLoc(), opExprType, lhs, rhs);
 }
 
 /// Helper function to move the symbolic operations of an expression into its
@@ -76,49 +90,25 @@ static Value cloneSymbolicOperationsIntoFunction(Value val, OpBuilder &builder, 
 
     Type opExprType = op->getResult(0).getType();
 
-    Value result;
-
     if (llvm::isa<arith::ConstantOp>(op))
         return builder.create<arith::ConstantOp>(op->getLoc(), llvm::cast<arith::ConstantOp>(op).getValue());
 
-    if (isa<symbolic::SymOp>(op))
+    if (llvm::isa<SymOp>(op))
     {
         // Clone SymOp as-is — same name, no substitution
-        result = builder.create<symbolic::SymOp>(op->getLoc(), opExprType, dyn_cast<symbolic::SymOp>(op).getNameAttr());
+        Value result = builder.create<SymOp>(op->getLoc(), opExprType, cast<SymOp>(op).getNameAttr());
+        valueMap[val] = result;
+        return result;
     }
 
-    else if (isa<symbolic::AddOp>(op))
+    if (llvm::isa<AddOp, SubOp, MulOp, DivOp>(op))
     {
-        Value lhs = cloneSymbolicOperationsIntoFunction(op->getOperand(0), builder, valueMap);
-        Value rhs = cloneSymbolicOperationsIntoFunction(op->getOperand(1), builder, valueMap);
-        result = builder.create<symbolic::AddOp>(op->getLoc(), opExprType, lhs, rhs);
-    }
-    else if (isa<symbolic::SubOp>(op))
-    {
-        Value lhs = cloneSymbolicOperationsIntoFunction(op->getOperand(0), builder, valueMap);
-        Value rhs = cloneSymbolicOperationsIntoFunction(op->getOperand(1), builder, valueMap);
-        result = builder.create<symbolic::SubOp>(op->getLoc(), opExprType, lhs, rhs);
-    }
-    else if (isa<symbolic::MulOp>(op))
-    {
-        Value lhs = cloneSymbolicOperationsIntoFunction(op->getOperand(0), builder, valueMap);
-        Value rhs = cloneSymbolicOperationsIntoFunction(op->getOperand(1), builder, valueMap);
-        result = builder.create<symbolic::MulOp>(op->getLoc(), opExprType, lhs, rhs);
-    }
-    else if (isa<symbolic::DivOp>(op))
-    {
-        Value lhs = cloneSymbolicOperationsIntoFunction(op->getOperand(0), builder, valueMap);
-        Value rhs = cloneSymbolicOperationsIntoFunction(op->getOperand(1), builder, valueMap);
-        result = builder.create<symbolic::DivOp>(op->getLoc(), opExprType, lhs, rhs);
-    }
-    else
-    {
-        return Value();
+        Value result = cloneBinop(op, opExprType, builder, valueMap);
+        valueMap[val] = result;
+        return result;
     }
 
-    valueMap[val] = result;
-
-    return result;
+    return Value();
 }
 } // namespace
 
@@ -138,7 +128,8 @@ struct EvalOpToFuncPattern : public OpRewritePattern<EvalOp>
 {
     mutable EvalToFuncState state;
 
-    EvalOpToFuncPattern(MLIRContext *ctx, EvalToFuncState &state) : OpRewritePattern<EvalOp>(ctx), state(state)
+    EvalOpToFuncPattern(MLIRContext *ctx, EvalToFuncState &initState)
+        : OpRewritePattern<EvalOp>(ctx), state(std::move(initState))
     {
     }
 
