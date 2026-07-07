@@ -2,113 +2,115 @@
 
 # 🧮 Mathic
 
-*A programming language with builtin symbolic algebra capabilities, powered by LLVM/MLIR*
+*A programming language with built-in symbolic algebra, powered by LLVM/MLIR*
 
 </div>
 
-# Installation
+## Features
 
-## 🔧 Dependencies
+- **Symbolic expressions** — first-class symbolic algebra: declare symbolic variables, compose expressions with `+`, `-`, `*`, `/`, and evaluate with concrete values at runtime.
+- **JIT compilation** — programs are compiled on-the-fly via MLIR/LLVM and executed natively.
+- **MLIR-powered** — a custom MLIR dialect (`symbolic`) represents symbolic expressions, lowered to `arith` + `func` for native codegen.
+- **Statically typed** — type-checked at compile time.
 
-- **Rust** 1.94.0 or higher
-- **LLVM/MLIR** 21.x.x 
+## Example
 
-### LLVM/MLIR Installation
+```rust
+df main() i32 {
+    sym x: expr<i32>;
 
-There are many ways of installing LLVM. Choose the one that fits your needs.
+    let a: expr<i32> = x + 5;
+    let r1: i32 = eval(a, x, 10);
 
-#### MacOS and Linux (Homebrew)
+    let b: expr<i32> = 3 * x;
+    let r2: i32 = eval(b, x, 10);
+
+    let c: expr<i32> = 2 * x + 1;
+    let r3: i32 = eval(c, x, 10);
+
+    return r1 + r2 + r3;
+}
+```
+
+Declares symbolic variables (`sym`), composes expressions with arithmetic, and evaluates them with concrete values at runtime.
+
+## Prerequisites
+
+**LLVM/MLIR 21** is required. After installing, set:
+
+```sh
+export LLVM_SYS_211_PREFIX=/path/to/llvm-21
+export MLIR_SYS_210_PREFIX=/path/to/llvm-21
+export TABLEGEN_210_PREFIX=/path/to/llvm-21
+```
+
+<details>
+<summary>Installing LLVM/MLIR (click to expand)</summary>
+
+### macOS (Homebrew)
 
 ```bash
 brew install llvm@21
-```
-
-After installation, set the environment variables:
-
-```sh
-export LIBRARY_PATH=/opt/homebrew/lib
 export LLVM_SYS_211_PREFIX=$(brew --prefix llvm@21)
 export MLIR_SYS_210_PREFIX=$(brew --prefix llvm@21)
 export TABLEGEN_210_PREFIX=$(brew --prefix llvm@21)
 ```
 
-#### Building from Source
+You may also need:
 
-> ⚠️ Note: Building LLVM from source requires at least 6GB of RAM and ~20GB of
-disk space. Ensure these requirements are met, as the build process is likely
-to fail otherwise.
+```sh
+export LIBRARY_PATH=/opt/homebrew/lib
+```
 
-1. **Clone LLVM Project**
+### Building from source
+
+> Requires ~6 GB RAM and ~20 GB disk space.
+
 ```bash
 git clone https://github.com/llvm/llvm-project.git
 cd llvm-project
 git checkout llvmorg-21.1.7
-mkdir build && cd build
-```
-
-2. **Configure Build**
-```bash
 cmake -G Ninja ../llvm \
-   -DLLVM_ENABLE_PROJECTS="mlir" \
-   -DCMAKE_BUILD_TYPE=RelWithDebInfo \
-   -DLLVM_ENABLE_ASSERTIONS=On \
-   -DLLVM_BUILD_LLVM_DYLIB=On \
-   -DLLVM_LINK_LLVM_DYLIB=On \
-   -DMLIR_BUILD_MLIR_C_DYLIB=On \
-   -DLLVM_TARGETS_TO_BUILD=host \
-   -DCMAKE_INSTALL_PREFIX=/opt/llvm-21
-```
-
-if you have mold installed, you can add this flag which will make linking much faster:
-
-```sh
--DLLVM_USE_LINKER=mold
-```
-
-For more info about building from source, check: https://llvm.org/docs/GettingStarted.html
-
-3. **Build and Install**
-
-```bash
+    -DLLVM_ENABLE_PROJECTS="mlir" \
+    -DCMAKE_BUILD_TYPE=RelWithDebInfo \
+    -DLLVM_ENABLE_ASSERTIONS=On \
+    -DLLVM_BUILD_LLVM_DYLIB=On \
+    -DLLVM_LINK_LLVM_DYLIB=On \
+    -DMLIR_BUILD_MLIR_C_DYLIB=On \
+    -DLLVM_TARGETS_TO_BUILD=host \
+    -DCMAKE_INSTALL_PREFIX=/opt/llvm-21 \
+    -DLLVM_USE_LINKER=mold   # optional, faster with mold
 ninja install
 ```
 
-You'll need to export the required environment variables as well:
+</details>
 
-```sh
-export LLVM_SYS_211_PREFIX=<path-to-install-prefix>
-export MLIR_SYS_210_PREFIX=<path-to-install-prefix>
-export TABLEGEN_210_PREFIX=<path-to-install-prefix>
-```
+## Installation
 
-> If you used to command above, the prefix will be `/opt/llvm-21`
-
-## Installing Mathic
-
-You can install mathic using cargo
-
-```shell
+```bash
 cargo install mathic
 ```
 
-> Note: Ensure the required environment variables are set, otherwise the build will fail.
+> Make sure `LLVM_SYS_211_PREFIX`, `MLIR_SYS_210_PREFIX` and `TABLEGEN_210_PREFIX` are set before building.
 
-### Usage
-
-You can run a program using this command:
+## Usage
 
 ```bash
-euler <path-to-file>.mth
+euler <file>.mth
 ```
 
-## 📖 Current Status
+## Project
 
- ⚠️ This project is in early development. Features are being added incrementally. Due to this, you are welcome to test it and create issues.
+See [docs/](docs/README.md) for the full project structure and pipeline.
+See [docs/dialects/Symbolic.md](docs/dialects/Symbolic.md) for the symbolic dialect reference.
 
-For more details, see the [docs](./docs/README.md).
+## Status
+
+Early development. Features are added incrementally. The `symbolic` dialect and its lowering passes are functional but evolving. Bug reports and contributions welcome via [issues](https://github.com/FrancoGiachetta/mathic/issues).
 
 <div align="center">
 
 **Built with ❤️ and 🦀 Rust**
 
 </div>
+

@@ -34,7 +34,7 @@ declaration = func_decl
             ;
 
 var_decl = 'let' IDENT ':' IDENT '=' expr ';' ;
-sym_decl = 'sym' IDENT: type ';' ;
+sym_decl = 'sym' IDENT ':' type ';' ;
 
 
 (* ================================================================ *)
@@ -100,7 +100,7 @@ primary     = 'true' | 'false' | IDENT | INT | FLOAT | STRING | '(' expr ')' ;
 param_list    = ( IDENT ':' type ) { ',' ( IDENT ':' type ) } ;
 struct_fields = [ 'pub' ] IDENT ':' type { ',' [ 'pub' ] IDENT ':' type } ;
 arg_list      = expr { ',' expr } ;
-type = IDENT { '<' IDENT '>' }
+type = IDENT { '<' IDENT '>' } ;
 
 (* ---- Terminal token classes ---- *)
 (* IDENT    : [a-zA-Z_][a-zA-Z0-9_]*                                *)
