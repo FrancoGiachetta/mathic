@@ -5,7 +5,6 @@ target/
 
 *.pdb
 
-.cargo/
 env.sh
 
 # Compilation
