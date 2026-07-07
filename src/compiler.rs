@@ -30,10 +30,43 @@ use crate::{
 #[repr(u8)]
 pub enum OptLvl {
     None,
-    #[default]
     O1,
+    #[default]
     O2,
     O3,
+}
+
+impl From<usize> for OptLvl {
+    fn from(value: usize) -> Self {
+        match value {
+            0 => OptLvl::None,
+            1 => OptLvl::O1,
+            2 => OptLvl::O2,
+            _ => OptLvl::O3,
+        }
+    }
+}
+
+impl From<OptLvl> for usize {
+    fn from(val: OptLvl) -> Self {
+        match val {
+            OptLvl::None => 0,
+            OptLvl::O1 => 1,
+            OptLvl::O2 => 2,
+            OptLvl::O3 => 3,
+        }
+    }
+}
+
+impl From<u8> for OptLvl {
+    fn from(value: u8) -> Self {
+        match value {
+            0 => OptLvl::None,
+            1 => OptLvl::O1,
+            2 => OptLvl::O2,
+            _ => OptLvl::O3,
+        }
+    }
 }
 
 pub struct MathicCompiler {

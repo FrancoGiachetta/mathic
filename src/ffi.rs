@@ -9,12 +9,12 @@ use llvm_sys::{
     core::LLVMDisposeMessage,
     target::{
         LLVM_InitializeAllAsmPrinters, LLVM_InitializeAllTargetInfos, LLVM_InitializeAllTargetMCs,
-        LLVM_InitializeAllTargets, LLVMDisposeTargetData,
+        LLVM_InitializeAllTargets, LLVMCopyStringRepOfTargetData, LLVMDisposeTargetData,
     },
     target_machine::{
-        LLVMCodeGenOptLevel, LLVMCodeModel, LLVMCreateTargetMachine, LLVMDisposeTargetMachine,
-        LLVMGetDefaultTargetTriple, LLVMGetHostCPUFeatures, LLVMGetHostCPUName,
-        LLVMGetTargetFromTriple, LLVMRelocMode, LLVMTargetRef,
+        LLVMCodeGenOptLevel, LLVMCodeModel, LLVMCreateTargetDataLayout, LLVMCreateTargetMachine,
+        LLVMDisposeTargetMachine, LLVMGetDefaultTargetTriple, LLVMGetHostCPUFeatures,
+        LLVMGetHostCPUName, LLVMGetTargetFromTriple, LLVMRelocMode, LLVMTargetRef,
     },
 };
 use melior::{
@@ -30,6 +30,17 @@ use melior::{
 use crate::{compiler::OptLvl, diagnostics::CodegenError};
 
 pub mod dialect_integration;
+
+impl From<OptLvl> for LLVMCodeGenOptLevel {
+    fn from(value: OptLvl) -> Self {
+        match value {
+            OptLvl::None => LLVMCodeGenOptLevel::LLVMCodeGenLevelNone,
+            OptLvl::O1 => LLVMCodeGenOptLevel::LLVMCodeGenLevelLess,
+            OptLvl::O2 => LLVMCodeGenOptLevel::LLVMCodeGenLevelDefault,
+            OptLvl::O3 => LLVMCodeGenOptLevel::LLVMCodeGenLevelAggressive,
+        }
+    }
+}
 
 pub fn create_module<'ctx>(
     ctx: &'ctx Context,
@@ -133,19 +144,13 @@ pub fn get_data_layout_rep(opt_lvl: OptLvl) -> Result<String, CodegenError> {
             target_triple.cast(),
             target_cpu.cast(),
             target_cpu_features.cast(),
-            match opt_lvl {
-                OptLvl::None => LLVMCodeGenOptLevel::LLVMCodeGenLevelNone,
-                OptLvl::O1 => LLVMCodeGenOptLevel::LLVMCodeGenLevelLess,
-                OptLvl::O2 => LLVMCodeGenOptLevel::LLVMCodeGenLevelDefault,
-                OptLvl::O3 => LLVMCodeGenOptLevel::LLVMCodeGenLevelAggressive,
-            },
+            opt_lvl.into(),
             LLVMRelocMode::LLVMRelocDefault,
             LLVMCodeModel::LLVMCodeModelDefault,
         );
 
-        let data_layout = llvm_sys::target_machine::LLVMCreateTargetDataLayout(machine);
-        let data_layout_str =
-            CStr::from_ptr(llvm_sys::target::LLVMCopyStringRepOfTargetData(data_layout));
+        let data_layout = LLVMCreateTargetDataLayout(machine);
+        let data_layout_str = CStr::from_ptr(LLVMCopyStringRepOfTargetData(data_layout));
 
         LLVMDisposeTargetData(data_layout);
         LLVMDisposeTargetMachine(machine);

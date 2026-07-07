@@ -13,7 +13,7 @@ pub struct MathicExecutor {
 
 impl MathicExecutor {
     pub fn new(module: &Module, opt_lvl: OptLvl) -> MathicResult<Self> {
-        let engine = ExecutionEngine::new(module, opt_lvl as usize, &[], false);
+        let engine = ExecutionEngine::new(module, opt_lvl.into(), &[], false);
 
         let executor = Self { engine };
 

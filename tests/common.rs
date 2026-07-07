@@ -15,7 +15,7 @@ pub fn compile_and_execute(path: &Path) -> i64 {
     let compiler = get_compiler();
 
     let module = compiler
-        .compile_path(path, OptLvl::O2)
+        .compile_path(path, OptLvl::default())
         .expect("Failed to compile source");
 
     let executor =
