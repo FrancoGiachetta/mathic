@@ -8,13 +8,10 @@ const EXPRS: &[(&str, &str, i64)] = &[(
     "poly10",
     "df main() i32 {
         sym x:expr<i32>;
-        let expr: expr<i32> = x;
-        for i in 0..100 {
-            expr = expr + x;
-        }
+        let expr: expr<i32> = x * (x + x + x + x);
         return eval(expr,x,10);
     }",
-    1000,
+    400,
 )];
 
 fn bench_mathic(c: &mut Criterion) {
@@ -44,7 +41,7 @@ fn bench_mathic(c: &mut Criterion) {
 fn bench_sympy(c: &mut Criterion) {
     pyo3::prepare_freethreaded_python();
 
-    let exprs: &[(&str, i64)] = &[("sum([x for i in range(0,100)])", 1000)];
+    let exprs: &[(&str, i64)] = &[("x * (x + x + x + x)", 400)];
 
     pyo3::Python::with_gil(|py| {
         for (py_expr, expected) in exprs {
