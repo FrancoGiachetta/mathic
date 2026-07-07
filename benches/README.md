@@ -1,28 +1,23 @@
 # Benchmarks
 
-## Qué mide
+Compares symbolic expression evaluation time between:
 
-Compara el tiempo de evaluación de expresiones simbólicas entre:
+- **Mathic** — JIT-compiles `eval(expr, sym, value)` to native code via MLIR/LLVM. Benchmarked at four optimization levels: `None`, `O1`, `O2`, `O3`.
+- **SymPy** — `lambdify(expr, 'numpy')` evaluated with the same input.
 
-- **Mathic** — JIT-compila `eval(expr, sym, value)` a código nativo via MLIR. Se mide con OptLvl: None, O1, O2, O3.
-- **SymPy** — `lambdify(expr, 'numpy')` evaluado con el mismo input.
+## Expression
 
-Seis expresiones, todas con `x = 10`:
+| Expression | `x` | Result |
+|------------|-----|--------|
+| `x * (x + x + x + x)` | `10` | `400` |
 
-| Expresión | Resultado |
-|---|---|
-| `x + x` | 20 |
-| `x * x` | 100 |
-| `x * x + x` | 110 |
-| `(x + x) * x` | 200 |
-| `(x * x) / x` | 10 |
-| `x * x + x / x` | 101 |
-
-## Cómo correr
+## How to run
 
 ```bash
-pip install sympy numpy
+pip install sympy
 cargo bench
 ```
 
-El output de Criterion reporta ns/call para cada combinación.
+## Output
+
+Criterion reports per call for each combination of framework and optimization level.
