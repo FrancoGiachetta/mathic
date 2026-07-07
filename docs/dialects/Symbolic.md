@@ -24,7 +24,7 @@ two-phase pipeline: extract evaluation functions, then convert operations
 
 Introduces a symbolic variable with a name string:
 
-```
+```mlir
 %0 = symbolic.sym "x" : !symbolic.expr
 %1 = symbolic.sym "y" : !symbolic.expr
 ```
@@ -34,7 +34,7 @@ Introduces a symbolic variable with a name string:
 Binary arithmetic. Both operands accept either symbolic expressions or
 concrete integers:
 
-```
+```mlir
 %r = symbolic.add %lhs, %rhs : !symbolic.expr
 %r = symbolic.sub %lhs, %rhs : !symbolic.expr
 %r = symbolic.mul %lhs, %rhs : !symbolic.expr
@@ -46,7 +46,7 @@ concrete integers:
 Evaluates a symbolic expression by substituting a named variable with a
 concrete `f64` value:
 
-```
+```mlir
 %result = symbolic.eval %expr, "x", %value : f64 -> f64
 ```
 

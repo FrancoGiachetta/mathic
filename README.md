@@ -34,14 +34,6 @@ df main() i32 {
 
 Declares symbolic variables (`sym`), composes expressions with arithmetic, and evaluates them with concrete values at runtime.
 
-## Quick Start
-
-```bash
-git clone https://github.com/FrancoGiachetta/mathic.git
-cd mathic
-cargo run examples/arithmetic/addition.mth
-```
-
 ## Prerequisites
 
 **LLVM/MLIR 21** is required. After installing, set:
@@ -99,7 +91,7 @@ ninja install
 cargo install mathic
 ```
 
-Make sure `LLVM_SYS_211_PREFIX`, `MLIR_SYS_210_PREFIX` and `TABLEGEN_210_PREFIX` are set before building.
+> Make sure `LLVM_SYS_211_PREFIX`, `MLIR_SYS_210_PREFIX` and `TABLEGEN_210_PREFIX` are set before building.
 
 ## Usage
 
@@ -111,14 +103,6 @@ euler <file>.mth
 
 See [docs/](docs/README.md) for the full project structure and pipeline.
 See [docs/dialects/Symbolic.md](docs/dialects/Symbolic.md) for the symbolic dialect reference.
-
-## Testing
-
-```bash
-cargo test
-cargo test symbolic  # specific test suite
-cargo bench
-```
 
 ## Status
 

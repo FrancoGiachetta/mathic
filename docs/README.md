@@ -86,16 +86,20 @@ flowchart TD
         Lowerer --> IR[MATHIR]
     end
 
-    subgraph Backend["🔧 Backend"]
-        IR --> Codegen[MLIR Codegen]
-        Codegen --> MLIR[MLIR IR]
-        MLIR --> LLVM[LLVM IR]
-        LLVM --> Output{Output}
-        Output --> JIT[JIT Execution]
-        Output -.-> OBJ[Object File]
+    subgraph Codegen["🔧 Codegen"]
+        IR --> MLIRGen[MLIR Codegen]
+        MLIRGen --> Symbolic[MLIR + symbolic dialect]
     end
 
-    style OBJ stroke-dasharray: 5 5
+    subgraph Passes["C++ Passes"]
+        Symbolic --> ExtractEval[symbolic-extract-eval]
+        ExtractEval --> ToArith[symbolic-to-arith]
+    end
+
+    subgraph LLVMBackend["LLVM Backend"]
+        ToArith --> LLVM[LLVM IR]
+        LLVM --> JIT[JIT Execution]
+    end
 ```
 
 - **MATHIR**: Mathic Intermediate Representation that sits between AST and MLIR.
