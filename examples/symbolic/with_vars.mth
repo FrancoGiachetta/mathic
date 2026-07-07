@@ -1,0 +1,9 @@
+df main() i32 {
+	sym x: expr<i32>;
+
+	let c: i32 = 3;
+
+	let expr: expr<i32> = x + 3 + c;
+
+	return eval(expr, x, 4);
+}

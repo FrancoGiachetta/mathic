@@ -30,62 +30,9 @@ class SymbolicToArithTypeConverter : public TypeConverter
     }
 };
 
-struct ConvertAdd : public OpConversionPattern<symbolic::AddOp>
-{
-    ConvertAdd(MLIRContext *ctx) : OpConversionPattern<symbolic::AddOp>(ctx)
-    {
-    }
-
-    using OpConversionPattern::OpConversionPattern;
-
-    llvm::LogicalResult matchAndRewrite(symbolic::AddOp op, OpAdaptor adaptor,
-                                        ConversionPatternRewriter &rewriter) const override
-    {
-        arith::AddIOp addOp = rewriter.create<arith::AddIOp>(op.getLoc(), adaptor.getLhs(), adaptor.getRhs());
-
-        rewriter.replaceOp(op.getOperation(), addOp);
-
-        return llvm::success();
-    }
-};
-
-struct ConvertSub : public OpConversionPattern<symbolic::SubOp>
-{
-    ConvertSub(MLIRContext *ctx) : OpConversionPattern<symbolic::SubOp>(ctx)
-    {
-    }
-
-    using OpConversionPattern::OpConversionPattern;
-
-    llvm::LogicalResult matchAndRewrite(symbolic::SubOp op, OpAdaptor adaptor,
-                                        ConversionPatternRewriter &rewriter) const override
-    {
-        arith::SubIOp subOp = rewriter.create<arith::SubIOp>(op.getLoc(), adaptor.getLhs(), adaptor.getRhs());
-
-        rewriter.replaceOp(op.getOperation(), subOp);
-
-        return llvm::success();
-    }
-};
-
-struct ConvertMul : public OpConversionPattern<symbolic::MulOp>
-{
-    ConvertMul(MLIRContext *ctx) : OpConversionPattern<symbolic::MulOp>(ctx)
-    {
-    }
-
-    using OpConversionPattern::OpConversionPattern;
-
-    llvm::LogicalResult matchAndRewrite(symbolic::MulOp op, OpAdaptor adaptor,
-                                        ConversionPatternRewriter &rewriter) const override
-    {
-        arith::MulIOp mulOp = rewriter.create<arith::MulIOp>(op.getLoc(), adaptor.getLhs(), adaptor.getRhs());
-
-        rewriter.replaceOp(op.getOperation(), mulOp);
-
-        return llvm::success();
-    }
-};
+BINARY_OP_CONVERTER(Add, AddIOp)
+BINARY_OP_CONVERTER(Sub, SubIOp)
+BINARY_OP_CONVERTER(Mul, MulIOp)
 
 struct ConvertDiv : public OpConversionPattern<symbolic::DivOp>
 {
