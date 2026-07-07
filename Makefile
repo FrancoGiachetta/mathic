@@ -23,6 +23,6 @@ fmt:
 
 .PHONY: test
 test:
-	cargo nextest run
+	cargo nextest run test
 
 

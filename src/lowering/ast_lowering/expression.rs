@@ -270,9 +270,19 @@ fn lower_binary_op(
     span: Span,
 ) -> Result<RValInstruct, LoweringError> {
     let (lhs, lhs_ty_idx) = lower_expr(func, lhs, None)?;
-    let (rhs, rhs_ty_idx) = lower_expr(func, rhs, None)?;
-
     let lhs_ty = func.get_type(lhs_ty_idx, span)?;
+
+    let (rhs, rhs_ty_idx) = lower_expr(
+        func,
+        rhs,
+        // If lhs_ty is symbolic, we don't want to add a ty_hint.
+        if !lhs_ty.is_symbolic() {
+            Some(lhs_ty_idx)
+        } else {
+            None
+        },
+    )?;
+
     let rhs_ty = func.get_type(rhs_ty_idx, span)?;
 
     let is_symbolic = lhs_ty.is_symbolic() || rhs_ty.is_symbolic();
