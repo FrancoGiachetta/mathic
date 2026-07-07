@@ -4,7 +4,8 @@
 |---------|-------------|
 | [Project Structure](#project-structure) | Tree view of the source code organization |
 | [Pipeline](#pipeline) | Visual diagram of the compilation stages |
-| [Dialects](Dialects.md) | The `symbolic` MLIR dialect and its lowering pipeline |
+| [Symbolic Dialect](dialects/Symbolic.md) | The `symbolic` MLIR dialect: types, operations, and project structure |
+| [Symbolic Passes](dialects/SymbolicPasses.md) | Lowering passes: `symbolic-extract-eval` and `symbolic-to-arith` |
 
 ## Project Structure
 
@@ -12,58 +13,60 @@
 src/
 ├── bin/
 │   └── euler.rs              # Binary entry point
-├── codegen.rs                # MLIR Generation
-├── codegen/
-│   ├── compiler_helper.rs    # Compiler utilities
+├── codegen/                  # MLIR code generation
 │   ├── compiler_helper/
-│   │   └── debugging.rs      # Debug helpers
-│   ├── function_ctx.rs       # Function context
-│   ├── lvalue.rs             # Statement compilation (let, assign, struct set)
-│   └── rvalue.rs             # Expression compilation
+│   │   └── debugging.rs
+│   ├── compiler_helper.rs
+│   ├── dialect_integration.rs # MLIR op builders for symbolic dialect
+│   ├── function_ctx.rs       # Function context (locals, blocks)
+│   ├── lvalue.rs             # Statement compilation
+│   └── rvalue.rs             # Expression / symbolic compilation
+├── codegen.rs                # Module re-export
 ├── compiler.rs               # Compiler driver
-├── diagnostics.rs            # Error handling entry point
-├── diagnostics/              # Unified diagnostics
-│   ├── codegen.rs           # Codegen errors
-│   ├── lowering.rs          # Semantic errors
-│   └── parse.rs             # Lexical and syntactic errors
+├── diagnostics/              # Error types
+│   ├── codegen.rs
+│   ├── lowering.rs
+│   └── parse.rs
+├── diagnostics.rs            # Module re-export
 ├── executor.rs               # JIT execution
-├── ffi.rs                    # MLIR/LLVM FFI bindings
-├── lowering.rs               # Lowerer entry point
-├── lowering/                 # AST → IR lowering
-│   ├── ast_lowering.rs      # Lowerings entry point
-│   ├── ir.rs                # Ir struct definition
-│   ├── ir/                  # IR definitions
-│   │   ├── adts.rs          # ADT definitions (StructAdt)
-│   │   ├── basic_block.rs    # Basic block definitions
-│   │   ├── function.rs       # Function definitions
-│   │   ├── instruction.rs    # Instructions (RValInstruct, LValInstruct)
-│   │   ├── ir_walk.rs       # IR traversal helpers
-│   │   ├── symbols.rs       # Symbol and Declaration tables
-│   │   ├── types.rs         # Type definitions (MathicType, etc.)
-│   │   └── value.rs         # Value definitions
-│   └── ast_lowering/        # AST → MATHIR transformation
-│       ├── control_flow.rs
-│       ├── declaration.rs
-│       ├── expression.rs
-│       └── statement.rs
-├── parser.rs                 # Parser entry point
-├── parser/                   # Frontend: Lexing and Parsing
-│   ├── ast.rs               # Program definition
+├── ffi/                      # C FFI to shared libraries
+│   └── dialect_integration.rs
+├── ffi.rs                    # LLVM FFI bindings
+├── lib.rs                    # Crate root
+├── lowering/                 # AST → MATHIR lowering
+│   ├── ast_lowering/        # AST → MATHIR transformation
+│   │   ├── control_flow.rs
+│   │   ├── declaration.rs
+│   │   ├── expression.rs
+│   │   └── statement.rs
+│   ├── ir/                  # MATHIR definitions
+│   │   ├── adts.rs
+│   │   ├── basic_block.rs
+│   │   ├── function.rs
+│   │   ├── instruction.rs
+│   │   ├── ir_walk.rs
+│   │   ├── symbols.rs
+│   │   ├── types.rs
+│   │   └── value.rs
+│   ├── ast_lowering.rs
+│   └── ir.rs
+├── lowering.rs               # Module re-export
+├── parser/                   # Frontend: lexing and parsing
 │   ├── ast/                 # AST nodes
 │   │   ├── control_flow.rs
 │   │   ├── declaration.rs
 │   │   ├── expression.rs
 │   │   └── statement.rs
-│   ├── lexer.rs            # Lexer definition
-│   ├── parsing.rs           # Parsing submodule re-exports
 │   ├── parsing/             # Recursive descent parser
 │   │   ├── control_flow.rs
 │   │   ├── declaration.rs
 │   │   ├── expression.rs
 │   │   └── statement.rs
-│   └── token.rs            # Token enum
-├── test_utils.rs            # Test utilities
-└── lib.rs                   # Library entry point
+│   ├── ast.rs
+│   ├── lexer.rs
+│   ├── parsing.rs
+│   └── token.rs
+└── parser.rs                 # Module re-export
 ```
 
 ## Pipeline
@@ -96,5 +99,6 @@ flowchart TD
 ```
 
 - **MATHIR**: Mathic Intermediate Representation that sits between AST and MLIR.
-- **MLIR**: Multi-Level Intermediate Representation. Used as a flexible IR that preserves high-level constructs (functions, control flow) while enabling transformations.
+- **MLIR + symbolic dialect**: Standard MLIR dialects plus the custom `symbolic` dialect for symbolic expressions.
+- **symbolic-extract-eval / symbolic-to-arith**: C++ passes that lower the `symbolic` dialect to standard MLIR. See [Symbolic Passes](dialects/SymbolicPasses.md).
 - **LLVM IR**: The compilation target. Low-level intermediate representation optimized by LLVM passes.
