@@ -89,17 +89,17 @@ flowchart TD
     subgraph Codegen["⚙️ Codegen"]
         direction LR
         MLIR[MLIR Codegen + Symbolic Dialect]
-        MLIR --> Output[MLIR]
+        MLIR --> MLIROut[MLIR]
     end
 
     subgraph Passes["⚡ Passes"]
         direction LR
-        Canonicalizer --> ExtractEval[symbolic-extract-eval] --> ToArith[symbolic-to-arith] --> LLVM[Convert to LLVM IR]
+        Canonicalizer --> ExtractEval[symbolic-extract-eval] --> ToArith[symbolic-to-arith] --> LLVM[Convert to LLVM IR] --> LLVMIR
     end
 
     subgraph Execution["🚀 Execution"]
         direction LR
-        LLVMIR --> JIT[JIT Execution]
+        JIT[JIT Execution] --> Output
     end
 
     Frontend --> Lowering --> Codegen
