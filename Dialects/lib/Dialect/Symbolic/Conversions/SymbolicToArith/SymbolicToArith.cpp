@@ -75,7 +75,7 @@ struct ConvertSym : public OpConversionPattern<symbolic::SymOp>
                                         ConversionPatternRewriter &rewriter) const override
     {
         auto func = op->getParentOfType<func::FuncOp>();
-        if (!func || func.getNumArguments() != 1)
+        if (!func || func.getNumArguments() < 1)
             return llvm::failure();
 
         rewriter.replaceOp(op, func.getArgument(0));
