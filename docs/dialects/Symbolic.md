@@ -6,7 +6,7 @@ The `symbolic` dialect is a custom MLIR dialect for representing symbolic
 algebraic expressions as a dataflow DAG. Expressions are built from named
 symbolic variables (`symbolic.sym`) and arithmetic operations (`add`, `sub`,
 `mul`, `div`). A `symbolic.eval` operation substitutes a variable with a
-concrete floating-point value.
+concrete value (e.g. `i32`).
 
 The dialect is lowered to standard MLIR dialects (`arith`, `func`) through a
 two-phase pipeline: extract evaluation functions, then convert operations
@@ -44,10 +44,10 @@ concrete integers:
 ### `symbolic.eval`
 
 Evaluates a symbolic expression by substituting a named variable with a
-concrete `f64` value:
+concrete value:
 
 ```mlir
-%result = symbolic.eval %expr, "x", %value : f64 -> f64
+%result = symbolic.eval %expr, "x", %value : i32 -> i32
 ```
 
 ### Example

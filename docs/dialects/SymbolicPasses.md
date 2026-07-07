@@ -11,27 +11,29 @@ by a `func::CallOp`.
 **Before:**
 
 ```mlir
-func.func @main(%val: f64) -> f64 {
+func.func @main() -> i32 {
+  %val = arith.constant 10 : i32
   %x = symbolic.sym "x" : !symbolic.expr
   %xx = symbolic.mul %x, %x : !symbolic.expr
-  %r = symbolic.eval %xx, "x", %val : f64 -> f64
-  return %r : f64
+  %r = symbolic.eval %xx, "x", %val : i32 -> i32
+  return %r : i32
 }
 ```
 
 **After:**
 
 ```mlir
-func.func private @__eval_op_<hash>(%arg0: f64) -> !symbolic.expr {
+func.func private @__eval_op_<hash>(%arg0: i32) -> !symbolic.expr {
   %0 = symbolic.sym "x" : !symbolic.expr
   %1 = symbolic.mul %0, %0 : !symbolic.expr
   return %1 : !symbolic.expr
 }
 
-func.func @main(%val: f64) -> f64 {
-  %0 = call @__eval_op_<hash>(%val) : (f64) -> !symbolic.expr
-  %1 = unrealized_conversion_cast %0 : !symbolic.expr to f64
-  return %1 : f64
+func.func @main() -> i32 {
+  %val = arith.constant 10 : i32
+  %0 = call @__eval_op_<hash>(%val) : (i32) -> !symbolic.expr
+  %1 = unrealized_conversion_cast %0 : !symbolic.expr to i32
+  return %1 : i32
 }
 ```
 
@@ -50,36 +52,42 @@ func.func @main(%val: f64) -> f64 {
 ## Conversion: `symbolic-to-arith`
 
 Lowers the `symbolic` dialect entirely to `arith` + `func`. The type
-`!symbolic.expr` becomes `f64`.
+`!symbolic.expr` is replaced by its inner type (e.g. `expr<i32>` for `i32`).
 
 | Symbolic Op | Lowered To |
 |-------------|-----------|
-| `symbolic.add` | `arith.addf` |
-| `symbolic.sub` | `arith.subf` |
-| `symbolic.mul` | `arith.mulf` |
-| `symbolic.div` | `arith.divf` |
+| `symbolic.add` | `arith.addi` |
+| `symbolic.sub` | `arith.subi` |
+| `symbolic.mul` | `arith.muli` |
+| `symbolic.div` | `arith.divsi` / `arith.divui` |
 | `symbolic.sym` | The function's single block argument |
 | `symbolic.eval` | Should be handled by `symbolic-extract-eval` first |
 
 **After both passes:**
 
 ```mlir
-func.func private @__eval_op_<hash>(%arg0: f64) -> f64 {
-  %0 = arith.mulf %arg0, %arg0 : f64
-  return %0 : f64
+func.func private @__eval_op_<hash>(%arg0: i32) -> i32 {
+  %0 = arith.muli %arg0, %arg0 : i32
+  return %0 : i32
 }
 
-func.func @main(%val: f64) -> f64 {
-  %0 = call @__eval_op_<hash>(%val) : (f64) -> f64
-  return %0 : f64
+func.func @main() -> i32 {
+  %val = arith.constant 10 : i32
+  %0 = call @__eval_op_<hash>(%val) : (i32) -> i32
+  return %0 : i32
 }
 ```
 
 ### How it works
 
-Uses a `BINARY_OP_CONVERTER(SYM_OP, ARITH_OP)` macro that replaces each
-`symbolic.{add,sub,mul,div}` with the corresponding
-`arith.{addf,subf,mulf,divf}`. The `symbolic.sym` operation is replaced by
-the function's single block argument — the symbolic variable name is
-discarded at this stage since the expression tree has already been
-specialized for that variable during `symbolic-extract-eval`.
+Uses MLIR's `DialectConversion` framework:
+
+1. **Type conversion**: `!symbolic.expr<T>` is replaced by `T` via
+   `SymExprType::getInnerType()`.
+2. **Operation conversion**: Each symbolic op has a pattern that rewrites it
+   to the corresponding `arith` operation (`add` → `addi`, `sub` → `subi`,
+   `mul` → `muli`, `div` → `divsi`/`divui` depending on signedness).
+3. **`symbolic.sym`** is replaced by the extracted function's single block
+   argument — the symbolic variable name is discarded since the expression
+   tree has already been specialized for that variable during
+   `symbolic-extract-eval`.
