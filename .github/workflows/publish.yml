@@ -31,4 +31,6 @@ jobs:
         uses: ./.github/actions/install-llvm-deps
 
       - name: Publish Mathic
-        run: cargo publish --token ${CRATES_TOKEN} --all-features
+        run: |
+          cargo login ${CRATES_TOKEN}
+          cargo publish --all-features

@@ -106,7 +106,7 @@ See [docs/dialects/Symbolic.md](docs/dialects/Symbolic.md) for the symbolic dial
 
 ## Status
 
-Early development. Features are added incrementally. The `symbolic` dialect and its lowering passes are functional but evolving. Bug reports and contributions welcome via [issues](https://github.com/FrancoGiachetta/mathic/issues).
+Early development. Features are added incrementally. The `symbolic` dialect and its lowering passes are functional but evolving.
 
 <div align="center">
 
