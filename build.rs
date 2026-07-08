@@ -1,11 +1,11 @@
+use std::env;
 use std::path::PathBuf;
 use std::process::Command;
-use std::{env, fs};
 
 fn main() {
     let root = PathBuf::from(env::var("CARGO_MANIFEST_DIR").unwrap());
     let dialects_root = root.join("Dialects");
-    let build_dir = dialects_root.join("builds/build");
+    let build_dir = PathBuf::from(env::var("OUT_DIR").unwrap()).join("DialectBuild/");
     let llvm_prefix = env::var("LLVM_SYS_211_PREFIX").unwrap();
 
     std::fs::create_dir_all(&build_dir).unwrap();
@@ -32,16 +32,9 @@ fn main() {
         .expect("cmake build failed");
     assert!(status.success(), "cmake build failed");
 
-    // ── Move Dialect build to OUT_DIR ────────────────────────────────────────
-
-    let new_build_dir = PathBuf::from(env::var("OUT_DIR").unwrap()).join("DialectBuild/");
-
-    std::fs::create_dir_all(&new_build_dir).unwrap();
-    fs::rename(build_dir, &new_build_dir).unwrap();
-
     // ── Link ────────────────────────────────────────────────────────────────
 
-    let lib_dir = new_build_dir.join("lib/");
+    let lib_dir = build_dir.join("lib/");
 
     // Make the linker aware of the dialect's library dir.
     println!("cargo:rustc-link-arg=-Wl,-rpath,{}", lib_dir.display());
