@@ -1,6 +1,6 @@
-use std::env;
 use std::path::PathBuf;
 use std::process::Command;
+use std::{env, fs};
 
 fn main() {
     let root = PathBuf::from(env::var("CARGO_MANIFEST_DIR").unwrap());
@@ -10,7 +10,7 @@ fn main() {
 
     std::fs::create_dir_all(&build_dir).unwrap();
 
-    // ── Build ─────────────────────────────────────────────────────────────
+    // ── Build ───────────────────────────────────────────────────────────────
 
     let status = Command::new("cmake")
         .arg(&dialects_root)
@@ -32,9 +32,16 @@ fn main() {
         .expect("cmake build failed");
     assert!(status.success(), "cmake build failed");
 
-    // ── Link ──────────────────────────────────────────────────────────────────
+    // ── Move Dialect build to OUT_DIR ────────────────────────────────────────
 
-    let lib_dir = build_dir.join("lib/");
+    let new_build_dir = PathBuf::from(env::var("OUT_DIR").unwrap()).join("DialectBuild/");
+
+    std::fs::create_dir_all(&new_build_dir).unwrap();
+    fs::rename(build_dir, &new_build_dir).unwrap();
+
+    // ── Link ────────────────────────────────────────────────────────────────
+
+    let lib_dir = new_build_dir.join("lib/");
 
     // Make the linker aware of the dialect's library dir.
     println!("cargo:rustc-link-arg=-Wl,-rpath,{}", lib_dir.display());
@@ -49,9 +56,10 @@ fn main() {
     println!("cargo:rustc-link-lib=dylib=MLIRSymbolicToArith");
     println!("cargo:rustc-link-lib=dylib=dialect_bindings");
 
-    // ── Rerun triggers ────────────────────────────────────────────────────────
+    // ── Rerun triggers ──────────────────────────────────────────────────────
 
     println!("cargo:rerun-if-changed=CMakeLists.txt");
     println!("cargo:rerun-if-changed=Dialects/include");
     println!("cargo:rerun-if-changed=Dialects/lib");
+    println!("cargo:rerun-if-changed=build.rs");
 }
