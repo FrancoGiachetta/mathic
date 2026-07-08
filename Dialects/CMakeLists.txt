@@ -3,8 +3,16 @@ project(Mathic C CXX)
 
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
-set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -fexceptions")
+
+if (DEV)
+  set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
+  execute_process(
+    COMMAND ${CMAKE_COMMAND} -E create_symlink
+    ${CMAKE_BINARY_DIR}/compile_commands.json
+    ${CMAKE_SOURCE_DIR}/compile_commands.json
+  )
+endif()
 
 # ── MLIR / LLVM ──────────────────────────────────────────────────────────────
 
@@ -17,8 +25,8 @@ list(APPEND CMAKE_MODULE_PATH "${LLVM_CMAKE_DIR}")
 list(APPEND CMAKE_MODULE_PATH "${CMAKE_CURRENT_SOURCE_DIR}/cmake")
 
 set(LLVM_ENABLE_EH ON)
-set(LLVM_ENABLE_RTTI ON) 
-set(LLVM_REQUIRES_EH ON) 
+set(LLVM_ENABLE_RTTI ON)
+set(LLVM_REQUIRES_EH ON)
 
 include(TableGen)
 include(AddLLVM)
@@ -46,18 +54,11 @@ message(STATUS "Using LIBRARY_DIR ${CMAKE_LIBRARY_OUTPUT_DIRECTORY}")
 add_subdirectory(include)
 add_subdirectory(lib)
 
-# ── Create symlink immediately during configuration ───────────────────────────
-
-execute_process(
-    COMMAND ${CMAKE_COMMAND} -E create_symlink
-    ${CMAKE_BINARY_DIR}/compile_commands.json
-    ${CMAKE_SOURCE_DIR}/compile_commands.json
-)
 
 # Testing
 
 if(BUILD_TESTING)
-    enable_testing()
-    add_subdirectory(tools)
-    add_subdirectory(tests)
+  enable_testing()
+  add_subdirectory(tools)
+  add_subdirectory(tests)
 endif()
