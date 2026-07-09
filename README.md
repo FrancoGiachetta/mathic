@@ -91,8 +91,6 @@ ninja install
 cargo install mathic
 ```
 
-> Make sure `LLVM_SYS_211_PREFIX`, `MLIR_SYS_210_PREFIX` and `TABLEGEN_210_PREFIX` are set before building.
-
 ## Usage
 
 ```bash
