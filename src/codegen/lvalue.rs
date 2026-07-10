@@ -160,6 +160,7 @@ impl MathicCodeGen<'_> {
                 true_block,
                 false_block,
                 span,
+                ..
             } => {
                 let cond_val = self.compile_rvalue(fn_ctx, block, condition, helper)?;
 

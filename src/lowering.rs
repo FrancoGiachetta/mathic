@@ -1,5 +1,6 @@
-pub mod ast_lowering;
+mod ast_lowering;
 pub mod ir;
+mod passes;
 
 use crate::{
     diagnostics::LoweringError,
@@ -12,6 +13,7 @@ use crate::{
             symbols::TypeIndex,
             types::{MathicType, NumericTy, SintTy, UintTy},
         },
+        passes::{MathicPass, loop_dominance::LoopDominance},
     },
     parser::{
         Span,
@@ -56,6 +58,12 @@ pub fn lower_program(program: &Program) -> Result<Ir, LoweringError> {
 
     tracing::info!("Lowering complete: {:?}", start.elapsed());
     Ok(ir_builder.build())
+}
+
+pub fn applay_lowering_passes(ir: Ir) -> Ir {
+    let passes = [LoopDominance];
+
+    passes.iter().fold(ir, |ir, p| p.apply(ir))
 }
 
 /// Lowers global functions.

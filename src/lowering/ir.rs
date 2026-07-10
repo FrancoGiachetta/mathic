@@ -38,6 +38,10 @@ impl Ir {
     pub fn get_functions(&self) -> &[Function] {
         &self.functions
     }
+
+    pub fn get_functions_mut(&mut self) -> &mut [Function] {
+        &mut self.functions
+    }
 }
 
 /// Helper struct to build the IR.

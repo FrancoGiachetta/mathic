@@ -45,6 +45,7 @@ pub enum Terminator {
     CondBranch {
         condition: RValInstruct,
         true_block: BlockId,
+        true_block_args: Vec<usize>,
         false_block: BlockId,
         span: Option<Span>,
     },

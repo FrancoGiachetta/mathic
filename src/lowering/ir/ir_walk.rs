@@ -53,7 +53,7 @@ pub mod value {
 
                     write!(f, "%{}{}", local_idx, modifier_str)
                 }
-                Self::Symbol { local_idx } => write!(f, "sym%{}", local_idx),
+                Self::Symbol { local_idx } => write!(f, "%{}", local_idx),
                 Self::Const(c) => write!(f, "{}", c),
             }
         }
@@ -198,7 +198,6 @@ pub mod instructions {
                     .join(".");
                 write!(f, "{}%{}", inner_indent, local_idx)?;
                 write!(f, " = ")?;
-                write!(f, "%{}{}", local_idx, modifier_str)?;
                 write_rval_instruct(value, f, indent)
             }
             LValInstruct::Sym { local_idx, .. } => {
@@ -243,13 +242,20 @@ pub mod basic_block {
                 Self::CondBranch {
                     condition,
                     true_block,
+                    true_block_args,
                     false_block,
                     ..
                 } => {
+                    let true_args_str = true_block_args
+                        .iter()
+                        .map(|e| format!("%{e}"))
+                        .collect::<Vec<_>>()
+                        .join(", ");
+
                     write!(
                         f,
-                        "cond_br ({}) then block{} else block{}",
-                        condition, true_block, false_block
+                        "cond_br ({}) then block{} [{}] else block{}",
+                        condition, true_block, true_args_str, false_block
                     )
                 }
                 Self::Unreachable(_) => write!(f, "unreachable"),
