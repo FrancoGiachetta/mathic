@@ -61,6 +61,10 @@ impl Function {
         &self.sym_table.locals
     }
 
+    pub fn get_local(&self, idx: usize) -> Option<&Local> {
+        self.sym_table.locals.get(idx)
+    }
+
     pub fn get_adts(&self) -> &[Adt] {
         &self.sym_table.adts
     }

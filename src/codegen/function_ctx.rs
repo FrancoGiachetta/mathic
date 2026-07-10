@@ -13,6 +13,7 @@ use crate::{
     codegen::{MathicCodeGen, compiler_helper::CompilerHelper},
     diagnostics::CodegenError,
     lowering::ir::{
+        basic_block::Terminator,
         function::{Function, LocalKind},
         symbols::TypeIndex,
     },
@@ -108,8 +109,36 @@ impl MathicCodeGen<'_> {
 
         // We already know the amount of blocks this function will use from the
         // lowering phase.
-        for _ in 0..inner_func.basic_blocks.len() - 1 {
+        let mut i = 0;
+        while i < inner_func.basic_blocks.len() - 1 {
+            if let Terminator::CondBranch {
+                true_block_args, ..
+            } = &inner_func.basic_blocks[i].terminator
+            {
+                let block_args = true_block_args
+                    .iter()
+                    .map(|local_idx| {
+                        let local = inner_func.get_local(*local_idx).expect("invalid local idx");
+
+                        self.get_compiled_type(inner_func, local.ty)
+                    })
+                    .collect::<Result<Vec<_>, _>>()?
+                    .into_iter()
+                    .map(|ty| (ty, location))
+                    .collect::<Vec<_>>();
+
+                mlir_blocks.push(region.append_block(Block::new(&block_args)));
+                mlir_blocks.push(region.append_block(Block::new(&[])));
+
+                // Already created the true succesor block.
+                i += 2;
+
+                continue;
+            }
+
             mlir_blocks.push(region.append_block(Block::new(&[])));
+
+            i += 1;
         }
 
         let mut inner_fn_ctx = FunctionCtx::new(&mlir_blocks, inner_func);

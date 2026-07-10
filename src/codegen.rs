@@ -96,8 +96,6 @@ impl<'ctx> MathicCodeGen<'ctx> {
             return Err(MathicError::Codegen(CodegenError::MissingMainFunction));
         }
 
-        // TODO: Compile structs in the future
-
         for func in global_functions {
             tracing::debug!("Compiling function: {}", func.name);
             self.compile_function(func, &[], helper)?;

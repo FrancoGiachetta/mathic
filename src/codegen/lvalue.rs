@@ -158,18 +158,23 @@ impl MathicCodeGen<'_> {
             Terminator::CondBranch {
                 condition,
                 true_block,
+                true_block_args,
                 false_block,
                 span,
                 ..
             } => {
                 let cond_val = self.compile_rvalue(fn_ctx, block, condition, helper)?;
+                let true_block_args = true_block_args
+                    .iter()
+                    .map(|local_idx| fn_ctx.get_local(*local_idx).expect("invalid local idx").0)
+                    .collect::<Vec<_>>();
 
                 block.append_operation(cf::cond_br(
                     self.ctx,
                     cond_val,
                     &fn_ctx.get_block(*true_block),
                     &fn_ctx.get_block(*false_block),
-                    &[],
+                    &true_block_args,
                     &[],
                     self.get_location(*span)?,
                 ))

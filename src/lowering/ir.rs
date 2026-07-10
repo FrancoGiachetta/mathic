@@ -21,12 +21,16 @@ pub mod value;
 /// Mathic's IR (MATHIR).
 #[derive(Debug, Default)]
 pub struct Ir {
-    types: Vec<MathicType>,
+    pub types: Vec<MathicType>,
     functions: Vec<Function>,
     adts: Vec<Adt>,
 }
 
 impl Ir {
+    pub fn get_types(&self) -> &[MathicType] {
+        &self.types
+    }
+
     pub fn get_type(&self, idx: usize) -> Option<MathicType> {
         self.types.get(idx).copied()
     }

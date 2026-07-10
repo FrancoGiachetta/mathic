@@ -196,9 +196,11 @@ pub mod instructions {
                     .map(|m| m.to_string())
                     .collect::<Vec<_>>()
                     .join(".");
+
                 write!(f, "{}%{}", inner_indent, local_idx)?;
                 write!(f, " = ")?;
-                write_rval_instruct(value, f, indent)
+                write_rval_instruct(value, f, indent)?;
+                write!(f, "{}", modifier_str)
             }
             LValInstruct::Sym { local_idx, .. } => {
                 write!(f, "{}sym %{};", inner_indent, local_idx)
@@ -430,6 +432,7 @@ pub mod function {
         writeln!(f, "{}}}\n", indent_str)
     }
 }
+
 impl fmt::Display for crate::lowering::ir::Ir {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         for adt in &self.adts {
