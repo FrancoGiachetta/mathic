@@ -42,6 +42,7 @@ pub fn lower_stmt(func: &mut FunctionBuilder, stmt: &Stmt) -> Result<(), Lowerin
 
             func.get_basic_block_mut(curr_block_idx).terminator = Terminator::Branch {
                 target: curr_block_idx + 1,
+                block_args: Vec::new(),
                 span: None,
             };
 
@@ -50,6 +51,7 @@ pub fn lower_stmt(func: &mut FunctionBuilder, stmt: &Stmt) -> Result<(), Lowerin
                 block_stmt,
                 Terminator::Branch {
                     target: curr_block_idx + 2,
+                    block_args: Vec::new(),
                     span: None,
                 },
             )?;

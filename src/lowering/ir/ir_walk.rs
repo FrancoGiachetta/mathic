@@ -238,14 +238,22 @@ pub mod basic_block {
             match self {
                 Self::Return(Some(v), _) => write!(f, "return {}", v),
                 Self::Return(None, _) => write!(f, "return"),
-                Self::Branch { target, .. } => {
-                    write!(f, "br block{} ", target)
+                Self::Branch {
+                    target, block_args, ..
+                } => {
+                    let args_str = block_args
+                        .iter()
+                        .map(|e| format!("%{e}"))
+                        .collect::<Vec<_>>()
+                        .join(", ");
+                    write!(f, "br block{} [{}]", target, args_str)
                 }
                 Self::CondBranch {
                     condition,
                     true_block,
-                    true_block_args,
                     false_block,
+                    true_block_args,
+                    false_block_args,
                     ..
                 } => {
                     let true_args_str = true_block_args
@@ -253,11 +261,16 @@ pub mod basic_block {
                         .map(|e| format!("%{e}"))
                         .collect::<Vec<_>>()
                         .join(", ");
+                    let false_args_str = false_block_args
+                        .iter()
+                        .map(|e| format!("%{e}"))
+                        .collect::<Vec<_>>()
+                        .join(", ");
 
                     write!(
                         f,
-                        "cond_br ({}) then block{} [{}] else block{}",
-                        condition, true_block, true_args_str, false_block
+                        "cond_br ({}) then block{} [{}] else block{} [{}]",
+                        condition, true_block, true_args_str, false_block, false_args_str
                     )
                 }
                 Self::Unreachable(_) => write!(f, "unreachable"),

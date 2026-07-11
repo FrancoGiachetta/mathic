@@ -150,21 +150,37 @@ impl MathicCodeGen<'_> {
                 }
                 None => block.append_operation(func::r#return(&[], self.get_location(*span)?)),
             },
-            Terminator::Branch { target, span } => block.append_operation(cf::br(
-                &fn_ctx.get_block(*target),
-                &[],
-                self.get_location(*span)?,
-            )),
+            Terminator::Branch {
+                target,
+                block_args,
+                span,
+            } => {
+                let block_args = block_args
+                    .iter()
+                    .map(|local_idx| fn_ctx.get_local(*local_idx).expect("invalid local idx").0)
+                    .collect::<Vec<_>>();
+
+                block.append_operation(cf::br(
+                    &fn_ctx.get_block(*target),
+                    &block_args,
+                    self.get_location(*span)?,
+                ))
+            }
             Terminator::CondBranch {
                 condition,
                 true_block,
-                true_block_args,
                 false_block,
+                true_block_args,
+                false_block_args,
                 span,
                 ..
             } => {
                 let cond_val = self.compile_rvalue(fn_ctx, block, condition, helper)?;
                 let true_block_args = true_block_args
+                    .iter()
+                    .map(|local_idx| fn_ctx.get_local(*local_idx).expect("invalid local idx").0)
+                    .collect::<Vec<_>>();
+                let false_block_args = false_block_args
                     .iter()
                     .map(|local_idx| fn_ctx.get_local(*local_idx).expect("invalid local idx").0)
                     .collect::<Vec<_>>();
@@ -175,7 +191,7 @@ impl MathicCodeGen<'_> {
                     &fn_ctx.get_block(*true_block),
                     &fn_ctx.get_block(*false_block),
                     &true_block_args,
-                    &[],
+                    &false_block_args,
                     self.get_location(*span)?,
                 ))
             }

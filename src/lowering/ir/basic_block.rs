@@ -40,13 +40,18 @@ pub enum Terminator {
     /// Return from function
     Return(Option<RValInstruct>, Option<Span>),
     /// Unconditional branch
-    Branch { target: BlockId, span: Option<Span> },
+    Branch {
+        target: BlockId,
+        block_args: Vec<usize>,
+        span: Option<Span>,
+    },
     /// Conditional branch
     CondBranch {
         condition: RValInstruct,
         true_block: BlockId,
-        true_block_args: Vec<usize>,
         false_block: BlockId,
+        true_block_args: Vec<usize>,
+        false_block_args: Vec<usize>,
         span: Option<Span>,
     },
     /// Unreachable code
