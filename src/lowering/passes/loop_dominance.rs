@@ -32,14 +32,13 @@ impl MathicPass for LoopDominance {
                     })
                     .collect();
 
-                if !args.is_empty() {
-                    if let Terminator::CondBranch {
+                if !args.is_empty()
+                    && let Terminator::CondBranch {
                         ref mut true_block_args,
                         ..
                     } = f.basic_blocks[i].terminator
-                    {
-                        true_block_args.extend(args);
-                    }
+                {
+                    true_block_args.extend(args);
                 }
             }
         }
