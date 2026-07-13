@@ -23,7 +23,7 @@ impl MathicPass for LoopDominance {
                             local_idx, value, ..
                         } = inst
                             && value.ty.is_local
-                            && (f.get_type(dbg!(value.ty.idx)).unwrap().is_symbolic())
+                            && f.get_type(value.ty.idx).unwrap().is_symbolic()
                         {
                             Some(*local_idx)
                         } else {
