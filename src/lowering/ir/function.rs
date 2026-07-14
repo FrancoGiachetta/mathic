@@ -195,12 +195,8 @@ impl<'ir> FunctionBuilder<'ir> {
     pub fn add_block(&mut self, terminator: Terminator, span: Option<Span>) -> BlockId {
         let id = self.basic_blocks.len();
 
-        self.basic_blocks.push(BasicBlock {
-            id,
-            instructions: Vec::new(),
-            terminator,
-            span,
-        });
+        self.basic_blocks
+            .push(BasicBlock::new(id, terminator, span));
 
         id
     }

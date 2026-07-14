@@ -113,10 +113,7 @@ impl MathicCompiler {
         };
 
         // AST lowering and semantic checks.
-        let ir = {
-            let ir = lowering::lower_program(&ast)?;
-            lowering::applay_lowering_passes(ir)
-        };
+        let ir = lowering::lower_program(&ast)?;
 
         if let Ok(v) = std::env::var("MATHIC_DBG_DUMP") {
             if v == "1" {
