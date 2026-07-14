@@ -152,17 +152,17 @@ impl MathicCodeGen<'_> {
             },
             Terminator::Branch {
                 target,
-                block_args,
+                successor_args,
                 span,
             } => {
-                let block_args = block_args
+                let successor_args = successor_args
                     .iter()
                     .map(|local_idx| fn_ctx.get_local(*local_idx).expect("invalid local idx").0)
                     .collect::<Vec<_>>();
 
                 block.append_operation(cf::br(
                     &fn_ctx.get_block(*target),
-                    &block_args,
+                    &successor_args,
                     self.get_location(*span)?,
                 ))
             }
@@ -170,17 +170,17 @@ impl MathicCodeGen<'_> {
                 condition,
                 true_block,
                 false_block,
-                true_block_args,
-                false_block_args,
+                true_successor_args,
+                false_successor_args,
                 span,
                 ..
             } => {
                 let cond_val = self.compile_rvalue(fn_ctx, block, condition, helper)?;
-                let true_block_args = true_block_args
+                let true_block_args = true_successor_args
                     .iter()
                     .map(|local_idx| fn_ctx.get_local(*local_idx).expect("invalid local idx").0)
                     .collect::<Vec<_>>();
-                let false_block_args = false_block_args
+                let false_block_args = false_successor_args
                     .iter()
                     .map(|local_idx| fn_ctx.get_local(*local_idx).expect("invalid local idx").0)
                     .collect::<Vec<_>>();

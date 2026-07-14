@@ -48,7 +48,7 @@ pub fn lower_if(func: &mut FunctionBuilder, stmt: &IfStmt) -> Result<(), Lowerin
             then_block,
             Terminator::Branch {
                 target: target_block_idx,
-                block_args: Vec::new(),
+                successor_args: Vec::new(),
                 span: None,
             },
         )?;
@@ -58,7 +58,7 @@ pub fn lower_if(func: &mut FunctionBuilder, stmt: &IfStmt) -> Result<(), Lowerin
             else_block,
             Terminator::Branch {
                 target: target_block_idx,
-                block_args: Vec::new(),
+                successor_args: Vec::new(),
                 span: None,
             },
         )?;
@@ -72,7 +72,7 @@ pub fn lower_if(func: &mut FunctionBuilder, stmt: &IfStmt) -> Result<(), Lowerin
             then_block,
             Terminator::Branch {
                 target: target_block_idx,
-                block_args: Vec::new(),
+                successor_args: Vec::new(),
                 span: None,
             },
         )?;
@@ -85,8 +85,8 @@ pub fn lower_if(func: &mut FunctionBuilder, stmt: &IfStmt) -> Result<(), Lowerin
     func.get_basic_block_mut(trigger_block_idx).terminator = Terminator::CondBranch {
         condition: condition_val,
         true_block,
-        true_block_args: Vec::new(),
-        false_block_args: Vec::new(),
+        true_successor_args: Vec::new(),
+        false_successor_args: Vec::new(),
         false_block,
         span: None,
     };
@@ -224,7 +224,7 @@ fn lower_loop(
     // Jump to the start block.
     func.get_basic_block_mut(func.last_block_idx()).terminator = Terminator::Branch {
         target: start_block_idx,
-        block_args: Vec::new(),
+        successor_args: Vec::new(),
         span: None,
     };
 
@@ -236,8 +236,8 @@ fn lower_loop(
         Terminator::CondBranch {
             condition,
             true_block: loop_block_idx,
-            true_block_args: Vec::new(),
-            false_block_args: Vec::new(),
+            true_successor_args: Vec::new(),
+            false_successor_args: Vec::new(),
             false_block: end_block_idx,
             span: None,
         },
@@ -251,7 +251,7 @@ fn lower_loop(
         loop_body,
         Terminator::Branch {
             target: start_block_idx,
-            block_args: Vec::new(),
+            successor_args: Vec::new(),
             span: None,
         },
     )?;

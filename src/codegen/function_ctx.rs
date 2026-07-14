@@ -112,10 +112,11 @@ impl MathicCodeGen<'_> {
         let mut i = 0;
         while i < inner_func.basic_blocks.len() - 1 {
             if let Terminator::CondBranch {
-                true_block_args, ..
+                true_successor_args,
+                ..
             } = &inner_func.basic_blocks[i].terminator
             {
-                let block_args = true_block_args
+                let block_args = true_successor_args
                     .iter()
                     .map(|local_idx| {
                         let local = inner_func.get_local(*local_idx).expect("invalid local idx");

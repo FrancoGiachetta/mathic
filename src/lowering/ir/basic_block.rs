@@ -42,7 +42,7 @@ pub enum Terminator {
     /// Unconditional branch
     Branch {
         target: BlockId,
-        block_args: Vec<usize>,
+        successor_args: Vec<usize>,
         span: Option<Span>,
     },
     /// Conditional branch
@@ -50,8 +50,8 @@ pub enum Terminator {
         condition: RValInstruct,
         true_block: BlockId,
         false_block: BlockId,
-        true_block_args: Vec<usize>,
-        false_block_args: Vec<usize>,
+        true_successor_args: Vec<usize>,
+        false_successor_args: Vec<usize>,
         span: Option<Span>,
     },
     /// Unreachable code

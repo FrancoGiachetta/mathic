@@ -239,9 +239,11 @@ pub mod basic_block {
                 Self::Return(Some(v), _) => write!(f, "return {}", v),
                 Self::Return(None, _) => write!(f, "return"),
                 Self::Branch {
-                    target, block_args, ..
+                    target,
+                    successor_args,
+                    ..
                 } => {
-                    let args_str = block_args
+                    let args_str = successor_args
                         .iter()
                         .map(|e| format!("%{e}"))
                         .collect::<Vec<_>>()
@@ -252,16 +254,16 @@ pub mod basic_block {
                     condition,
                     true_block,
                     false_block,
-                    true_block_args,
-                    false_block_args,
+                    true_successor_args,
+                    false_successor_args,
                     ..
                 } => {
-                    let true_args_str = true_block_args
+                    let true_args_str = true_successor_args
                         .iter()
                         .map(|e| format!("%{e}"))
                         .collect::<Vec<_>>()
                         .join(", ");
-                    let false_args_str = false_block_args
+                    let false_args_str = false_successor_args
                         .iter()
                         .map(|e| format!("%{e}"))
                         .collect::<Vec<_>>()

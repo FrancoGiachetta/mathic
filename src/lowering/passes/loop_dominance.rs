@@ -1,6 +1,6 @@
 use crate::lowering::{
     Ir,
-    ir::{basic_block::Terminator, instruction::LValInstruct},
+    ir::{basic_block::Terminator, function::Function, instruction::LValInstruct},
     passes::MathicPass,
 };
 
@@ -9,40 +9,75 @@ pub struct LoopDominance;
 impl MathicPass for LoopDominance {
     fn apply(&self, mut ir: Ir) -> Ir {
         for f in ir.get_functions_mut() {
-            for i in 0..f.basic_blocks.len() - 1 {
-                let true_block = match &f.basic_blocks[i].terminator {
-                    Terminator::CondBranch { true_block, .. } => *true_block,
+            for i in 0..f.basic_blocks.len() {
+                let (true_block, false_block) = match f.basic_blocks[i].terminator {
+                    Terminator::CondBranch {
+                        true_block,
+                        false_block,
+                        ..
+                    } => (true_block, false_block),
                     _ => continue,
                 };
 
-                let args: Vec<usize> = f.basic_blocks[true_block]
-                    .instructions
-                    .iter()
-                    .filter_map(|inst| {
-                        if let LValInstruct::Assign {
-                            local_idx, value, ..
-                        } = inst
-                            && value.ty.is_local
-                            && f.get_type(value.ty.idx).unwrap().is_symbolic()
-                        {
-                            Some(*local_idx)
-                        } else {
-                            None
-                        }
-                    })
-                    .collect();
+                let args = self.collect_symbolic_assigns(f, true_block);
 
-                if !args.is_empty()
-                    && let Terminator::CondBranch {
-                        ref mut true_block_args,
+                if !args.is_empty() {
+                    if let Terminator::CondBranch {
+                        ref mut true_successor_args,
+                        ref mut false_successor_args,
                         ..
                     } = f.basic_blocks[i].terminator
-                {
-                    true_block_args.extend(args);
+                    {
+                        true_successor_args.extend(&args);
+                        false_successor_args.extend(&args);
+                    }
+
+                    if let Terminator::Branch {
+                        target,
+                        ref mut successor_args,
+                        ..
+                    } = f.basic_blocks[true_block].terminator
+                    {
+                        successor_args.extend(&args);
+                    }
+
+                    if let Terminator::Branch {
+                        target,
+                        ref mut successor_args,
+                        ..
+                    } = f.basic_blocks[false_block].terminator
+                    {
+                        successor_args.extend(&args);
+                    }
+
+                    for arg in args {
+                        // Add block args
+                    }
                 }
             }
         }
 
         ir
+    }
+}
+
+impl LoopDominance {
+    fn collect_symbolic_assigns(&self, ir_func: &Function, target_block: usize) -> Vec<usize> {
+        ir_func.basic_blocks[target_block]
+            .instructions
+            .iter()
+            .filter_map(|inst| {
+                if let LValInstruct::Assign {
+                    local_idx, value, ..
+                } = inst
+                    && value.ty.is_local
+                    && ir_func.get_type(value.ty.idx).unwrap().is_symbolic()
+                {
+                    Some(*local_idx)
+                } else {
+                    None
+                }
+            })
+            .collect()
     }
 }
