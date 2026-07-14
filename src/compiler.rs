@@ -22,7 +22,7 @@ use crate::{
             create_symbolic_extract_eval, create_symbolic_to_arith,
         },
     },
-    lowering,
+    lowering::{self, run_lowering_passes},
     parser::MathicParser,
 };
 
@@ -113,7 +113,10 @@ impl MathicCompiler {
         };
 
         // AST lowering and semantic checks.
-        let ir = lowering::lower_program(&ast)?;
+        let ir = {
+            let ir = lowering::lower_program(&ast)?;
+            run_lowering_passes(ir)
+        };
 
         if let Ok(v) = std::env::var("MATHIC_DBG_DUMP") {
             if v == "1" {

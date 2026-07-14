@@ -51,7 +51,8 @@ impl MathicPass for LoopDominance {
                     }
 
                     for arg in args {
-                        // Add block args
+                        let local = f.get_local(arg).unwrap().clone();
+                        f.basic_blocks[i].args.push(local);
                     }
                 }
             }
