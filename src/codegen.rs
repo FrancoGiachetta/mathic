@@ -22,10 +22,11 @@ use crate::{
 use tracing::instrument;
 
 pub mod compiler_helper;
-pub mod dialect_integration;
+mod dialect_integration;
 pub mod function_ctx;
 pub mod lvalue;
 pub mod rvalue;
+pub mod terminator;
 
 /// Struct that holds global infomation to the code generation.
 ///

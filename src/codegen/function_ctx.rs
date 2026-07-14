@@ -1,16 +1,11 @@
 use melior::{
-    dialect::func,
     helpers::{BuiltinBlockExt, LlvmBlockExt},
-    ir::{
-        Attribute, Block, BlockLike, BlockRef, Identifier, Region, RegionLike, Value, ValueLike,
-        attribute::{StringAttribute, TypeAttribute},
-        r#type::FunctionType,
-    },
+    ir::{Block, BlockRef, Location, Region, RegionLike, Type, Value, ValueLike},
 };
 use mlir_sys::MlirValue;
 
 use crate::{
-    codegen::{MathicCodeGen, compiler_helper::CompilerHelper},
+    codegen::MathicCodeGen,
     diagnostics::CodegenError,
     lowering::ir::{
         basic_block::Terminator,
@@ -27,21 +22,12 @@ use crate::{
 /// symbols or pointers to stack allocated variables.
 /// **mlir_blocks**: the MLIR Blocks that the function will use.
 #[derive(Debug)]
-pub struct FunctionCtx<'ctx, 'this> {
+pub struct FunctionCtx<'this> {
     locals: Vec<(MlirValue, TypeIndex)>,
-    mlir_blocks: &'this [BlockRef<'ctx, 'this>],
     ir_func: &'this Function,
 }
 
-impl<'ctx, 'this> FunctionCtx<'ctx, 'this> {
-    pub fn new(mlir_blocks: &'this [BlockRef<'ctx, 'this>], ir_func: &'this Function) -> Self {
-        Self {
-            locals: Vec::new(),
-            mlir_blocks,
-            ir_func,
-        }
-    }
-
+impl<'ctx, 'this> FunctionCtx<'this> {
     pub fn define_local(&mut self, value: Value, ty: TypeIndex) {
         self.locals.push((value.to_raw(), ty));
     }
@@ -52,15 +38,15 @@ impl<'ctx, 'this> FunctionCtx<'ctx, 'this> {
         }
     }
 
-    pub fn get_local(&self, idx: usize) -> Option<(Value<'ctx, 'this>, TypeIndex)> {
+    pub fn get_local(&self, idx: usize) -> Result<(Value<'ctx, 'this>, TypeIndex), CodegenError> {
         self.locals
             .get(idx)
             .copied()
             .map(|(v, t)| (unsafe { Value::from_raw(v) }, t))
-    }
-
-    pub fn get_block(&self, idx: usize) -> BlockRef<'_, '_> {
-        *self.mlir_blocks.get(idx).expect("invalid block index")
+            .ok_or(CodegenError::Custom(format!(
+                "Could not find local with idx: {}",
+                idx
+            )))
     }
 
     pub fn get_ir_func(&self) -> &Function {
@@ -69,38 +55,22 @@ impl<'ctx, 'this> FunctionCtx<'ctx, 'this> {
 }
 
 impl MathicCodeGen<'_> {
-    pub fn compile_function<'ctx, 'func>(
+    pub fn create_fn_ctx<'ctx, 'func>(
         &'func self,
-        inner_func: &Function,
-        attributes: &[(Identifier<'_>, Attribute<'_>)],
-        helper: &mut CompilerHelper,
-    ) -> Result<(), CodegenError>
+        region: &Region<'ctx>,
+        location: Location<'ctx>,
+        ir_func: &'func Function,
+        entry_block_params: &[(Type<'ctx>, Location<'ctx>)],
+    ) -> Result<(FunctionCtx<'func>, Vec<BlockRef<'ctx, 'func>>), CodegenError>
     where
         'func: 'ctx,
     {
-        let location = self.get_location(None)?;
-
-        let return_ty = self.get_compiled_type(inner_func, inner_func.return_ty)?;
-        let mut params_types = Vec::with_capacity(inner_func.params_tys.len());
-        let mut block_params = Vec::with_capacity(inner_func.params_tys.len());
-
-        // Prepare the function's params' types and the entry block params as
-        // well.
-        for param_ty in inner_func.params_tys.iter() {
-            let mlir_ty = self.get_compiled_type(inner_func, *param_ty)?;
-
-            params_types.push(mlir_ty);
-            block_params.push((mlir_ty, location));
-        }
-
-        let region = Region::new();
-
-        let mut mlir_blocks = Vec::with_capacity(inner_func.basic_blocks.len() - 1);
+        let mut mlir_blocks = Vec::with_capacity(ir_func.basic_blocks.len() - 1);
 
         // Create the entry block, the first block to be executed of every
         // function.
         let entry_block = {
-            let block = region.append_block(Block::new(&block_params));
+            let block = region.append_block(Block::new(entry_block_params));
 
             mlir_blocks.push(block);
 
@@ -110,40 +80,56 @@ impl MathicCodeGen<'_> {
         // We already know the amount of blocks this function will use from the
         // lowering phase.
         let mut i = 0;
-        while i < inner_func.basic_blocks.len() - 1 {
-            if let Terminator::CondBranch {
-                true_successor_args,
-                ..
-            } = &inner_func.basic_blocks[i].terminator
-            {
-                let block_args = true_successor_args
-                    .iter()
-                    .map(|local_idx| {
-                        let local = inner_func.get_local(*local_idx).expect("invalid local idx");
+        while i < ir_func.basic_blocks.len() - 1 {
+            match &ir_func.basic_blocks[i].terminator {
+                Terminator::CondBranch {
+                    true_block,
+                    false_block,
+                    true_block_args,
+                    false_block_args,
+                    ..
+                } => {
+                    let true_block_args =
+                        self.compile_locals_types(true_block_args, ir_func, location)?;
+                    let false_block_args =
+                        self.compile_locals_types(false_block_args, ir_func, location)?;
 
-                        self.get_compiled_type(inner_func, local.ty)
-                    })
-                    .collect::<Result<Vec<_>, _>>()?
-                    .into_iter()
-                    .map(|ty| (ty, location))
-                    .collect::<Vec<_>>();
+                    mlir_blocks.insert(
+                        *true_block,
+                        region.append_block(Block::new(&true_block_args)),
+                    );
+                    mlir_blocks.insert(
+                        *false_block,
+                        region.append_block(Block::new(&false_block_args)),
+                    );
 
-                mlir_blocks.push(region.append_block(Block::new(&block_args)));
-                mlir_blocks.push(region.append_block(Block::new(&[])));
+                    // Already created the true succesor block.
+                    i += 2;
+                }
+                Terminator::Branch {
+                    target, block_args, ..
+                } => {
+                    let block_args = self.compile_locals_types(block_args, ir_func, location)?;
 
-                // Already created the true succesor block.
-                i += 2;
+                    mlir_blocks.insert(*target, region.append_block(Block::new(&block_args)));
 
-                continue;
+                    i += 1;
+
+                    continue;
+                }
+                _ => {
+                    mlir_blocks.push(region.append_block(Block::new(&[])));
+
+                    i += 1;
+                }
             }
-
-            mlir_blocks.push(region.append_block(Block::new(&[])));
-
-            i += 1;
         }
 
-        let mut inner_fn_ctx = FunctionCtx::new(&mlir_blocks, inner_func);
-        let function_params = inner_func
+        let mut fn_ctx = FunctionCtx {
+            locals: Vec::new(),
+            ir_func,
+        };
+        let function_params = ir_func
             .get_locals()
             .iter()
             .filter(|l| l.kind == LocalKind::Param);
@@ -152,44 +138,36 @@ impl MathicCodeGen<'_> {
             // Allocate space for params and make them visible to the function.
             for (i, _) in function_params.enumerate() {
                 let value = entry_block.arg(i)?;
-                let ptr = entry_block.alloca1(self.ctx, location, params_types[i], 8)?;
+                let ptr = entry_block.alloca1(self.ctx, location, entry_block_params[i].0, 8)?;
 
                 entry_block.store(self.ctx, location, ptr, value)?;
 
-                inner_fn_ctx.define_local(ptr, inner_func.params_tys[i]);
+                fn_ctx.define_local(ptr, ir_func.params_tys[i]);
             }
         }
 
-        // Precompile inner functions.
-        for inner_func in inner_func.get_inner_functions() {
-            self.compile_function(
-                inner_func,
-                &[(
-                    Identifier::new(self.ctx, "sym_visibility"),
-                    StringAttribute::new(self.ctx, "private").into(),
-                )],
-                helper,
-            )?;
-        }
+        Ok((fn_ctx, mlir_blocks))
+    }
 
-        // Generate code for every basic_block. For each of them, we first
-        // compile their instructions and their terminator instruction.
-        for (block, mlir_block) in inner_func.basic_blocks.iter().zip(&mlir_blocks) {
-            self.compile_block(&mut inner_fn_ctx, mlir_block, &block.instructions, helper)?;
+    fn compile_locals_types<'ctx, 'func>(
+        &'func self,
+        local_indexes: &[usize],
+        ir_func: &'func Function,
+        location: Location<'ctx>,
+    ) -> Result<Vec<(Type<'ctx>, Location<'ctx>)>, CodegenError>
+    where
+        'func: 'ctx,
+    {
+        Ok(local_indexes
+            .iter()
+            .map(|local_idx| {
+                let local = ir_func.get_local(*local_idx).expect("invalid local idx");
 
-            self.compile_terminator(&mut inner_fn_ctx, mlir_block, &block.terminator, helper)?;
-        }
-
-        // Generate the function itself and add it to the module.
-        self.module.body().append_operation(func::func(
-            self.ctx,
-            StringAttribute::new(self.ctx, &format!("mathic__{}", inner_func.name)),
-            TypeAttribute::new(FunctionType::new(self.ctx, &params_types, &[return_ty]).into()),
-            region,
-            attributes,
-            location,
-        ));
-
-        Ok(())
+                self.get_compiled_type(ir_func, local.ty)
+            })
+            .collect::<Result<Vec<_>, _>>()?
+            .into_iter()
+            .map(|ty| (ty, location))
+            .collect::<Vec<_>>())
     }
 }

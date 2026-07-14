@@ -1,5 +1,6 @@
 use super::instruction::LValInstruct;
 use super::value::Value;
+use crate::lowering::ir::function::Local;
 use crate::lowering::ir::{instruction::RValInstruct, symbols::TypeIndex};
 use crate::parser::Span;
 
@@ -14,6 +15,7 @@ pub type BlockId = usize;
 pub struct BasicBlock {
     pub id: BlockId,
     pub instructions: Vec<LValInstruct>,
+    pub args: Vec<Local>,
     pub terminator: Terminator,
     pub span: Option<Span>,
 }
@@ -23,6 +25,7 @@ impl BasicBlock {
         Self {
             id,
             instructions: Vec::new(),
+            args: Vec::new(),
             terminator,
             span,
         }
