@@ -85,33 +85,36 @@ impl MathicCodeGen<'_> {
                 Terminator::CondBranch {
                     true_block,
                     false_block,
-                    true_block_args,
-                    false_block_args,
+                    true_successor_args,
+                    false_successor_args,
                     ..
                 } => {
-                    let true_block_args =
-                        self.compile_locals_types(true_block_args, ir_func, location)?;
-                    let false_block_args =
-                        self.compile_locals_types(false_block_args, ir_func, location)?;
+                    let true_successor_args =
+                        self.compile_locals_types(true_successor_args, ir_func, location)?;
+                    let false_successor_args =
+                        self.compile_locals_types(false_successor_args, ir_func, location)?;
 
                     mlir_blocks.insert(
                         *true_block,
-                        region.append_block(Block::new(&true_block_args)),
+                        region.append_block(Block::new(&true_successor_args)),
                     );
                     mlir_blocks.insert(
                         *false_block,
-                        region.append_block(Block::new(&false_block_args)),
+                        region.append_block(Block::new(&false_successor_args)),
                     );
 
                     // Already created the true succesor block.
                     i += 2;
                 }
                 Terminator::Branch {
-                    target, block_args, ..
+                    target,
+                    successor_args,
+                    ..
                 } => {
-                    let block_args = self.compile_locals_types(block_args, ir_func, location)?;
+                    let successor_args =
+                        self.compile_locals_types(successor_args, ir_func, location)?;
 
-                    mlir_blocks.insert(*target, region.append_block(Block::new(&block_args)));
+                    mlir_blocks.insert(*target, region.append_block(Block::new(&successor_args)));
 
                     i += 1;
 
