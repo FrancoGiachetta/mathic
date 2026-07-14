@@ -81,29 +81,48 @@ impl MathicCodeGen<'_> {
         // lowering phase.
         let mut i = 0;
         while i < ir_func.basic_blocks.len() - 1 {
-            if let Terminator::CondBranch {
-                true_block_args,
-                false_block_args,
-                ..
-            } = &ir_func.basic_blocks[i].terminator
-            {
-                let true_block_args =
-                    self.compile_locals_types(true_block_args, ir_func, location)?;
-                let false_block_args =
-                    self.compile_locals_types(false_block_args, ir_func, location)?;
+            match &ir_func.basic_blocks[i].terminator {
+                Terminator::CondBranch {
+                    true_block,
+                    false_block,
+                    true_block_args,
+                    false_block_args,
+                    ..
+                } => {
+                    let true_block_args =
+                        self.compile_locals_types(true_block_args, ir_func, location)?;
+                    let false_block_args =
+                        self.compile_locals_types(false_block_args, ir_func, location)?;
 
-                mlir_blocks.push(region.append_block(Block::new(&true_block_args)));
-                mlir_blocks.push(region.append_block(Block::new(&false_block_args)));
+                    mlir_blocks.insert(
+                        *true_block,
+                        region.append_block(Block::new(&true_block_args)),
+                    );
+                    mlir_blocks.insert(
+                        *false_block,
+                        region.append_block(Block::new(&false_block_args)),
+                    );
 
-                // Already created the true succesor block.
-                i += 2;
+                    // Already created the true succesor block.
+                    i += 2;
+                }
+                Terminator::Branch {
+                    target, block_args, ..
+                } => {
+                    let block_args = self.compile_locals_types(block_args, ir_func, location)?;
 
-                continue;
+                    mlir_blocks.insert(*target, region.append_block(Block::new(&block_args)));
+
+                    i += 1;
+
+                    continue;
+                }
+                _ => {
+                    mlir_blocks.push(region.append_block(Block::new(&[])));
+
+                    i += 1;
+                }
             }
-
-            mlir_blocks.push(region.append_block(Block::new(&[])));
-
-            i += 1;
         }
 
         let mut fn_ctx = FunctionCtx {

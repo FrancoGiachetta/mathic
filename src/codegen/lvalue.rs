@@ -178,6 +178,8 @@ impl MathicCodeGen<'_> {
         // Generate code for every basic_block. For each of them, we first
         // compile their instructions and their terminator instruction.
         for (block, mlir_block) in ir_func.basic_blocks.iter().zip(&mlir_blocks) {
+            // Override locals with the block arg they should be pointing at.
+            // Block args must always refer to a valid local value.
             for (idx, arg) in block.args.iter().enumerate() {
                 let block_arg = mlir_block.arg(idx)?;
                 if self.get_type(ir_func, arg.ty)?.is_symbolic() {
