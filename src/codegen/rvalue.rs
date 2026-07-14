@@ -26,7 +26,7 @@ use crate::{
 impl MathicCodeGen<'_> {
     pub fn compile_rvalue<'ctx, 'func>(
         &'func self,
-        fn_ctx: &mut FunctionCtx<'ctx, 'func>,
+        fn_ctx: &mut FunctionCtx<'func>,
         block: &'func Block<'ctx>,
         rvalue: &RValInstruct,
         helper: &mut CompilerHelper,
@@ -56,7 +56,7 @@ impl MathicCodeGen<'_> {
 
     fn compile_init_op<'ctx, 'func>(
         &'func self,
-        fn_ctx: &mut FunctionCtx<'ctx, 'func>,
+        fn_ctx: &mut FunctionCtx<'func>,
         block: &'func Block<'ctx>,
         init_inst: &InitInstruct,
         adt_ty_idx: TypeIndex,
@@ -84,7 +84,7 @@ impl MathicCodeGen<'_> {
     #[allow(clippy::too_many_arguments)]
     fn compile_logical<'ctx, 'func>(
         &'func self,
-        fn_ctx: &mut FunctionCtx<'ctx, 'func>,
+        fn_ctx: &mut FunctionCtx<'func>,
         block: &'func Block<'ctx>,
         lhs: &RValInstruct,
         op: LogicalOp,
@@ -109,7 +109,7 @@ impl MathicCodeGen<'_> {
     #[allow(clippy::too_many_arguments)]
     fn compile_binop<'ctx, 'func>(
         &'func self,
-        fn_ctx: &mut FunctionCtx<'ctx, 'func>,
+        fn_ctx: &mut FunctionCtx<'func>,
         block: &'func Block<'ctx>,
         lhs: &RValInstruct,
         op: BinaryOp,
@@ -195,7 +195,7 @@ impl MathicCodeGen<'_> {
     #[allow(clippy::too_many_arguments)]
     fn compile_symbolic_binop<'ctx, 'func>(
         &'func self,
-        fn_ctx: &mut FunctionCtx<'ctx, 'func>,
+        fn_ctx: &mut FunctionCtx<'func>,
         block: &'func Block<'ctx>,
         lhs: &RValInstruct,
         op: ArithOp,
@@ -226,7 +226,7 @@ impl MathicCodeGen<'_> {
 
     fn compile_unary<'func, 'ctx>(
         &'func self,
-        fn_ctx: &mut FunctionCtx<'ctx, 'func>,
+        fn_ctx: &mut FunctionCtx<'func>,
         block: &'func Block<'ctx>,
         op: UnaryOp,
         rhs: &RValInstruct,
@@ -254,7 +254,7 @@ impl MathicCodeGen<'_> {
 
     fn compile_value_use<'ctx, 'func>(
         &'func self,
-        fn_ctx: &mut FunctionCtx<'ctx, 'func>,
+        fn_ctx: &mut FunctionCtx<'func>,
         block: &'func Block<'ctx>,
         value: &IRValue,
         _helper: &mut CompilerHelper,
@@ -265,17 +265,12 @@ impl MathicCodeGen<'_> {
         let location = self.get_location(None)?;
 
         Ok(match value {
-            IRValue::Symbol { local_idx } => fn_ctx
-                .get_local(*local_idx)
-                .map(|(v, _)| v)
-                .unwrap_or_else(|| panic!("Invalid symbolic local idx: {}", local_idx)),
+            IRValue::Symbol { local_idx } => fn_ctx.get_local(*local_idx).map(|(v, _)| v)?,
             IRValue::InMemory {
                 local_idx,
                 modifier,
             } => {
-                let (ptr, mut ty_idx) = fn_ctx
-                    .get_local(*local_idx)
-                    .unwrap_or_else(|| panic!("Invalid local idx: {}", local_idx));
+                let (ptr, mut ty_idx) = fn_ctx.get_local(*local_idx)?;
 
                 let mut val = block.load(
                     self.ctx,

@@ -1,7 +1,11 @@
 use melior::{
-    dialect::{cf, func, llvm},
+    dialect::func,
     helpers::{BuiltinBlockExt, GepIndex, LlvmBlockExt},
-    ir::{Block, BlockLike, Location, attribute::FlatSymbolRefAttribute},
+    ir::{
+        Attribute, Block, BlockLike, Identifier, Region,
+        attribute::{StringAttribute, TypeAttribute},
+        r#type::FunctionType,
+    },
 };
 
 use crate::{
@@ -11,7 +15,7 @@ use crate::{
     },
     diagnostics::CodegenError,
     lowering::ir::{
-        adts::Adt, basic_block::Terminator, instruction::LValInstruct, types::MathicType,
+        adts::Adt, function::Function, instruction::LValInstruct, types::MathicType,
         value::ValueModifier,
     },
 };
@@ -19,7 +23,7 @@ use crate::{
 impl MathicCodeGen<'_> {
     pub fn compile_statement<'ctx, 'func>(
         &'func self,
-        fn_ctx: &mut FunctionCtx<'ctx, 'func>,
+        fn_ctx: &mut FunctionCtx<'func>,
         block: &'func Block<'ctx>,
         inst: &LValInstruct,
         helper: &mut CompilerHelper,
@@ -131,143 +135,92 @@ impl MathicCodeGen<'_> {
         Ok(())
     }
 
-    pub fn compile_terminator<'ctx, 'func>(
+    pub fn compile_function<'ctx, 'func>(
         &'func self,
-        fn_ctx: &mut FunctionCtx<'ctx, 'func>,
-        block: &'func Block<'ctx>,
-        terminator: &Terminator,
+        ir_func: &Function,
+        attributes: &[(Identifier<'_>, Attribute<'_>)],
         helper: &mut CompilerHelper,
     ) -> Result<(), CodegenError>
     where
         'func: 'ctx,
     {
-        match terminator {
-            Terminator::Return(rval_instruct, span) => match rval_instruct {
-                Some(rvalue) => {
-                    let val = self.compile_rvalue(fn_ctx, block, rvalue, helper)?;
+        let location = self.get_location(None)?;
 
-                    block.append_operation(func::r#return(&[val], self.get_location(*span)?))
+        let return_ty = self.get_compiled_type(ir_func, ir_func.return_ty)?;
+        let mut params_types = Vec::with_capacity(ir_func.params_tys.len());
+        let mut entry_block_params = Vec::with_capacity(ir_func.params_tys.len());
+
+        // Prepare the function's params' types and the entry block params as
+        // well.
+        for param_ty in ir_func.params_tys.iter() {
+            let mlir_ty = self.get_compiled_type(ir_func, *param_ty)?;
+
+            params_types.push(mlir_ty);
+            entry_block_params.push((mlir_ty, location));
+        }
+
+        let region = Region::new();
+        let (mut fn_ctx, mlir_blocks) =
+            self.create_fn_ctx(&region, location, ir_func, &entry_block_params)?;
+
+        // Precompile inner functions.
+        for inner_func in ir_func.get_inner_functions() {
+            self.compile_function(
+                inner_func,
+                &[(
+                    Identifier::new(self.ctx, "sym_visibility"),
+                    StringAttribute::new(self.ctx, "private").into(),
+                )],
+                helper,
+            )?;
+        }
+
+        // Generate code for every basic_block. For each of them, we first
+        // compile their instructions and their terminator instruction.
+        for (block, mlir_block) in ir_func.basic_blocks.iter().zip(&mlir_blocks) {
+            // Override locals with the block arg they should be pointing at.
+            // Block args must always refer to a valid local value.
+            for (idx, arg) in block.args.iter().enumerate() {
+                let block_arg = mlir_block.arg(idx)?;
+                if self.get_type(ir_func, arg.ty)?.is_symbolic() {
+                    fn_ctx.assign_local(arg.local_idx, block_arg);
+                } else {
+                    mlir_block.store(
+                        self.ctx,
+                        location,
+                        fn_ctx.get_local(arg.local_idx)?.0,
+                        block_arg,
+                    )?;
                 }
-                None => block.append_operation(func::r#return(&[], self.get_location(*span)?)),
-            },
-            Terminator::Branch { target, span } => block.append_operation(cf::br(
-                &fn_ctx.get_block(*target),
-                &[],
-                self.get_location(*span)?,
-            )),
-            Terminator::CondBranch {
-                condition,
-                true_block,
-                false_block,
-                span,
-            } => {
-                let cond_val = self.compile_rvalue(fn_ctx, block, condition, helper)?;
-
-                block.append_operation(cf::cond_br(
-                    self.ctx,
-                    cond_val,
-                    &fn_ctx.get_block(*true_block),
-                    &fn_ctx.get_block(*false_block),
-                    &[],
-                    &[],
-                    self.get_location(*span)?,
-                ))
             }
-            Terminator::Unreachable(span) => {
-                block.append_operation(llvm::unreachable(self.get_location(*span)?))
-            }
-            Terminator::Call {
-                callee,
-                args,
-                return_dest: _,
-                dest_block,
-                return_ty: return_ty_idx,
-                span,
-            } => {
-                let unknown_location = Location::unknown(self.ctx);
 
-                let mut args_vals = Vec::with_capacity(args.len());
-                for arg in args.iter() {
-                    args_vals.push(self.compile_rvalue(fn_ctx, block, arg, helper)?);
-                }
+            self.compile_block(&mut fn_ctx, mlir_block, &block.instructions, helper)?;
 
-                let mlir_return_ty =
-                    self.get_compiled_type(fn_ctx.get_ir_func(), *return_ty_idx)?;
-                let return_ty = self.get_type(fn_ctx.get_ir_func(), *return_ty_idx)?;
-                let return_ptr = block.alloca1(
-                    self.ctx,
-                    unknown_location,
-                    mlir_return_ty,
-                    return_ty.align(self.ir, fn_ctx.get_ir_func()),
-                )?;
-                let return_value = block.append_op_result(func::call(
-                    self.ctx,
-                    FlatSymbolRefAttribute::new(self.ctx, &format!("mathic__{}", callee)),
-                    &args_vals,
-                    &[mlir_return_ty],
-                    self.get_location(*span)?,
-                ))?;
+            self.compile_terminator(
+                &mut fn_ctx,
+                &mlir_blocks,
+                mlir_block,
+                &block.terminator,
+                helper,
+            )?;
+        }
 
-                block.store(self.ctx, unknown_location, return_ptr, return_value)?;
-
-                fn_ctx.define_local(return_ptr, *return_ty_idx);
-
-                block.append_operation(cf::br(
-                    &fn_ctx.get_block(*dest_block),
-                    &[],
-                    self.get_location(None)?,
-                ))
-            }
-            Terminator::Eval {
-                expr,
-                sym_name,
-                value,
-                span,
-                return_dest: _,
-                return_ty_idx,
-                dest_block,
-            } => {
-                let unknown_location = self.get_location(*span)?;
-
-                let mlir_return_ty =
-                    self.get_compiled_type(fn_ctx.get_ir_func(), *return_ty_idx)?;
-                let return_ty = self.get_type(fn_ctx.get_ir_func(), *return_ty_idx)?;
-
-                let expr = self.compile_rvalue(fn_ctx, block, expr, helper)?;
-                let value = self.compile_rvalue(fn_ctx, block, value, helper)?;
-                let return_value = block.append_op_result(symbolic::operation::eval(
-                    self.ctx,
-                    unknown_location,
-                    expr,
-                    sym_name,
-                    value,
-                ))?;
-
-                let return_ptr = block.alloca1(
-                    self.ctx,
-                    unknown_location,
-                    mlir_return_ty,
-                    return_ty.align(self.ir, fn_ctx.get_ir_func()),
-                )?;
-
-                block.store(self.ctx, unknown_location, return_ptr, return_value)?;
-
-                fn_ctx.define_local(return_ptr, *return_ty_idx);
-
-                block.append_operation(cf::br(
-                    &fn_ctx.get_block(*dest_block),
-                    &[],
-                    self.get_location(None)?,
-                ))
-            }
-        };
+        // Generate the function itself and add it to the module.
+        self.module.body().append_operation(func::func(
+            self.ctx,
+            StringAttribute::new(self.ctx, &format!("mathic__{}", ir_func.name)),
+            TypeAttribute::new(FunctionType::new(self.ctx, &params_types, &[return_ty]).into()),
+            region,
+            attributes,
+            location,
+        ));
 
         Ok(())
     }
 
     pub fn compile_block<'ctx, 'func>(
         &'func self,
-        fn_ctx: &mut FunctionCtx<'ctx, 'func>,
+        fn_ctx: &mut FunctionCtx<'func>,
         block: &'func Block<'ctx>,
         stmts: &[LValInstruct],
         helper: &mut CompilerHelper,

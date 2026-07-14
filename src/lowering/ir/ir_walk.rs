@@ -53,7 +53,7 @@ pub mod value {
 
                     write!(f, "%{}{}", local_idx, modifier_str)
                 }
-                Self::Symbol { local_idx } => write!(f, "sym%{}", local_idx),
+                Self::Symbol { local_idx } => write!(f, "%{}", local_idx),
                 Self::Const(c) => write!(f, "{}", c),
             }
         }
@@ -196,10 +196,11 @@ pub mod instructions {
                     .map(|m| m.to_string())
                     .collect::<Vec<_>>()
                     .join(".");
+
                 write!(f, "{}%{}", inner_indent, local_idx)?;
                 write!(f, " = ")?;
-                write!(f, "%{}{}", local_idx, modifier_str)?;
-                write_rval_instruct(value, f, indent)
+                write_rval_instruct(value, f, indent)?;
+                write!(f, "{}", modifier_str)
             }
             LValInstruct::Sym { local_idx, .. } => {
                 write!(f, "{}sym %{};", inner_indent, local_idx)
@@ -237,19 +238,39 @@ pub mod basic_block {
             match self {
                 Self::Return(Some(v), _) => write!(f, "return {}", v),
                 Self::Return(None, _) => write!(f, "return"),
-                Self::Branch { target, .. } => {
-                    write!(f, "br block{} ", target)
+                Self::Branch {
+                    target, block_args, ..
+                } => {
+                    let args_str = block_args
+                        .iter()
+                        .map(|e| format!("%{e}"))
+                        .collect::<Vec<_>>()
+                        .join(", ");
+                    write!(f, "br block{} [{}]", target, args_str)
                 }
                 Self::CondBranch {
                     condition,
                     true_block,
                     false_block,
+                    true_block_args,
+                    false_block_args,
                     ..
                 } => {
+                    let true_args_str = true_block_args
+                        .iter()
+                        .map(|e| format!("%{e}"))
+                        .collect::<Vec<_>>()
+                        .join(", ");
+                    let false_args_str = false_block_args
+                        .iter()
+                        .map(|e| format!("%{e}"))
+                        .collect::<Vec<_>>()
+                        .join(", ");
+
                     write!(
                         f,
-                        "cond_br ({}) then block{} else block{}",
-                        condition, true_block, false_block
+                        "cond_br ({}) then block{} [{}] else block{} [{}]",
+                        condition, true_block, true_args_str, false_block, false_args_str
                     )
                 }
                 Self::Unreachable(_) => write!(f, "unreachable"),
@@ -424,6 +445,7 @@ pub mod function {
         writeln!(f, "{}}}\n", indent_str)
     }
 }
+
 impl fmt::Display for crate::lowering::ir::Ir {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         for adt in &self.adts {

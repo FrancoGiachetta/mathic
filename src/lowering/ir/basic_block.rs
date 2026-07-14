@@ -1,5 +1,6 @@
 use super::instruction::LValInstruct;
 use super::value::Value;
+use crate::lowering::ir::function::Local;
 use crate::lowering::ir::{instruction::RValInstruct, symbols::TypeIndex};
 use crate::parser::Span;
 
@@ -14,6 +15,7 @@ pub type BlockId = usize;
 pub struct BasicBlock {
     pub id: BlockId,
     pub instructions: Vec<LValInstruct>,
+    pub args: Vec<Local>,
     pub terminator: Terminator,
     pub span: Option<Span>,
 }
@@ -23,6 +25,7 @@ impl BasicBlock {
         Self {
             id,
             instructions: Vec::new(),
+            args: Vec::new(),
             terminator,
             span,
         }
@@ -40,12 +43,18 @@ pub enum Terminator {
     /// Return from function
     Return(Option<RValInstruct>, Option<Span>),
     /// Unconditional branch
-    Branch { target: BlockId, span: Option<Span> },
+    Branch {
+        target: BlockId,
+        block_args: Vec<usize>,
+        span: Option<Span>,
+    },
     /// Conditional branch
     CondBranch {
         condition: RValInstruct,
         true_block: BlockId,
         false_block: BlockId,
+        true_block_args: Vec<usize>,
+        false_block_args: Vec<usize>,
         span: Option<Span>,
     },
     /// Unreachable code

@@ -1,4 +1,4 @@
-pub mod ast_lowering;
+mod ast_lowering;
 pub mod ir;
 
 use crate::{

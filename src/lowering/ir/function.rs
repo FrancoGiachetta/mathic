@@ -61,6 +61,10 @@ impl Function {
         &self.sym_table.locals
     }
 
+    pub fn get_local(&self, idx: usize) -> Option<&Local> {
+        self.sym_table.locals.get(idx)
+    }
+
     pub fn get_adts(&self) -> &[Adt] {
         &self.sym_table.adts
     }
@@ -191,12 +195,8 @@ impl<'ir> FunctionBuilder<'ir> {
     pub fn add_block(&mut self, terminator: Terminator, span: Option<Span>) -> BlockId {
         let id = self.basic_blocks.len();
 
-        self.basic_blocks.push(BasicBlock {
-            id,
-            instructions: Vec::new(),
-            terminator,
-            span,
-        });
+        self.basic_blocks
+            .push(BasicBlock::new(id, terminator, span));
 
         id
     }

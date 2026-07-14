@@ -22,10 +22,11 @@ use crate::{
 use tracing::instrument;
 
 pub mod compiler_helper;
-pub mod dialect_integration;
+mod dialect_integration;
 pub mod function_ctx;
 pub mod lvalue;
 pub mod rvalue;
+pub mod terminator;
 
 /// Struct that holds global infomation to the code generation.
 ///
@@ -95,8 +96,6 @@ impl<'ctx> MathicCodeGen<'ctx> {
         if !global_functions.iter().any(|f| f.name == "main") {
             return Err(MathicError::Codegen(CodegenError::MissingMainFunction));
         }
-
-        // TODO: Compile structs in the future
 
         for func in global_functions {
             tracing::debug!("Compiling function: {}", func.name);

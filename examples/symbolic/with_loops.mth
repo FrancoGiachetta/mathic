@@ -1,0 +1,11 @@
+df main() u32 {
+	sym x: expr<u32>;
+
+	let e: expr<u32> = x;
+
+	for i in 0..10 {
+		e = e + x;
+	}
+
+	return eval(e, x, 1);
+}
