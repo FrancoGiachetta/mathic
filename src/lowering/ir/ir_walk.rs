@@ -223,8 +223,20 @@ pub mod basic_block {
         indent: usize,
     ) -> std::fmt::Result {
         let inner_indent = " ".repeat(indent + 4);
+        let block_args = block
+            .args
+            .iter()
+            .map(|l| format!("%{}", l.local_idx))
+            .collect::<Vec<_>>()
+            .join(",");
 
-        writeln!(f, "{}block{}: {{", " ".repeat(indent), block.id)?;
+        writeln!(
+            f,
+            "{}block{} [{}]: {{",
+            " ".repeat(indent),
+            block.id,
+            block_args
+        )?;
         for inst in &block.instructions {
             write_lval_instruct(inst, f, indent + 4)?;
             writeln!(f)?;

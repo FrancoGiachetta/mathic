@@ -1,4 +1,4 @@
-pub mod loop_dominance;
+pub mod symbolic_loop_dominance;
 
 use super::Ir;
 

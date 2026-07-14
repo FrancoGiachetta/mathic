@@ -13,7 +13,7 @@ use crate::{
             symbols::TypeIndex,
             types::{MathicType, NumericTy, SintTy, UintTy},
         },
-        passes::{MathicPass, loop_dominance::LoopDominance},
+        passes::{MathicPass, symbolic_loop_dominance::SymbolicLoopDominance},
     },
     parser::{
         Span,
@@ -61,7 +61,7 @@ pub fn lower_program(program: &Program) -> Result<Ir, LoweringError> {
 }
 
 pub fn run_lowering_passes(ir: Ir) -> Ir {
-    let passes = &[LoopDominance];
+    let passes = &[SymbolicLoopDominance];
 
     passes.iter().fold(ir, |ir, p| p.apply(ir))
 }
