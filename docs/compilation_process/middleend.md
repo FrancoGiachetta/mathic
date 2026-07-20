@@ -15,7 +15,7 @@ MATHIR is organized as a set of sequentially numbered blocks. Each basic block h
 
 In the [example above](#example), `block0` initializes the variables and branches to `block1`. `block1` has a single `cond_br` terminator that decides whether to enter the loop body (`block2`) or exit (`block3`).
 
-Basic blocks are represented [here](../../src/lowering/ir/basic_block.rs:15)
+Basic blocks are represented [here](../../src/lowering/ir/basic_block.rs#15)
 
 ### Instructions
 
@@ -30,18 +30,18 @@ Looking at the [example](#example), `let %0 = 1` is an l-value instruction (it d
 
 ### Terminators
 
-Terminators are a special type of instructions which affect the control flow of the program. Every basic block **must** have one and only one terminator since they mark the end of the block, moving the control flow to the next block or returning a value (if it represents the end of the program).
+Terminators are a special type of instructions which affect the control flow of the program. Every basic block **must** have one and only one terminator since they mark its end, transferring the control flow to the next block or returning from a function (if it represents the end of the program).
 
 In the [example](#example), `block0` ends with `br block1 []` (unconditional branch), `block1` ends with `cond_br (...)` (conditional branch), and `block3` ends with `return %0`.
 
-Terminators are represented [here](../../src/lowering/ir/basic_block.rs)
+Terminators are represented [here](../../src/lowering/ir/basic_block.rs#42)
 
 ### Functions
 
 A Mathic program is composed of functions — no code can live outside a function. The entrypoint of a program is the `main` function.
 MATHIR follows the same rule: blocks cannot live outside a function. A function holds a set of sequentially numbered blocks, zero or more parameters, and an optional return type.
 
-Functions are represented [here](../../src/lowering/ir/function.rs)
+Functions are represented [here](../../src/lowering/ir/function.rs#38)
 
 ### Types
 
@@ -90,3 +90,49 @@ df main() -> i64 {
 ```
 
 ## Lowering the AST
+
+The lowering process begins with the call of the `lower_program` [here](../../src/lowering.rs#33). This function does two main things:
+
+1. Creates the `IRBuilder`.
+2. Loops the top level items to begin lowering.
+
+> This is an auxiliary structure to avoid having ownership issues during the lowering. It holds what's necessary to create the IR.
+
+Structurally, a Mathic program is composed of either function or struct declarations (top level items). The top level items of the AST are iterated twice:
+
+1. The first one is to cache the declarations by storing the AST sub-tree. This allows to reference items before they are declared. For example function calls before their declaration. To track these declarations, the IRBuilder has a [declaration table](../../src/lowering/ir/symbols.rs#22).
+2. The second one is to lower them.
+
+### Lowering Functions
+
+So, before we can lower statements we need to lower what will hold them, functions. There can be top level functions and local functions (a function inside another). For this reason, their lowering is handled by different functions: `lower_top_level_function` [here](../../src/lowering.rs#63) and `lower_inner_function` [here](../../src/lowering/ast_lowering/declaration.rs#105). Both do the same thing, they only differ in their scope. 
+To lower a function, a [FunctionBuilder](#functionbuilder) is constructed from its `name`, `return type` and `params`. Next we loop over the functions [statements](#lowering-statements) to lower them.
+
+#### FunctionBuilder
+
+For the same reason we have the `IRBuilder`, we have the `FunctionBuilder` [here](../../src/lowering/ir/function.rs#74). It holds a mutable reference to the `IRBuilder` to make it easy to make a global change if ever needed. It also has a declaration table to cache declarations and a [symbol table](#symbol-table) from where it can take any kind of symbol (from locals to functions, user defined types and ADTs).
+
+### Lowering ADTs
+
+ADTs (Abstract Data Structures) are the other top level item apart from functions. For now, they represent structs, but in the future they could also be an enum.
+
+### Lowering Statements
+
+There are three types of statements:
+
+#### Declaration
+
+We can declare a function, an ADT or a local. Their lowering entrypoints can be found [here](../../src/lowering/ast_lowering/declaration.rs). 
+Declaring something means declaraing a symbol, and for that reason we need a symbol table.
+
+##### Symbol Table
+
+It allows to track any symbol declared through the program (either a local, function, ADT). It is defined [here](../../src/lowering/ir/symbols.rs#88). There's a symbol table per function to keep track of any local symbols declared.
+
+
+#### Control Flow
+
+#### Expression
+
+### Lowering Expressions
+
