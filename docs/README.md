@@ -4,6 +4,7 @@
 |---------|-------------|
 | [Project Structure](#project-structure) | Tree view of the source code organization |
 | [Pipeline](#pipeline) | Visual diagram of the compilation stages |
+| [Compilation Process](#mathics-compilation-process) | The process to compile Mathic |
 | [Symbolic Dialect](dialects/Symbolic.md) | The `symbolic` MLIR dialect: types, operations, and project structure |
 | [Symbolic Passes](dialects/SymbolicPasses.md) | Lowering passes: `symbolic-extract-eval` and `symbolic-to-arith` |
 
@@ -72,32 +73,36 @@ Dialects/                          # Custom MLIR dialect (C++)
 tests/                             # Integration tests
 ```
 
-## Pipeline
+## Mathic's Compilation Process
+
+This section describes how Mathic gets compiled to an MLIR module to be used with the JIT Engine.
+
+### General Flow
 
 ```mermaid
 flowchart TD
-    subgraph Frontend["📝 Frontend"]
+    subgraph Frontend["Frontend"]
         direction LR
         Source[Source Code .mth] --> Lexer --> Parser --> AST
     end
 
-    subgraph Lowering["🔧 Lowering"]
+    subgraph Lowering["Lowering"]
         direction LR
         Lowerer --> MATHIR
     end
 
-    subgraph Codegen["⚙️ Codegen"]
+    subgraph Codegen["Codegen"]
         direction LR
         MLIR[MLIR Codegen + Symbolic Dialect]
         MLIR --> MLIROut[MLIR]
     end
 
-    subgraph Passes["⚡ Passes"]
+    subgraph Passes["Passes"]
         direction LR
         Canonicalizer --> ExtractEval[symbolic-extract-eval] --> ToArith[symbolic-to-arith] --> LLVM[Convert to LLVM IR] --> LLVMIR
     end
 
-    subgraph Execution["🚀 Execution"]
+    subgraph Execution["Execution"]
         direction LR
         JIT[JIT Execution] --> Output
     end
@@ -107,8 +112,16 @@ flowchart TD
     Passes --> Execution
 ```
 
-- **📝 Frontend**: Lexes and parses `.mth` source files into an AST.
-- **🔧 Lowering**: Transforms the AST into MATHIR (Mathic IR).
-- **⚙️ Codegen**: Lowers MATHIR to MLIR with the custom `symbolic` dialect.
-- **⚡ Passes**: Canonicalization, symbolic lowering, and conversion to LLVM IR. See [Symbolic Passes](dialects/SymbolicPasses.md).
-- **🚀 Execution**: JIT-compiles LLVM IR and runs the program.
+- **Frontend**: Lexes and parses `.mth` source files into an AST.
+- **Lowering**: Transforms the AST into MATHIR (Mathic IR).
+- **Codegen**: Lowers MATHIR to MLIR with the custom `symbolic` dialect.
+- **Passes**: Canonicalization, symbolic lowering, and conversion to LLVM IR. See [Symbolic Passes](dialects/SymbolicPasses.md).
+- **Execution**: JIT-compiles LLVM IR and runs the program.
+
+### In-Depth Sections
+
+| Section | Description |
+| [Lowering a program to MATHIR](compilation_process/middleend.md)| Mathic's Intermediate Representation |
+| [Lowering MATHIR to MLIR](compilation_process/backend.md) | Mathic's MLIR use |
+| [Symbolic Dialect](compilation_process/dialects/Symbolic.md) | The `symbolic` MLIR dialect: types, operations, and project structure |
+| [Symbolic Passes](compilation_process/dialects/SymbolicPasses.md) | Lowering passes: `symbolic-extract-eval` and `symbolic-to-arith` |
