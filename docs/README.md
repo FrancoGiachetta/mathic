@@ -121,6 +121,7 @@ flowchart TD
 ### In-Depth Sections
 
 | Section | Description |
+| --------- | ------------- |
 | [Lowering a program to MATHIR](compilation_process/middleend.md)| Mathic's Intermediate Representation |
 | [Lowering MATHIR to MLIR](compilation_process/backend.md) | Mathic's MLIR use |
 | [Symbolic Dialect](compilation_process/dialects/Symbolic.md) | The `symbolic` MLIR dialect: types, operations, and project structure |
