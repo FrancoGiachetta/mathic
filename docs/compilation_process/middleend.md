@@ -36,6 +36,18 @@ In the [example](#example), `block0` ends with `br block1 []` (unconditional bra
 
 Terminators are represented [here](../../src/lowering/ir/basic_block.rs#42)
 
+### Values
+
+Values are how MATHIR represents data flowing through the program. There are three variants:
+
+- **`Value::Const`**: a literal value known at compile time (numbers, booleans, strings, chars).
+- **`Value::InMemory`**: a reference to a local variable stored in memory. It includes an optional modifier for field access in structs.
+- **`Value::Symbol`**: a reference to a symbolic variable, used when the local holds a symbolic expression.
+
+In the [example](#example), `%0 = %0 * %2` uses `Value::InMemory` for both operands and the result.
+
+Values are represented [here](../../src/lowering/ir/value.rs)
+
 ### Functions
 
 A Mathic program is composed of functions — no code can live outside a function. The entrypoint of a program is the `main` function.
@@ -105,8 +117,8 @@ Structurally, a Mathic program is composed of either function or struct declarat
 
 ### Lowering Functions
 
-So, before we can lower statements we need to lower what will hold them, functions. There can be top level functions and local functions (a function inside another). For this reason, their lowering is handled by different functions: `lower_top_level_function` [here](../../src/lowering.rs#63) and `lower_inner_function` [here](../../src/lowering/ast_lowering/declaration.rs#105). Both do the same thing, they only differ in their scope. 
-To lower a function, a [FunctionBuilder](#functionbuilder) is constructed from its `name`, `return type` and `params`. Next we loop over the functions [statements](#lowering-statements) to lower them.
+So, before we can lower statements we need to lower what will hold them, functions. There can be top level functions and local functions (a function inside another). For this reason, their lowering is handled by different functions: `lower_top_level_function` [here](../../src/lowering.rs#63) and `lower_inner_function` [here](../../src/lowering/ast_lowering/declaration.rs#105). Both do the same thing, they only differ in their scope.
+To lower a function, a [FunctionBuilder](#functionbuilder) is constructed from its `name`, `return type` and `params`. Next, we lower the function body, which constist on looping over the function's [statements](#lowering-statements) to lower them.
 
 #### FunctionBuilder
 
@@ -116,23 +128,49 @@ For the same reason we have the `IRBuilder`, we have the `FunctionBuilder` [here
 
 ADTs (Abstract Data Structures) are the other top level item apart from functions. For now, they represent structs, but in the future they could also be an enum.
 
+A struct holds a name and a list of typed fields. Like functions, ADTs can be top-level lowered [here](../../src/lowering.rs#104) or local [here](../../src/lowering/ast_lowering/declaration.rs#80).
+
+ADTs support on-demand lowering: if a struct is used as a type before its declaration is lowered, its lowering gets triggered automatically thanks to being cached before the declaration table. This allows forward references without requiring a specific declaration order.
+
+ADTs are represented [here](../../src/lowering/ir/adts.rs) and their registration is handled through the symbol table. Since they can also be used as types, they are registered in the type system via the type table as well.
+
 ### Lowering Statements
 
-There are three types of statements:
+Lowering statements may result in either `l-value` instructions or the adition of new blocks. The entrypoint can be found [here](../../src/lowering/ast_lowering/statement.rs). There are three types of statements:
 
 #### Declaration
 
-We can declare a function, an ADT or a local. Their lowering entrypoints can be found [here](../../src/lowering/ast_lowering/declaration.rs). 
-Declaring something means declaraing a symbol, and for that reason we need a symbol table.
+We can declare a function, an ADT or a local. Their lowering entrypoints can be found [here](../../src/lowering/ast_lowering/declaration.rs).
+Declaring something means declaraing a symbol, and for that reason we need a `symbol table`.
+Declaring a function or an ADT will end up in their lowering which we already described. However, declaring a local will result in the creation of an `l-value` instruction.
 
 ##### Symbol Table
 
 It allows to track any symbol declared through the program (either a local, function, ADT). It is defined [here](../../src/lowering/ir/symbols.rs#88). There's a symbol table per function to keep track of any local symbols declared.
 
-
 #### Control Flow
 
-#### Expression
+We have if statements and loops: for and while loops. Their lowering entrypoints can be found [here](../../src/lowering/ast_lowering/control_flow.rs). These statements lower to blocks and terminators.
+
+An `if` creates two blocks: the `then` block or the `else` block, both of which branches to a continuation block. It also needs to change the terminator of the current block to be a `cond_br` that branch to the correct block based on a condition.
+
+A `while` loop creates two blocks for the loop itself: the **body** and the **exit** block. The body's terminator is a `br` back to the header (the block in which the loop condition is evaluated), which evaluates the condition again. An optional initialization block may precede the header (as seen in the [example](#example) where `block0` initializes the loop variables before entering `block1`).
 
 ### Lowering Expressions
 
+There are different types of expressions, the lowering entrypoints can be found [here](../../src/lowering/ast_lowering/expression.rs). Lowering an expression may include lowering another expression, for this reason the lowering is recursive. The result are `r-value` instructions, which are either assigned to a local or used as a return value.
+
+Each `r-value` instruction has an associated type that is inferred through a type hint (which can be retrieved from a declaration, like a local declaration) or through the literal itself. The entrypoint for that is [here](../../src/lowering/ast_lowering/expression.rs#637).
+
+### Type System
+
+As stated earlier, Mathic is a statically typed programming language. Every declaration requires an explicit type, which improves code readability at the cost of more verbose syntax.
+Types are mostly used during the expressions' lowering, enforcing operands of a binary operation have the same type, a function call has the same return type as its declaration, `r-value` instruction association to the condition of an if has a boolean type, etc.
+
+Like with functions, there are global and local types. The global ones are held by the `IRBuilder` itself, and the locals by the `FunctionBuilder`. The entrypoints are: `lower_top_level_ast_type` [here](../../src/lowering.rs#129) and `lower_inner_ast_type` [here](../../src/lowering/ir/types.rs#59). Generally, builtin types like integers, chars, strings are held globally; and user defined types are held locally (if they are defined inside a function).
+
+To keep track of these types, the symbol table holds a type table, represented [here](../../src/lowering/ir/symbols.rs#52). Each type is registered with an incrementing index in the type table. Types are tracked through indices, not the type directly. To get the actual representation (which can be found [here](../../src/lowering/ir/types.rs#49)) you need to look it up in the type table. This is a lightweight way of tracking types, which could also prevent us from having issues with the borrow checker depending on how we represent the actual type.
+
+## Final Phase
+
+Once the AST has been lowered and the IR created, we get the code generation phase. For the moment, Mathic does not perform any passes on the IR, it relies completely on the optimization passes of MLIR and LLVM.
