@@ -21,8 +21,8 @@ Basic blocks are represented [here](../../src/lowering/ir/basic_block.rs#15)
 
 Instructions are a unit of operation. There are two kinds:
 
-* `l-value` instructions: instructions with side-effects in the state of the program.
-* `r-value` instructions: instructions which do not generate any change in the state of the program, commonly related to expressions.
+- `l-value` instructions: instructions with side-effects in the state of the program.
+- `r-value` instructions: instructions which do not generate any change in the state of the program, commonly related to expressions.
 
 Both are represented [here](../../src/lowering/ir/instruction.rs)
 
