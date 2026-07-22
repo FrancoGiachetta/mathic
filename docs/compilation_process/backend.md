@@ -1,5 +1,7 @@
 # Mathic's Code Generation
 
+The purpose of this section is to give a high level view of how the process of Mathic's code generation looks like, what technologies are used and some design decisions. It's not a rigurous step by step but this should be enough to be able to start reading the code and understand it.
+
 ## Gentle introduction to MLIR (Multi Level Intermediate Representation)
 
 Mathic's code generation is based on MLIR, a compiler infrastructure that provides a modular and extensible intermediate representation to ease the construction of domain-specific compilers. To achieve this, it introduces the concept of [Dialect](#what-is-a-dialect) to allow multiple levels of abstractions in a single IR.
@@ -57,6 +59,12 @@ We also have the [LLVM dialect](https://mlir.llvm.org/docs/Dialects/LLVM/), whic
 
 ## Lowering MATHIR to MLIR
 
+### What are we using?
+
+Since MLIR is writen in C++ and Mathic is implemented in Rust, we are using [melior crate](https://crates.io/crates/melior) to the necessary bindings. You can find a small intro to how to crate is used [here](https://edgl.dev/blog/mlir-with-rust/).
+
+### Code Generation Flow
+
 Thanks to MATHIR, generating MLIR is almost trivial since their structure is similar.
 
 The code generation begins by creating an MLIR module. We create it using the `create_module` function [here](../../src/ffi.rs#45). It does a bunch of things like retrieving the [target triple](https://wiki.osdev.org/Target_Tr) and the data layout, which gives LLVM information about the platform on which the code is running, as well as alignment information and other necessary things.
@@ -96,3 +104,20 @@ MLIR enforces that every block ends with a terminator (an instruction that moves
 #### Function Call special Case
 
 Function calls are not terminators in MLIR, however, Mathic represents them as a terminators for simplicity. When the function call is performed, the result is stored as a local and, since it's not actually a terminator, a `cf.br` operation is added to branch to the next block. You can check its implementation [here](../../src/codegen/terminator.rs#85).
+
+### Passes
+
+Once the MLIR module is generated, it needs to go through a pipeline of passes that lower it to LLVM IR. The pipeline is defined [here](../../src/compiler.rs#182) and consists of:
+
+1. **Canonicalizer**: MLIR's built-in pass that simplifies the IR by folding constants and removing dead code.
+2. **scf-to-cf**: converts structured control flow operations like `scf.for` and `scf.if` into unstructured branches (`cf.br`, `cf.cond_br`).
+3. **symbolic-extract-eval** and **symbolic-to-arith**: Mathic-specific passes that lower the `symbolic` dialect to `arith` and `func`. See [Symbolic Passes](../dialects/SymbolicPasses.md) for a detailed explanation.
+4. **convert-to-llvm**: lowers all remaining dialects to the LLVM dialect, which maps directly to LLVM IR.
+
+After these passes the module contains only LLVM dialect operations, ready to be executed.
+
+### JIT Engine
+
+The lowered module is passed to the JIT ExecutionEngine, which compiles it to native code and runs it. Mathic wraps this in the `MathicExecutor` struct, defined [here](../../src/executor.rs).
+
+The executor loads the module into memory and provides a `call_function` method that looks up a function by name, transmutes it to a native function pointer, and calls it. The result is returned as an `i64`. The entrypoint follows the naming convention `mathic__main`.
