@@ -82,9 +82,10 @@ expr_no_init = logical_or ;
 logical_or  = logical_and { 'or' logical_and } ;
 logical_and = equality { 'and' equality } ;
 equality    = comparison { ( '==' | '!=' ) comparison } ;
-comparison  = term { ( '>' | '>=' | '<' | '<=' ) term } ;
+comparison  = term_shift { ( '>' | '>=' | '<' | '<=' ) term_shift } ;
+term_shift  = term { ( '<<' | '>>' ) term }
 term        = factor { ( '+' | '-' ) factor } ;
-factor      = unary { ( '*' | '/' ) unary } ;
+factor      = unary { ( '*' | '/' | '%' ) unary } ;
 unary       = ( '!' | '-' ) unary
             | call
             ;

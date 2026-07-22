@@ -37,6 +37,8 @@ pub enum Token {
     Semicolon,
     #[token("+")]
     Plus,
+    #[token("%")]
+    Percentge,
     #[token("-")]
     Minus,
     #[token("*")]
@@ -53,6 +55,12 @@ pub enum Token {
     EqEq,
     #[token("!=")]
     BangEq,
+    #[token("<<")]
+    ShiftL,
+    #[token(">>")]
+    ShiftR,
+    #[token("**")]
+    Pow,
 
     // Keywords.
     #[token("in")]

@@ -193,6 +193,35 @@ impl<'a> MathicParser<'a> {
         Ok(expr)
     }
 
+    fn parse_term_shift(&self) -> ParserResult<ExprStmt> {
+        let mut expr = self.parse_term()?;
+
+        while let Some(op) = self.match_any_token(&[Token::ShiftL, Token::ShiftR])? {
+            let rhs = self.parse_term()?;
+            let span = Span::from_merged_spans(expr.span, rhs.span);
+
+            expr = ExprStmt {
+                kind: ExprStmtKind::Binary {
+                    lhs: Box::new(expr),
+                    op: match op.token {
+                        Token::ShiftL => BinaryOp::Arithmetic(ArithOp::ShiftL),
+                        Token::ShiftR => BinaryOp::Arithmetic(ArithOp::ShiftR),
+                        _ => {
+                            return Err(ParseError::Syntax(SyntaxError::UnexpectedToken {
+                                found: op.into(),
+                                expected: ExpectedToken::Custom("either << or >>".to_string()),
+                            }));
+                        }
+                    },
+                    rhs: Box::new(rhs),
+                },
+                span,
+            };
+        }
+
+        Ok(expr)
+    }
+
     fn parse_term(&self) -> ParserResult<ExprStmt> {
         let mut expr = self.parse_factor()?;
 
@@ -225,7 +254,7 @@ impl<'a> MathicParser<'a> {
     fn parse_factor(&self) -> ParserResult<ExprStmt> {
         let mut expr = self.parse_unary()?;
 
-        while let Some(op) = self.match_any_token(&[Token::Star, Token::Slash])? {
+        while let Some(op) = self.match_any_token(&[Token::Star, Token::Slash, Token::Percentge])? {
             let rhs = self.parse_unary()?;
             let span = Span::from_merged_spans(expr.span, rhs.span);
 
@@ -235,10 +264,11 @@ impl<'a> MathicParser<'a> {
                     op: match &op.token {
                         Token::Star => BinaryOp::Arithmetic(ArithOp::Mul),
                         Token::Slash => BinaryOp::Arithmetic(ArithOp::Div),
+                        Token::Percentge => BinaryOp::Arithmetic(ArithOp::Mod),
                         _ => {
                             return Err(ParseError::Syntax(SyntaxError::UnexpectedToken {
                                 found: op.into(),
-                                expected: ExpectedToken::Custom("either * or /".to_string()),
+                                expected: ExpectedToken::Custom("either *, / or %".to_string()),
                             }));
                         }
                     },

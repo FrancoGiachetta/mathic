@@ -78,6 +78,9 @@ pub enum ArithOp {
     Mul,
     Div,
     Mod,
+    Pow,
+    ShiftL,
+    ShiftR,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
