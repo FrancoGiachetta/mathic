@@ -51,7 +51,7 @@ pub struct TypeIndex {
 #[derive(Default, Debug, Clone)]
 pub struct TypeTable {
     types: Vec<MathicType>,
-    cache: HashMap<MathicType, usize>, // private
+    cache: HashMap<MathicType, usize>,
 }
 
 impl TypeTable {
