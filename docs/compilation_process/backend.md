@@ -31,7 +31,7 @@ Here, `module` is itself an operation (the root operation), containing a single 
 
 ### What is a Dialect?
 
-Taken directly from the [MLIR page](https://mlir.llvm.org/docs/LangRef/#dialects), a Dialect is a mechanism by which we can extend the MLIR ecosystem. They allow for the definition of new operations, types, attributes that all together model a specific domain. By allowing different dialects in the same IR, is that the mentioned modularity is achieved.
+Taken directly from the [MLIR page](https://mlir.llvm.org/docs/LangRef/#dialects), a Dialect is a mechanism by which we can extend the MLIR ecosystem. They allow for the definition of new operations, types, attributes that all together model a specific domain. By allowing different dialects to coexist in the same IR, MLIR achieves the modularity we mentioned.
 
 #### How is a Dialect made of?
 
@@ -59,7 +59,7 @@ We also have the [LLVM dialect](https://mlir.llvm.org/docs/Dialects/LLVM/), whic
 
 Thanks to MATHIR, generating MLIR is almost trivial since their structure is similar.
 
-The code generation begins by creating a MLIR module. A Module is simply a container where our MLIR lives in. We create it using the `create_module` function [here](../../src/ffi.rs#45). It does a bunch of things like retrieving the [target triple](https://wiki.osdev.org/Target_Tr), the data layout which gives LLVM information about the platform on which the code is running, as well as alignment information and other necessary things.
+The code generation begins by creating an MLIR module. We create it using the `create_module` function [here](../../src/ffi.rs#45). It does a bunch of things like retrieving the [target triple](https://wiki.osdev.org/Target_Tr) and the data layout, which gives LLVM information about the platform on which the code is running, as well as alignment information and other necessary things.
 
 So, once we have created an empty MLIR module, we need to populate it with blocks, and those blocks with operations. This is all handled by `MathicCodegen::generate_module` [here](../../src/codegen.rs#86). As with the AST lowering, we begin by compiling functions.
 
@@ -71,7 +71,7 @@ The compilation is structured in two main files:
 ### Compiling a Function
 
 The method in charge of compiling a function can be found [here](../../src/codegen/lvalue.rs#138). The first thing we do is to create a [`FunctionCtx`](#functionctx). If we had any parameters, we need to prepare the block arguments for the entry block of the function.
-Before we begin compiling the actual body of a function, we need to compile the parameters. A parameter is a [Local](#locals), so they will be stored in the stack.
+Before we begin compiling the actual body of a function, we need to compile the parameters. A parameter is a [Local](#locals), so they will be stored in the stack. After that, we compile the function body, which means looping over the basic blocks. Each basic block is a list of statements which imply expressions — that's [what we compile next](#compiling-statements-and-expressions). After each block, we also need to compile its [terminator](#compiling-terminators).
 
 #### FunctionCtx
 
@@ -80,3 +80,19 @@ The `FunctionCtx` is a helper struct (which can be found [here](../../src/codege
 #### Locals
 
 Locals refer, obviously, to variables and for that reason we need to make sure we keep track of their values. To do this, `FunctionCtx` has a `locals` hash map that maps the index of the local (based on MATHIR) to a pointer on the stack where the actual value was stored. To achieve this, we use `llvm.alloca` and `llvm.store` operations from the LLVM dialect to allocate the pointer and store the value in that pointer. Whenever we want to reference the value, we would use the `llvm.load` operation.
+
+### Compiling Statements and Expressions
+
+Statements handle variable declarations and assignments. A declaration allocates stack space with `llvm.alloca` and stores the initial value with `llvm.store`. An assignment loads the existing value, applies any operation, and stores the result back. Symbolic declarations create `symbolic.sym` operations. The entrypoint for statements is [lvalue.rs](../../src/codegen/lvalue.rs#23).
+
+Expressions produce values. Constants become `arith.constant`, variable references become `llvm.load`, arithmetic operations become `arith.addi`/`arith.subi`/etc., and symbolic arithmetic becomes `symbolic.add`/`symbolic.sub`. The entrypoint for expressions is [rvalue.rs](../../src/codegen/rvalue.rs#27).
+
+Control flow (if, for, while) is not compiled to instructions — it simply creates blocks with the appropriate terminators, matching the same structure that MATHIR already has.
+
+### Compiling Terminators
+
+MLIR enforces that every block ends with a terminator (an instruction that moves the control flow between blocks). MATHIR uses classic terminators like branch and conditional branch. For this, the [Control Flow Dialect](https://mlir.llvm.org/docs/Dialects/ControlFlowDialect/) is used, which provides `cf.br` and `cf.cond_br` respectively.
+
+#### Function Call special Case
+
+Function calls are not terminators in MLIR, however, Mathic represents them as a terminators for simplicity. When the function call is performed, the result is stored as a local and, since it's not actually a terminator, a `cf.br` operation is added to branch to the next block. You can check its implementation [here](../../src/codegen/terminator.rs#85).
