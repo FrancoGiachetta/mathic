@@ -1,5 +1,8 @@
 use melior::{
-    dialect::{arith::CmpiPredicate, llvm, ods},
+    dialect::{
+        arith::{self, CmpiPredicate},
+        llvm, ods,
+    },
     helpers::{ArithBlockExt, BuiltinBlockExt, LlvmBlockExt},
     ir::{Block, Value, ValueLike, attribute::StringAttribute, r#type::IntegerType},
 };
@@ -187,7 +190,22 @@ impl MathicCodeGen<'_> {
                         block.divui(lhs_val, rhs_val, location)?
                     }
                 }
-                ArithOp::Mod => todo!(),
+                ArithOp::Mod => block.append_op_result(if lhs_ty.is_signed() {
+                    arith::remsi(lhs_val, rhs_val, location)
+                } else {
+                    arith::remui(lhs_val, rhs_val, location)
+                })?,
+                ArithOp::Pow => block.append_op_result(
+                    ods::math::ipowi(self.ctx, lhs_val, rhs_val, location).into(),
+                )?,
+                ArithOp::ShiftL => block.shli(lhs_val, rhs_val, location)?,
+                ArithOp::ShiftR => {
+                    if lhs_ty.is_signed() {
+                        block.shrsi(lhs_val, rhs_val, location)?
+                    } else {
+                        block.shrui(lhs_val, rhs_val, location)?
+                    }
+                }
             },
         })
     }

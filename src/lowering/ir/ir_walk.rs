@@ -85,6 +85,9 @@ pub mod instructions {
                     ArithOp::Mul => write!(f, "*"),
                     ArithOp::Div => write!(f, "/"),
                     ArithOp::Mod => write!(f, "%"),
+                    ArithOp::Pow => write!(f, "**"),
+                    ArithOp::ShiftL => write!(f, "<<"),
+                    ArithOp::ShiftR => write!(f, ">>"),
                 },
                 BinaryOp::Compare(cmp) => match cmp {
                     CmpOp::Eq => write!(f, "=="),

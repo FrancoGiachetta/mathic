@@ -159,12 +159,12 @@ impl<'a> MathicParser<'a> {
     }
 
     fn parse_inequality(&self) -> ParserResult<ExprStmt> {
-        let mut expr = self.parse_term()?;
+        let mut expr = self.parse_term_shift()?;
 
         while let Some(op) =
             self.match_any_token(&[Token::Greater, Token::EqLess, Token::Less, Token::EqGreater])?
         {
-            let rhs = self.parse_term()?;
+            let rhs = self.parse_term_shift()?;
             let span = Span::from_merged_spans(expr.span, rhs.span);
 
             expr = ExprStmt {
