@@ -61,7 +61,7 @@ We also have the [LLVM dialect](https://mlir.llvm.org/docs/Dialects/LLVM/), whic
 
 ### What are we using?
 
-Since MLIR is writen in C++ and Mathic is implemented in Rust, we are using [melior crate](https://crates.io/crates/melior) to the necessary bindings. You can find a small intro to how to crate is used [here](https://edgl.dev/blog/mlir-with-rust/).
+Since MLIR is written in C++ and Mathic in Rust, we are using [melior crate](https://crates.io/crates/melior) to the necessary bindings. You can find a small intro to how to crate is used [here](https://edgl.dev/blog/mlir-with-rust/).
 
 ### Code Generation Flow
 

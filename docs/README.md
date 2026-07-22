@@ -3,7 +3,6 @@
 | Section | Description |
 |---------|-------------|
 | [Project Structure](#project-structure) | Tree view of the source code organization |
-| [Pipeline](#pipeline) | Visual diagram of the compilation stages |
 | [Compilation Process](#mathics-compilation-process) | The process to compile Mathic |
 | [Symbolic Dialect](dialects/Symbolic.md) | The `symbolic` MLIR dialect: types, operations, and project structure |
 | [Symbolic Passes](dialects/SymbolicPasses.md) | Lowering passes: `symbolic-extract-eval` and `symbolic-to-arith` |
@@ -21,7 +20,8 @@ src/
 │   ├── dialect_integration.rs     # MLIR op builders for symbolic dialect
 │   ├── function_ctx.rs            # Function context (locals, blocks)
 │   ├── lvalue.rs                  # Statement compilation
-│   └── rvalue.rs                  # Expression / symbolic compilation
+│   ├── rvalue.rs                  # Expression / symbolic compilation
+│   └── terminator.rs              # Terminator compilation
 ├── codegen.rs                     # Module re-export
 ├── compiler.rs                    # Compiler driver
 ├── diagnostics/                   # Error types

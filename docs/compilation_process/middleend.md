@@ -2,7 +2,7 @@
 
 ## Why do we need MATHIR?
 
-MATHIR exists because generating MLIR directly from the AST is unnecessarily complex. MATHIR is a simpler IR — no SSA, no dialects, no basic block terminators — that sits between the AST and MLIR, making the lowering easier to reason about and debug.
+MATHIR exists because generating MLIR directly from the AST is unnecessarily complex. MATHIR is a simpler IR that sits between the AST and MLIR, making the lowering easier to reason about and debug.
 Mathic uses MLIR as its main backend infrastructure, which uses the same representation as LLVM, based on the concept of basic blocks. Due to this, we cannot simply lower the AST directly to MLIR — we wouldn't be able to do things like return values inside if statements (since we have no way of tracking which block we're currently in). Loops would also be difficult to implement due to the SSA nature of MLIR.
 
 ## How is MATHIR Organized
@@ -118,7 +118,7 @@ Structurally, a Mathic program is composed of either function or struct declarat
 ### Lowering Functions
 
 So, before we can lower statements we need to lower what will hold them, functions. There can be top level functions and local functions (a function inside another). For this reason, their lowering is handled by different functions: `lower_top_level_function` [here](../../src/lowering.rs#63) and `lower_inner_function` [here](../../src/lowering/ast_lowering/declaration.rs#105). Both do the same thing, they only differ in their scope.
-To lower a function, a [FunctionBuilder](#functionbuilder) is constructed from its `name`, `return type` and `params`. Next, we lower the function body, which constist on looping over the function's [statements](#lowering-statements) to lower them.
+To lower a function, a [FunctionBuilder](#functionbuilder) is constructed from its `name`, `return type` and `params`. Next, we lower the function body, which consists on looping over the function's [statements](#lowering-statements) to lower them.
 
 #### FunctionBuilder
 
@@ -136,12 +136,12 @@ ADTs are represented [here](../../src/lowering/ir/adts.rs) and their registratio
 
 ### Lowering Statements
 
-Lowering statements may result in either `l-value` instructions or the adition of new blocks. The entrypoint can be found [here](../../src/lowering/ast_lowering/statement.rs). There are three types of statements:
+Lowering statements may result in either `l-value` instructions or the addition of new blocks. The entrypoint can be found [here](../../src/lowering/ast_lowering/statement.rs). There are three types of statements:
 
 #### Declaration
 
 We can declare a function, an ADT or a local. Their lowering entrypoints can be found [here](../../src/lowering/ast_lowering/declaration.rs).
-Declaring something means declaraing a symbol, and for that reason we need a `symbol table`.
+Declaring something means declaring a symbol, and for that reason we need a `symbol table`.
 Declaring a function or an ADT will end up in their lowering which we already described. However, declaring a local will result in the creation of an `l-value` instruction.
 
 ##### Symbol Table
