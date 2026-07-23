@@ -236,7 +236,12 @@ impl MathicCodeGen<'_> {
             ArithOp::Sub => symbolic::operation::sub(location, lhs_val, rhs_val, mlir_result_ty),
             ArithOp::Mul => symbolic::operation::mul(location, lhs_val, rhs_val, mlir_result_ty),
             ArithOp::Div => symbolic::operation::div(location, lhs_val, rhs_val, mlir_result_ty),
-            ArithOp::Mod => todo!(),
+            _ => {
+                return Err(CodegenError::Custom(format!(
+                    "symbolic expressions do not support {:?}",
+                    op
+                )))
+            }
         };
 
         Ok(block.append_op_result(op)?)

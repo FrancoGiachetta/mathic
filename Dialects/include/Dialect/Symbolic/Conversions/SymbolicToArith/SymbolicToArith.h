@@ -18,6 +18,33 @@
         }                                                                                                              \
     };
 
+#define BINARY_OP_CONVERTER_SIG_UNSIG(SYM_OP, ARITH_SIGNED_OP, ARITH_UNSIGNED_OP)                                               \
+    struct Convert##SYM_OP : public OpConversionPattern<symbolic::SYM_OP##Op>                                           \
+    {                                                                                                                  \
+        using OpConversionPattern::OpConversionPattern;                                                                \
+                                                                                                                       \
+        llvm::LogicalResult matchAndRewrite(symbolic::SYM_OP##Op op, OpAdaptor adaptor,                                \
+                                            ConversionPatternRewriter &rewriter) const override                        \
+        {                                                                                                              \
+            SymExprType exprTy = llvm::cast<SymExprType>(op.getLhs().getType());                                       \
+                                                                                                                       \
+            if (exprTy.getIsSigned())                                                                                  \
+            {                                                                                                          \
+                auto newOp =                                                                                           \
+                    arith::ARITH_SIGNED_OP::create(rewriter, op.getLoc(), adaptor.getLhs(), adaptor.getRhs());         \
+                rewriter.replaceOp(op.getOperation(), newOp);                                                          \
+            }                                                                                                          \
+            else                                                                                                       \
+            {                                                                                                          \
+                auto newOp =                                                                                           \
+                    arith::ARITH_UNSIGNED_OP::create(rewriter, op.getLoc(), adaptor.getLhs(), adaptor.getRhs());       \
+                rewriter.replaceOp(op.getOperation(), newOp);                                                          \
+            }                                                                                                          \
+                                                                                                                       \
+            return llvm::success();                                                                                    \
+        }                                                                                                              \
+    };
+
 namespace mlir
 {
 namespace symbolic

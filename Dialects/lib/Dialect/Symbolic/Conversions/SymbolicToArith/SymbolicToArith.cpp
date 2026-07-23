@@ -33,34 +33,7 @@ class SymbolicToArithTypeConverter : public TypeConverter
 BINARY_OP_CONVERTER(Add, AddIOp)
 BINARY_OP_CONVERTER(Sub, SubIOp)
 BINARY_OP_CONVERTER(Mul, MulIOp)
-
-struct ConvertDiv : public OpConversionPattern<symbolic::DivOp>
-{
-    ConvertDiv(MLIRContext *ctx) : OpConversionPattern<symbolic::DivOp>(ctx)
-    {
-    }
-
-    using OpConversionPattern::OpConversionPattern;
-
-    llvm::LogicalResult matchAndRewrite(symbolic::DivOp op, OpAdaptor adaptor,
-                                        ConversionPatternRewriter &rewriter) const override
-    {
-        SymExprType exprTy = llvm::cast<SymExprType>(op.getLhs().getType());
-
-        if (exprTy.getIsSigned())
-        {
-            arith::DivSIOp divOp = rewriter.create<arith::DivSIOp>(op.getLoc(), adaptor.getLhs(), adaptor.getRhs());
-            rewriter.replaceOp(op.getOperation(), divOp);
-        }
-        else
-        {
-            arith::DivUIOp divOp = rewriter.create<arith::DivUIOp>(op.getLoc(), adaptor.getLhs(), adaptor.getRhs());
-            rewriter.replaceOp(op.getOperation(), divOp);
-        }
-
-        return llvm::success();
-    }
-};
+BINARY_OP_CONVERTER_SIG_UNSIG(Div, DivSIOp, DivUIOp)
 
 /// Replace symbols witht the function's actual argument to be evaluated.
 struct ConvertSym : public OpConversionPattern<symbolic::SymOp>
