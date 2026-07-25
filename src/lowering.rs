@@ -41,6 +41,7 @@ pub fn lower_program(program: &Program) -> Result<Ir, LoweringError> {
     for item in program.items.iter() {
         match item {
             TopLevelItem::Func(f) => ir_builder.decl_table.add_func_decl(f.clone()),
+            TopLevelItem::Import(_) => {}
             TopLevelItem::Struct(s) => ir_builder.decl_table.add_struct_decl(s.clone()),
         }
     }
@@ -48,6 +49,7 @@ pub fn lower_program(program: &Program) -> Result<Ir, LoweringError> {
     for item in program.items.iter() {
         match item {
             TopLevelItem::Func(f) => lower_top_level_function(&mut ir_builder, f)?,
+            TopLevelItem::Import(_) => {}
             TopLevelItem::Struct(s) => {
                 let _ = lower_top_level_struct(&mut ir_builder, s)?;
             }

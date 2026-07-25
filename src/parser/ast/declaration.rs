@@ -2,8 +2,9 @@ use crate::parser::{Span, ast::expression::ExprStmt, ast::statement::Stmt};
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum TopLevelItem {
-    Struct(StructDecl),
     Func(FuncDecl),
+    Import(IdentItem),
+    Struct(StructDecl),
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -64,4 +65,10 @@ pub enum AstType {
         ty: String,
         inner: Option<Box<AstType>>,
     },
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum IdentItem {
+    One { ident: String, span: Span },
+    Chain { ident: Vec<String>, span: Span },
 }

@@ -1,6 +1,7 @@
 use std::collections::HashMap;
 
 use crate::diagnostics::parse::{ExpectedToken, ParseError, SyntaxError};
+use crate::parser::ast::declaration::IdentItem;
 use crate::parser::lexer::SpannedToken;
 use crate::parser::{
     MathicParser, ParserResult, Span,
@@ -41,7 +42,9 @@ impl<'a> MathicParser<'a> {
                         span,
                     });
                 }
-                ExprStmtKind::Primary(PrimaryExpr::Ident(name)) => {
+                ExprStmtKind::Primary(PrimaryExpr::Ident(IdentItem::One {
+                    ident: name, ..
+                })) => {
                     return Ok(ExprStmt {
                         kind: ExprStmtKind::Assign {
                             name,
@@ -344,15 +347,22 @@ impl<'a> MathicParser<'a> {
     }
 
     fn parse_primary_expr(&self) -> ParserResult<ExprStmt> {
-        let lookahead = self.next()?;
+        let lookahead = self.peek_not_none()?;
         let span = lookahead.span;
+
+        if let Token::Ident = lookahead.token {
+            let idents = self.parse_ident_chain()?;
+            return Ok(ExprStmt {
+                kind: ExprStmtKind::Primary(PrimaryExpr::Ident(idents)),
+                span,
+            });
+        }
 
         let kind = match lookahead.token {
             Token::Str => ExprStmtKind::Primary(PrimaryExpr::Str(lookahead.lexeme.to_string())),
             Token::Num => ExprStmtKind::Primary(PrimaryExpr::Num(lookahead.lexeme.to_string())),
             Token::True => ExprStmtKind::Primary(PrimaryExpr::Bool(true)),
             Token::False => ExprStmtKind::Primary(PrimaryExpr::Bool(false)),
-            Token::Ident => ExprStmtKind::Primary(PrimaryExpr::Ident(lookahead.lexeme.to_string())),
             Token::LParen => {
                 let expr = self.parse_expr()?;
                 let close_paren = self.consume_token(Token::RParen)?;

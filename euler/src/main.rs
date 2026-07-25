@@ -1,8 +1,13 @@
-use std::{env, path::{Path, PathBuf}};
+use std::{
+    env,
+    path::{Path, PathBuf},
+};
 
-use clap::{self, Parser, Subcommand, Args};
+use clap::{self, Args, Parser, Subcommand};
 use mathic::{
-    MathicResult, compiler::{MathicCompiler, OptLvl}, executor::MathicExecutor,
+    MathicResult,
+    compiler::{MathicCompiler, OptLvl},
+    executor::MathicExecutor,
 };
 use tracing_subscriber::{EnvFilter, FmtSubscriber};
 
@@ -14,10 +19,8 @@ struct MathiCLI {
 
 #[derive(Debug, Subcommand)]
 enum Command {
-    New {
-        project_name: String,
-    },
-    Run(RunCmdArgs)
+    New { project_name: String },
+    Run(RunCmdArgs),
 }
 
 #[derive(Debug, Args)]
@@ -37,7 +40,7 @@ fn main() -> MathicResult<()> {
 
     match MathiCLI::parse().command {
         Command::New { project_name } => create_project(project_name)?,
-        Command::Run (RunCmdArgs { file_path, opt_lvl }) => {
+        Command::Run(RunCmdArgs { file_path, opt_lvl }) => {
             compile_and_run_source(&file_path, opt_lvl.into())?;
         }
     };
