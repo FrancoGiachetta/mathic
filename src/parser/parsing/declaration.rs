@@ -2,8 +2,7 @@ use crate::parser::{
     MathicParser, ParserResult, Span,
     ast::{
         declaration::{
-            AstType, FuncDecl, IdentItem, Param, StructDecl, StructField, SymDecl,
-            TopLevelItem::Import, VarDecl,
+            AstType, FuncDecl, IdentItem, Param, StructDecl, StructField, SymDecl, VarDecl,
         },
         statement::BlockStmt,
     },

@@ -3,11 +3,11 @@ use std::{
     path::{Path, PathBuf},
 };
 
-use clap::{self, Args, Parser, Subcommand};
+use clap::{self, Args, Parser, Subcommand, ValueEnum};
 use mathic::{
     MathicResult,
-    compiler::{MathicCompiler, OptLvl},
-    executor::MathicExecutor,
+    compiler::{CompilerOpts, MathicCompiler, OptLvl},
+    executor::{MathicExecutor, jit::MathicJITExecutor},
 };
 use tracing_subscriber::{EnvFilter, FmtSubscriber};
 
@@ -19,15 +19,50 @@ struct MathiCLI {
 
 #[derive(Debug, Subcommand)]
 enum Command {
-    New { project_name: String },
-    Run(RunCmdArgs),
+    New {
+        project_name: String,
+    },
+    Run {
+        file_path: PathBuf,
+        #[clap(flatten)]
+        compiler_opts: CompilerOptionsArgs,
+    },
 }
 
 #[derive(Debug, Args)]
-struct RunCmdArgs {
-    file_path: PathBuf,
-    #[clap(short, long, default_value_t = 2)]
-    opt_lvl: usize,
+struct CompilerOptionsArgs {
+    #[clap(short, long, value_enum, default_value_t = OptLvlArg::O2)]
+    opt_lvl: OptLvlArg,
+    #[clap(long)]
+    dump_mathir: bool,
+    #[clap(long)]
+    dump_mlir: bool,
+    #[clap(long)]
+    dump_llvmir: bool,
+}
+
+#[derive(Debug, ValueEnum)]
+enum OptLvlArg {
+    O0,
+    O1,
+    O2,
+    O3,
+}
+
+impl From<CompilerOptionsArgs> for CompilerOpts {
+    fn from(args: CompilerOptionsArgs) -> Self {
+        CompilerOpts {
+            opt_lvl: match args.opt_lvl {
+                OptLvlArg::O0 => OptLvl::O0,
+                OptLvlArg::O1 => OptLvl::O1,
+                OptLvlArg::O2 => OptLvl::O2,
+                OptLvlArg::O3 => OptLvl::O3,
+            },
+            dump_mathir: args.dump_mathir,
+            dump_mlir: args.dump_mlir,
+            dump_llvmir: args.dump_llvmir,
+        }
+    }
 }
 
 fn main() -> MathicResult<()> {
@@ -40,8 +75,11 @@ fn main() -> MathicResult<()> {
 
     match MathiCLI::parse().command {
         Command::New { project_name } => create_project(project_name)?,
-        Command::Run(RunCmdArgs { file_path, opt_lvl }) => {
-            compile_and_run_source(&file_path, opt_lvl.into())?;
+        Command::Run {
+            file_path,
+            compiler_opts,
+        } => {
+            compile_and_run_source(&file_path, compiler_opts.into())?;
         }
     };
 
@@ -68,10 +106,11 @@ fn create_project(project_name: String) -> MathicResult<()> {
     Ok(())
 }
 
-fn compile_and_run_source(source: &Path, opt_lvl: OptLvl) -> MathicResult<()> {
+fn compile_and_run_source(source: &Path, compiler_opts: CompilerOpts) -> MathicResult<()> {
     let compiler = MathicCompiler::new()?;
-    let module = compiler.compile_path(source, opt_lvl)?;
-    let executor = MathicExecutor::new(&module, opt_lvl)?;
+
+    let module = compiler.compile_path(source, compiler_opts)?;
+    let executor = MathicJITExecutor::new(module, compiler_opts)?;
 
     tracing::debug!("Executor Created");
     let result = executor.call_function("main");
