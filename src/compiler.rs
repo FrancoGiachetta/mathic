@@ -196,7 +196,7 @@ impl MathicCompiler {
 
         let source = fs::read_to_string(&path)?;
 
-        if !parsed_files.insert(source.clone()) {
+        if !parsed_files.insert(path.to_string_lossy().into_owned()) {
             return Ok(Vec::with_capacity(0));
         }
 
@@ -222,6 +222,13 @@ impl MathicCompiler {
                     IdentItem::Chain { ident, span } => {
                         let full_path = base_path.join(ident.join("/")).with_added_extension("mth");
 
+                        // * if the full path of the import is a file, then we 
+                        // parse that file as normal. 
+                        //
+                        // * if the full is not a file, it could only be 
+                        // that the import references a top level item, so we 
+                        // try to parse the path formed by all them idents but 
+                        // the last one (top leve item).
                         let path = if full_path.is_file() {
                             full_path
                         } else {
