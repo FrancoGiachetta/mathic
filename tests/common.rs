@@ -1,8 +1,8 @@
 use std::{path::Path, sync::OnceLock};
 
 use mathic::{
-    compiler::{MathicCompiler, OptLvl},
-    executor::MathicExecutor,
+    compiler::{CompilerOpts, MathicCompiler},
+    executor::{MathicExecutor, jit::MathicJITExecutor},
 };
 
 static COMPILER: OnceLock<MathicCompiler> = OnceLock::new();
@@ -14,12 +14,13 @@ fn get_compiler() -> &'static MathicCompiler {
 pub fn compile_and_execute(path: &Path) -> i64 {
     let compiler = get_compiler();
 
+    let opts = CompilerOpts::default();
+
     let module = compiler
-        .compile_path(path, OptLvl::default())
+        .compile_path(path, opts)
         .expect("Failed to compile source");
 
-    let executor =
-        MathicExecutor::new(&module, OptLvl::default()).expect("Failed to create executor");
+    let executor = MathicJITExecutor::new(module, opts).expect("Failed to create executor");
 
     executor
         .call_function("main")

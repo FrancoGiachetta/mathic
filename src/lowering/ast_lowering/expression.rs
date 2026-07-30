@@ -198,7 +198,7 @@ fn lower_eval_builtin(
         ExprStmtKind::Primary(PrimaryExpr::Ident(name)) => {
             let local = func
                 .sym_table
-                .get_local_from_name(name, func_args[1].span)?;
+                .get_local_from_name(&name.join("_"), func_args[1].span)?;
             let local_ty = func.get_type(local.ty, func_args[1].span)?;
             if !local_ty.is_symbolic() {
                 return Err(LoweringError::MismatchedType {
@@ -235,7 +235,7 @@ fn lower_eval_builtin(
 
     func.get_basic_block_mut(func.last_block_idx()).terminator = Terminator::Eval {
         expr: expr_rv,
-        sym_name,
+        sym_name: sym_name.join("_"),
         value: value_rv,
         return_dest: Value::InMemory {
             local_idx,
@@ -570,7 +570,7 @@ fn lower_primary_value(
 ) -> Result<RValInstruct, LoweringError> {
     let (value, ty) = match expr {
         PrimaryExpr::Ident(name) => {
-            let local = func.sym_table.get_local_from_name(name, span)?;
+            let local = func.sym_table.get_local_from_name(&name.join("_"), span)?;
             let local_ty = func.get_type(local.ty, span)?;
             // Use Symbol variant for symbolic expressions (SSA, no memory).
             let value = if local_ty.is_symbolic() {
@@ -692,7 +692,11 @@ fn lower_expression_type(
 ) -> Result<TypeIndex, LoweringError> {
     Ok(match expr {
         ExprStmtKind::Primary(primary_expr) => match primary_expr {
-            PrimaryExpr::Ident(name) => func.sym_table.get_local_from_name(name, span)?.ty,
+            PrimaryExpr::Ident(name) => {
+                func.sym_table
+                    .get_local_from_name(&name.join("_"), span)?
+                    .ty
+            }
             PrimaryExpr::Num(_) => match ty_hint {
                 Some(ty) => ty,
                 None => func.get_or_insert_global_type_idx(MathicType::Numeric(NumericTy::Sint(

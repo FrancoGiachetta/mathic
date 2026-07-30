@@ -348,15 +348,18 @@ impl<'a> MathicParser<'a> {
 
     fn parse_primary_expr(&self) -> ParserResult<ExprStmt> {
         let lookahead = self.peek_not_none()?;
-        let span = lookahead.span;
 
         if let Token::Ident = lookahead.token {
+            let span = lookahead.span;
             let idents = self.parse_ident_chain()?;
             return Ok(ExprStmt {
                 kind: ExprStmtKind::Primary(PrimaryExpr::Ident(idents)),
                 span,
             });
         }
+
+        let lookahead = self.next()?;
+        let span = lookahead.span;
 
         let kind = match lookahead.token {
             Token::Str => ExprStmtKind::Primary(PrimaryExpr::Str(lookahead.lexeme.to_string())),
@@ -409,7 +412,6 @@ impl<'a> MathicParser<'a> {
             Vec::with_capacity(0)
         } else {
             let mut args = vec![self.parse_expr()?];
-
             while self.match_token(Token::Comma)?.is_some() {
                 args.push(self.parse_expr()?);
             }

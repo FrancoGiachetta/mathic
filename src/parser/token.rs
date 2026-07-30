@@ -46,7 +46,7 @@ pub enum Token {
 
     // Multi char.
     #[token("::")]
-    ColonColen,
+    ColonColon,
     #[token("<=")]
     EqLess,
     #[token(">=")]

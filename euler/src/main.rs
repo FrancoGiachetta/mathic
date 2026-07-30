@@ -5,12 +5,11 @@ use std::{
 
 use clap::{self, Args, Parser, Subcommand, ValueEnum};
 use mathic::{
-    MathicResult,
     compiler::{CompilerOpts, MathicCompiler, OptLvl},
+    diagnostics::MathicError,
     executor::{MathicExecutor, jit::MathicJITExecutor},
 };
 use tracing_subscriber::{EnvFilter, FmtSubscriber};
-use walkdir::WalkDir;
 
 use crate::error::EulerError;
 
@@ -24,14 +23,8 @@ struct MathiCLI {
 
 #[derive(Debug, Subcommand)]
 enum Command {
-    New {
-        project_name: String,
-    },
-    Run {
-        file_path: PathBuf,
-        #[clap(flatten)]
-        compiler_opts: CompilerOptionsArgs,
-    },
+    New { project_name: String },
+    Run(CompilerOptionsArgs),
 }
 
 #[derive(Debug, Args)]
@@ -46,7 +39,7 @@ struct CompilerOptionsArgs {
     dump_llvmir: bool,
 }
 
-#[derive(Debug, ValueEnum)]
+#[derive(Debug, Clone, ValueEnum)]
 enum OptLvlArg {
     O0,
     O1,
@@ -58,7 +51,7 @@ impl From<CompilerOptionsArgs> for CompilerOpts {
     fn from(args: CompilerOptionsArgs) -> Self {
         CompilerOpts {
             opt_lvl: match args.opt_lvl {
-                OptLvlArg::O0 => OptLvl::O0,
+                OptLvlArg::O0 => OptLvl::None,
                 OptLvlArg::O1 => OptLvl::O1,
                 OptLvlArg::O2 => OptLvl::O2,
                 OptLvlArg::O3 => OptLvl::O3,
@@ -80,10 +73,7 @@ fn main() -> Result<(), EulerError> {
 
     match MathiCLI::parse().command {
         Command::New { project_name } => create_project(project_name)?,
-        Command::Run {
-            file_path,
-            compiler_opts,
-        } => {
+        Command::Run(compiler_opts) => {
             compile_project(compiler_opts.into())?;
             // compile_and_run_source(&file_path, compiler_opts.into())?;
         }
@@ -113,19 +103,21 @@ fn create_project(project_name: String) -> Result<(), EulerError> {
 }
 
 fn compile_project(compiler_opts: CompilerOpts) -> Result<(), EulerError> {
-    if fs::exists("src/main.mth")? {
+    if !fs::exists(env::current_dir()?.join("src/main.mth"))? {
         return Err(EulerError::MainFileNotFound);
     }
 
-    let compiler = MathicCompiler::new()?;
+    let compiler = MathicCompiler::new().map_err(MathicError::from)?;
 
-    let module = compiler.compile_project(compiler_opts)?;
+    let module = compiler
+        .compile_project(compiler_opts)
+        .map_err(MathicError::from)?;
 
     Ok(())
 }
 
 fn compile_and_run_source(source: &Path, compiler_opts: CompilerOpts) -> Result<(), EulerError> {
-    let compiler = MathicCompiler::new()?;
+    let compiler = MathicCompiler::new().map_err(MathicError::from)?;
 
     let module = compiler.compile_path(source, compiler_opts)?;
     let executor = MathicJITExecutor::new(module, compiler_opts)?;

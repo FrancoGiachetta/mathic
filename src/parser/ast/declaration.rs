@@ -77,7 +77,7 @@ impl IdentItem {
     pub fn join(&self, sep: &str) -> String {
         match self {
             Self::One { ident, .. } => ident.to_string(),
-            Self::Chain { ident, .. } => ident.join(sep)
+            Self::Chain { ident, .. } => ident.join(sep),
         }
     }
 }
