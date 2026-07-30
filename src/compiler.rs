@@ -1,4 +1,4 @@
-use std::{io::Write, path::PathBuf};
+use std::{collections::{HashMap, HashSet}, env, io::Write, path::PathBuf};
 
 use melior::{
     Context,
@@ -15,15 +15,24 @@ use std::{fs, path::Path};
 use crate::{
     MathicResult,
     codegen::{MathicCodeGen, compiler_helper::CompilerHelper},
-    diagnostics::{self, CodegenError},
+    diagnostics::{
+        self, CodegenError, LoweringError,
+        MathicError,
+    },
     ffi::{
         self,
         dialect_integration::symbolic_dialect::{
             create_symbolic_extract_eval, create_symbolic_to_arith,
         },
     },
-    lowering,
-    parser::MathicParser,
+    // lowering,
+    parser::{
+        MathicParser,
+        ast::{
+            MathicModule,
+            declaration::{IdentItem, TopLevelItem},
+        },
+    },
 };
 
 #[derive(Debug, Clone, Copy)]
@@ -91,82 +100,138 @@ impl MathicCompiler {
         })
     }
 
-    pub fn compile_path<'func>(
-        &'func self,
-        file_path: &Path,
-        compiler_options: CompilerOpts,
-    ) -> MathicResult<Module> {
-        // Read source file
-        let source = fs::read_to_string(file_path)?;
+    pub fn compile_project<'func>(&'func self, compiler_options: CompilerOpts) -> MathicResult<()> {
+        let main_file_path = env::current_dir()?.join("src/main.mth");
 
-        match self.compile_source(&source, Some(file_path.to_path_buf()), compiler_options) {
-            Err(e) => {
-                diagnostics::format_error(file_path, &e);
-                std::process::exit(1);
-            }
-            module => module,
-        }
+        let compilation_unit = {
+            let mut parsed_files = HashSet::new();
+            self.parse_file(main_file_path, &mut parsed_files)?
+        };
+
+
+
+        Ok(())
     }
 
-    pub fn compile_source<'func>(
-        &'func self,
-        source: &str,
-        file_path: Option<PathBuf>,
-        compiler_options: CompilerOpts,
-    ) -> MathicResult<Module> {
-        // Source code parsing.
-        let ast = {
-            let parser = MathicParser::new(source);
+    // pub fn compile_path<'func>(
+    //     &'func self,
+    //     file_path: &Path,
+    //     compiler_options: CompilerOpts,
+    // ) -> MathicResult<Module> {
+    //     // Read source file
+    //     let source = fs::read_to_string(file_path)?;
+
+    //     match self.compile_source(&source, Some(file_path.to_path_buf()), compiler_options) {
+    //         Err(e) => {
+    //             diagnostics::format_error(file_path, &e);
+    //             std::process::exit(1);
+    //         }
+    //         module => module,
+    //     }
+    // }
+
+    // pub fn compile_source<'func>(
+    //     &'func self,
+    //     source: &str,
+    //     file_path: Option<PathBuf>,
+    //     compiler_options: CompilerOpts,
+    // ) -> MathicResult<Module> {
+    //     // Source code parsing.
+    //     let ast = {
+    //         let parser = MathicParser::new(source, None);
+    //         parser.parse()?
+    //     };
+
+    //     // AST lowering and semantic checks.
+    //     let ir = lowering::lower_program(&ast)?;
+
+    //     if compiler_options.dump_mathir {
+    //         let mathir_path = PathBuf::from("program.mathir");
+
+    //         let mut f_mathir = fs::File::create(mathir_path)?;
+
+    //         write!(f_mathir, "{}", ir)?;
+    //     }
+
+    //     // Generate Module.
+    //     let mut module = ffi::create_module(&self.ctx, compiler_options.opt_lvl)?;
+
+    //     {
+    //         let codegen = MathicCodeGen::new(&self.ctx, &ir, &module, file_path);
+    //         let mut helper = CompilerHelper::new();
+
+    //         codegen.generate_module(&mut helper)?;
+    //     }
+
+    //     if compiler_options.dump_mlir {
+    //         let file_path = PathBuf::from("dump-prepass.mlir");
+
+    //         let mut f_prepass_program = fs::File::create(file_path)?;
+
+    //         write!(f_prepass_program, "{}", module.as_operation())?;
+    //     }
+
+    //     debug_assert!(module.as_operation().verify());
+    //     tracing::debug!("Module crated successfully");
+
+    //     // Run Passes to the generated module.
+    //     Self::run_passes(&self.ctx, &mut module)?;
+
+    //     tracing::debug!("Passes ran successfully");
+
+    //     if compiler_options.dump_mlir {
+    //         let file_path = PathBuf::from("dump.mlir");
+    //         let mut f = fs::File::create(file_path).unwrap();
+    //         write!(f, "{}", module.as_operation()).unwrap();
+    //     }
+
+    //     Ok(module)
+    // }
+
+    pub fn parse_file(&self, path: PathBuf, parsed_files: &mut HashSet<String>) -> MathicResult<Vec<MathicModule>> {
+        let base_path = path.parent().unwrap().to_owned();
+        let source = fs::read_to_string(&path)?;
+
+        if !parsed_files.insert(source.clone()) {
+            return Ok(Vec::with_capacity(0));
+        }
+
+        let mut compilation_unit = Vec::new();
+
+        let program = {
+            let parser = MathicParser::new(&source, Some(path));
             parser.parse()?
         };
 
-        // AST lowering and semantic checks.
-        let ir = lowering::lower_program(&ast)?;
+        for item in &program.items {
+            if let TopLevelItem::Import(ident) = item {
+                let (module_path, span) = match ident {
+                    IdentItem::One { ident, span } => {
+                        (base_path.join(ident).with_added_extension("mth"), *span)
+                    }
+                    IdentItem::Chain { ident, span } => (
+                        base_path.join(ident.join("/")).with_added_extension("mth"),
+                        *span,
+                    ),
+                };
 
-        if compiler_options.dump_mathir {
-            let mathir_path = PathBuf::from("program.mathir");
+                if !module_path.exists() {
+                    return Err(MathicError::Lowering(LoweringError::UnResolvedPath {
+                        path: module_path,
+                        span,
+                    }));
+                }
 
-            let mut f_mathir = fs::File::create(mathir_path)?;
-
-            write!(f_mathir, "{}", ir)?;
+                compilation_unit.extend(self.parse_file(module_path, parsed_files)?);
+            }
         }
 
-        // Generate Module.
-        let mut module = ffi::create_module(&self.ctx, compiler_options.opt_lvl)?;
+        compilation_unit.insert(0, program);
 
-        {
-            let codegen = MathicCodeGen::new(&self.ctx, &ir, &module, file_path);
-            let mut helper = CompilerHelper::new();
-
-            codegen.generate_module(&mut helper)?;
-        }
-
-        if compiler_options.dump_mlir {
-            let file_path = PathBuf::from("dump-prepass.mlir");
-
-            let mut f_prepass_program = fs::File::create(file_path)?;
-
-            write!(f_prepass_program, "{}", module.as_operation())?;
-        }
-
-        debug_assert!(module.as_operation().verify());
-        tracing::debug!("Module crated successfully");
-
-        // Run Passes to the generated module.
-        Self::run_passes(&self.ctx, &mut module)?;
-
-        tracing::debug!("Passes ran successfully");
-
-        if compiler_options.dump_mlir {
-            let file_path = PathBuf::from("dump.mlir");
-            let mut f = fs::File::create(file_path).unwrap();
-            write!(f, "{}", module.as_operation()).unwrap();
-        }
-
-        Ok(module)
+        Ok(compilation_unit)
     }
 
-    fn run_passes(ctx: &Context, module: &mut Module) -> Result<(), CodegenError> {
+    fn run_passes(ctx: &Context, module: &mut Module) -> MathicResult<()> {
         let pass_manager = PassManager::new(ctx);
 
         pass_manager.enable_verifier(true);
@@ -176,7 +241,7 @@ impl MathicCompiler {
         pass_manager.add_pass(create_symbolic_to_arith());
         pass_manager.add_pass(create_to_llvm());
 
-        pass_manager.run(module)?;
+        pass_manager.run(module).map_err(CodegenError::from)?;
 
         Ok(())
     }

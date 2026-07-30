@@ -72,3 +72,12 @@ pub enum IdentItem {
     One { ident: String, span: Span },
     Chain { ident: Vec<String>, span: Span },
 }
+
+impl IdentItem {
+    pub fn join(&self, sep: &str) -> String {
+        match self {
+            Self::One { ident, .. } => ident.to_string(),
+            Self::Chain { ident, .. } => ident.join(sep)
+        }
+    }
+}

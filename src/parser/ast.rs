@@ -6,6 +6,7 @@ pub mod expression;
 pub mod statement;
 
 #[derive(Debug, Clone, PartialEq, Eq)]
-pub struct Program {
+pub struct MathicModule {
+    pub module_name: String,
     pub items: Vec<TopLevelItem>,
 }

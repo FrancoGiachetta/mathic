@@ -1,5 +1,5 @@
 use std::{
-    env,
+    env, fs,
     path::{Path, PathBuf},
 };
 
@@ -10,6 +10,11 @@ use mathic::{
     executor::{MathicExecutor, jit::MathicJITExecutor},
 };
 use tracing_subscriber::{EnvFilter, FmtSubscriber};
+use walkdir::WalkDir;
+
+use crate::error::EulerError;
+
+mod error;
 
 #[derive(Debug, Parser)]
 struct MathiCLI {
@@ -65,7 +70,7 @@ impl From<CompilerOptionsArgs> for CompilerOpts {
     }
 }
 
-fn main() -> MathicResult<()> {
+fn main() -> Result<(), EulerError> {
     tracing::subscriber::set_global_default(
         FmtSubscriber::builder()
             .with_env_filter(EnvFilter::from_default_env())
@@ -79,14 +84,15 @@ fn main() -> MathicResult<()> {
             file_path,
             compiler_opts,
         } => {
-            compile_and_run_source(&file_path, compiler_opts.into())?;
+            compile_project(compiler_opts.into())?;
+            // compile_and_run_source(&file_path, compiler_opts.into())?;
         }
     };
 
     Ok(())
 }
 
-fn create_project(project_name: String) -> MathicResult<()> {
+fn create_project(project_name: String) -> Result<(), EulerError> {
     let curr_dir = env::current_dir()?;
     let project_path = curr_dir.join(&project_name);
     std::fs::create_dir_all(&project_path.join("src"))?;
@@ -106,7 +112,19 @@ fn create_project(project_name: String) -> MathicResult<()> {
     Ok(())
 }
 
-fn compile_and_run_source(source: &Path, compiler_opts: CompilerOpts) -> MathicResult<()> {
+fn compile_project(compiler_opts: CompilerOpts) -> Result<(), EulerError> {
+    if fs::exists("src/main.mth")? {
+        return Err(EulerError::MainFileNotFound);
+    }
+
+    let compiler = MathicCompiler::new()?;
+
+    let module = compiler.compile_project(compiler_opts)?;
+
+    Ok(())
+}
+
+fn compile_and_run_source(source: &Path, compiler_opts: CompilerOpts) -> Result<(), EulerError> {
     let compiler = MathicCompiler::new()?;
 
     let module = compiler.compile_path(source, compiler_opts)?;

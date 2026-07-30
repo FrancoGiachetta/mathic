@@ -1,13 +1,17 @@
-use std::cell::{Cell, RefCell};
-use std::ops::Range;
+use std::{
+    cell::{Cell, RefCell},
+    ops::Range,
+    path::PathBuf,
+};
 
-use ast::Program;
-use lexer::{MathicLexer, SpannedToken};
-use token::Token;
-
-use crate::diagnostics::parse::{ExpectedToken, FoundToken, ParseError, SyntaxError};
-use crate::parser::ast::declaration::TopLevelItem;
-use crate::parser::lexer::LexerOutput;
+use crate::{
+    diagnostics::parse::{ExpectedToken, FoundToken, ParseError, SyntaxError},
+    parser::{
+        ast::{MathicModule, declaration::TopLevelItem},
+        lexer::{LexerOutput, MathicLexer, SpannedToken},
+        token::Token,
+    },
+};
 use tracing::instrument;
 
 pub mod ast;
@@ -50,19 +54,21 @@ pub struct MathicParser<'a> {
     lexer: RefCell<MathicLexer<'a>>,
     current_span: Cell<Span>,
     _panic_mode: bool,
+    file_path: PathBuf,
 }
 
 impl<'a> MathicParser<'a> {
-    pub fn new(source: &'a str) -> Self {
+    pub fn new(source: &'a str, file_path: Option<PathBuf>) -> Self {
         Self {
             lexer: RefCell::new(MathicLexer::new(source)),
             current_span: Cell::new(Span::from(0..0)),
             _panic_mode: false,
+            file_path: file_path.unwrap_or("".into()),
         }
     }
 
     #[instrument(target = "parsing", skip(self))]
-    pub fn parse(&self) -> ParserResult<Program> {
+    pub fn parse(&self) -> ParserResult<MathicModule> {
         tracing::debug!("Starting parsing");
         let mut items = Vec::new();
 
@@ -90,7 +96,14 @@ impl<'a> MathicParser<'a> {
             }
         }
 
-        Ok(Program { items })
+        let module_name = self
+            .file_path
+            .to_str()
+            .unwrap()
+            .to_string()
+            .replace("/", "_");
+
+        Ok(MathicModule { module_name, items })
     }
 
     /// Returns the next token, advancing the lexer.

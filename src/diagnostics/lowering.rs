@@ -1,4 +1,4 @@
-use std::path::Path;
+use std::path::{Path, PathBuf};
 
 use ariadne::{Report, ReportBuilder, ReportKind};
 use thiserror::Error;
@@ -47,11 +47,14 @@ pub enum LoweringError {
     #[error("The struct declaration does to have such field: {found}")]
     UndeclaredStructField { found: String, span: Span },
 
-    #[error("the struct initialization is missing some fields")]
+    #[error("The struct initialization is missing some fields")]
     MissingStructFields { missing: String, span: Span },
 
     #[error("Type '{name}' requires a type parameter")]
     TypeRequiresTypeParameter { name: String, span: Span },
+
+    #[error("Cannot resolve path: {path}")]
+    UnResolvedPath { path: PathBuf, span: Span },
 }
 
 pub fn format_lowering_error<'err>(
@@ -119,6 +122,7 @@ pub fn format_lowering_error<'err>(
             ),
             span,
         ),
+        LoweringError::UnResolvedPath { span, .. } => ("S012", "".to_string(), span),
     };
 
     let report_span = ReportSpan { path, span: *span };

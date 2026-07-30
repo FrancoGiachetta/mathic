@@ -363,8 +363,10 @@ dependencies = [
  "clap",
  "mathic",
  "rayon",
+ "thiserror",
  "tracing",
  "tracing-subscriber",
+ "walkdir",
 ]
 
 [[package]]
