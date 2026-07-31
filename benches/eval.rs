@@ -1,6 +1,7 @@
 use criterion::{Criterion, black_box, criterion_group, criterion_main};
-use mathic::compiler::{MathicCompiler, OptLvl};
+use mathic::compiler::{CompilerOpts, MathicCompiler, OptLvl};
 use mathic::executor::MathicExecutor;
+use mathic::executor::jit::MathicJITExecutor;
 use pyo3::types::{PyAnyMethods, PyDict, PyDictMethods};
 use std::ffi::CString;
 
@@ -22,8 +23,12 @@ fn bench_mathic(c: &mut Criterion) {
         let mut group = c.benchmark_group(format!("mathic_{opt:?}"));
 
         for &(name, src, expected) in EXPRS {
-            let module = compiler.compile_source(src, opt, None).unwrap();
-            let executor = MathicExecutor::new(&module, opt).unwrap();
+            let comp_opts = CompilerOpts {
+                opt_lvl: opt,
+                ..Default::default()
+            };
+            let module = compiler.compile_source(src, None, comp_opts).unwrap();
+            let executor = MathicJITExecutor::new(module, comp_opts).unwrap();
 
             group.bench_function(name, |b| {
                 b.iter(|| {

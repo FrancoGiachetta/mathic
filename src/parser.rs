@@ -103,7 +103,11 @@ impl<'a> MathicParser<'a> {
             .to_string()
             .replace("/", "_");
 
-        Ok(MathicModule { module_name, items })
+        Ok(MathicModule {
+            module_name,
+            modules: Vec::new(),
+            items,
+        })
     }
 
     /// Returns the next token, advancing the lexer.

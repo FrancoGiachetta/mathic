@@ -27,7 +27,7 @@ use crate::{
         MathicParser,
         ast::{
             MathicModule,
-            declaration::{IdentItem, TopLevelItem},
+            declaration::{Path as MathicPath, TopLevelItem},
         },
     },
 };
@@ -97,7 +97,7 @@ impl MathicCompiler {
         })
     }
 
-    pub fn compile_project<'func>(&'func self, compiler_options: CompilerOpts) -> MathicResult<()> {
+    pub fn compile_project(&self, _compiler_options: CompilerOpts) -> MathicResult<()> {
         let main_file_path = env::current_dir()?.join("src/main.mth");
 
         let compilation_unit = {
@@ -127,12 +127,12 @@ impl MathicCompiler {
         }
     }
 
-    pub fn compile_source<'func>(
-        &'func self,
+    pub fn compile_source(
+        &self,
         source: &str,
         file_path: Option<PathBuf>,
         compiler_options: CompilerOpts,
-    ) -> MathicResult<Module> {
+    ) -> MathicResult<Module<'_>> {
         // Source code parsing.
         let ast = {
             let parser = MathicParser::new(source, None);
@@ -214,47 +214,38 @@ impl MathicCompiler {
         };
 
         for item in &program.items {
-            if let TopLevelItem::Import(ident) = item {
-                let (module_path, span) = match ident {
-                    IdentItem::One { ident, span } => {
-                        (base_path.join(ident).with_added_extension("mth"), *span)
-                    }
-                    IdentItem::Chain { ident, span } => {
-                        let full_path = base_path.join(ident.join("/")).with_added_extension("mth");
+            if let TopLevelItem::Import(MathicPath { idents, span }) = item {
+                let full_path = base_path.join(idents.join("/")).with_added_extension("mth");
 
-                        // * if the full path of the import is a file, then we 
-                        // parse that file as normal. 
-                        //
-                        // * if the full is not a file, it could only be 
-                        // that the import references a top level item, so we 
-                        // try to parse the path formed by all them idents but 
-                        // the last one (top leve item).
-                        let path = if full_path.is_file() {
-                            full_path
-                        } else {
-                            let idents_without_last = ident.get(..ident.len() - 1).ok_or(
-                                MathicError::Lowering(LoweringError::UnResolvedPath {
-                                    path: full_path,
-                                    span: *span,
-                                }),
-                            )?;
-                            base_path
-                                .join(idents_without_last.join("/"))
-                                .with_added_extension("mth")
-                        };
-
-                        (path, *span)
-                    }
+                // * if the full path of the import is a file, then we
+                // parse that file as normal.
+                //
+                // * if the full is not a file, it could only be
+                // that the import references a top level item, so we
+                // try to parse the path formed by all them idents but
+                // the last one (top leve item).
+                let path = if full_path.is_file() {
+                    full_path
+                } else {
+                    let idents_without_last = idents.get(..idents.len() - 1).ok_or(
+                        MathicError::Lowering(LoweringError::UnResolvedPath {
+                            path: full_path,
+                            span: *span,
+                        }),
+                    )?;
+                    base_path
+                        .join(idents_without_last.join("/"))
+                        .with_added_extension("mth")
                 };
 
-                if !module_path.exists() {
+                if !path.exists() {
                     return Err(MathicError::Lowering(LoweringError::UnResolvedPath {
-                        path: module_path,
-                        span,
+                        path,
+                        span: *span,
                     }));
                 }
 
-                compilation_unit.extend(self.parse_file(module_path, parsed_files)?);
+                compilation_unit.extend(self.parse_file(path, parsed_files)?);
             }
         }
 

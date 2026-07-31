@@ -1,7 +1,6 @@
 use std::collections::HashMap;
 
 use crate::diagnostics::parse::{ExpectedToken, ParseError, SyntaxError};
-use crate::parser::ast::declaration::IdentItem;
 use crate::parser::lexer::SpannedToken;
 use crate::parser::{
     MathicParser, ParserResult, Span,
@@ -42,9 +41,7 @@ impl<'a> MathicParser<'a> {
                         span,
                     });
                 }
-                ExprStmtKind::Primary(PrimaryExpr::Ident(IdentItem::One {
-                    ident: name, ..
-                })) => {
+                ExprStmtKind::Primary(PrimaryExpr::Ident(name)) => {
                     return Ok(ExprStmt {
                         kind: ExprStmtKind::Assign {
                             name,
@@ -347,21 +344,20 @@ impl<'a> MathicParser<'a> {
     }
 
     fn parse_primary_expr(&self) -> ParserResult<ExprStmt> {
-        let lookahead = self.peek_not_none()?;
-
-        if let Token::Ident = lookahead.token {
-            let span = lookahead.span;
-            let idents = self.parse_ident_chain()?;
-            return Ok(ExprStmt {
-                kind: ExprStmtKind::Primary(PrimaryExpr::Ident(idents)),
-                span,
-            });
-        }
-
         let lookahead = self.next()?;
         let span = lookahead.span;
 
         let kind = match lookahead.token {
+            Token::Ident => {
+                if self.match_token(Token::ColonColon)?.is_some() {
+                    let mut path = self.parse_path()?;
+                    path.idents.insert(0, lookahead.lexeme.to_string());
+
+                    ExprStmtKind::Primary(PrimaryExpr::Path(path))
+                } else {
+                    ExprStmtKind::Primary(PrimaryExpr::Ident(lookahead.lexeme.to_string()))
+                }
+            }
             Token::Str => ExprStmtKind::Primary(PrimaryExpr::Str(lookahead.lexeme.to_string())),
             Token::Num => ExprStmtKind::Primary(PrimaryExpr::Num(lookahead.lexeme.to_string())),
             Token::True => ExprStmtKind::Primary(PrimaryExpr::Bool(true)),

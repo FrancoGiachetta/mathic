@@ -1,6 +1,6 @@
 use std::collections::HashMap;
 
-use crate::parser::{Span, ast::declaration::IdentItem, token::Token};
+use crate::parser::{Span, ast::declaration::Path, token::Token};
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct ExprStmt {
@@ -95,7 +95,8 @@ pub enum LogicalOp {
 #[derive(Debug, Clone, PartialEq, Eq)]
 #[allow(dead_code)]
 pub enum PrimaryExpr {
-    Ident(IdentItem),
+    Path(Path),
+    Ident(String),
     Num(String),
     Str(String),
     Char(char),

@@ -6,11 +6,11 @@ use std::{
 
 use llvm_sys::{
     LLVMModule,
-    core::{LLVMDisposeMessage, LLVMDisposeModule},
+    core::{LLVMContextCreate, LLVMDisposeMessage, LLVMDisposeModule},
     error::{LLVMDisposeErrorMessage, LLVMGetErrorMessage},
     orc2::{
-        LLVMOrcCreateNewThreadSafeContext, LLVMOrcCreateNewThreadSafeModule,
-        LLVMOrcDisposeThreadSafeModule, LLVMOrcThreadSafeContextGetContext,
+        LLVMOrcCreateNewThreadSafeModule, LLVMOrcDisposeThreadSafeModule,
+        LLVMOrcThreadSafeContextRef,
         lljit::{
             LLVMOrcCreateLLJIT, LLVMOrcCreateLLJITBuilder, LLVMOrcDisposeLLJIT,
             LLVMOrcDisposeLLJITBuilder, LLVMOrcLLJITAddLLVMIRModule, LLVMOrcLLJITGetMainJITDylib,
@@ -59,8 +59,7 @@ pub fn lower_mlir_to_llvm(
         let machine = create_llvm_machine(opt_lvl)?;
         let pass_builder_opts = LLVMCreatePassBuilderOptions();
 
-        let opt: usize = opt_lvl.into();
-        let passes = CString::new(format!("default<{opt}>")).unwrap();
+        let passes = CString::new(format!("default<O{opt_lvl}>")).unwrap();
 
         let passes_error = LLVMRunPasses(llvm_module, passes.as_ptr(), machine, pass_builder_opts);
 
@@ -108,20 +107,23 @@ pub fn lower_mlir_to_llvm(
     }
 }
 
+unsafe extern "C" {
+    // llvm_sys does not provide the function in its api, so we need to declare it manually.
+    fn LLVMOrcCreateNewThreadSafeContextFromLLVMContext(
+        Ctx: LLVMContextRef,
+    ) -> LLVMOrcThreadSafeContextRef;
+}
+
 pub fn create_llvm_jit(
     module: Module,
     opt_lvl: usize,
     dump_llvm: bool,
 ) -> Result<LLVMOrcLLJITRef, CodegenError> {
     unsafe {
-        let tsm_context = LLVMOrcCreateNewThreadSafeContext();
+        let context = LLVMContextCreate();
+        let tsm_context = LLVMOrcCreateNewThreadSafeContextFromLLVMContext(context);
         let tsm = LLVMOrcCreateNewThreadSafeModule(
-            lower_mlir_to_llvm(
-                LLVMOrcThreadSafeContextGetContext(tsm_context),
-                module,
-                opt_lvl,
-                dump_llvm,
-            )?,
+            lower_mlir_to_llvm(context, module, opt_lvl, dump_llvm)?,
             tsm_context,
         );
 
@@ -138,7 +140,7 @@ pub fn create_llvm_jit(
             LLVMOrcDisposeThreadSafeModule(tsm);
             LLVMOrcDisposeLLJITBuilder(builder);
 
-            return Err(CodegenError::LLVMError(msg).into());
+            return Err(CodegenError::LLVMError(msg));
         }
 
         let jit = jit.assume_init();
@@ -155,7 +157,7 @@ pub fn create_llvm_jit(
             LLVMOrcDisposeLLJIT(jit);
             LLVMDisposeErrorMessage(error);
 
-            return Err(CodegenError::LLVMError(msg).into());
+            return Err(CodegenError::LLVMError(msg));
         }
 
         Ok(jit)

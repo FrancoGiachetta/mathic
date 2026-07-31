@@ -3,7 +3,7 @@ use crate::parser::{Span, ast::expression::ExprStmt, ast::statement::Stmt};
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum TopLevelItem {
     Func(FuncDecl),
-    Import(IdentItem),
+    Import(Path),
     Struct(StructDecl),
 }
 
@@ -60,24 +60,15 @@ pub struct Param {
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
+pub struct Path {
+    pub idents: Vec<String>,
+    pub span: Span,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum AstType {
     Type {
         ty: String,
         inner: Option<Box<AstType>>,
     },
-}
-
-#[derive(Debug, Clone, PartialEq, Eq)]
-pub enum IdentItem {
-    One { ident: String, span: Span },
-    Chain { ident: Vec<String>, span: Span },
-}
-
-impl IdentItem {
-    pub fn join(&self, sep: &str) -> String {
-        match self {
-            Self::One { ident, .. } => ident.to_string(),
-            Self::Chain { ident, .. } => ident.join(sep),
-        }
-    }
 }
