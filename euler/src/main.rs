@@ -1,6 +1,5 @@
 use std::{
-    env, fs,
-    path::{Path, PathBuf},
+    env, fs, path::{Path, PathBuf},
 };
 
 use clap::{self, Args, Parser, Subcommand, ValueEnum};
@@ -25,9 +24,14 @@ struct MathiCLI {
 enum Command {
     New { project_name: String },
     Run(CompilerOptionsArgs),
+    Path {
+        path: PathBuf,
+        #[clap(flatten)]
+        comp_opts: CompilerOptionsArgs
+    }
 }
 
-#[derive(Debug, Args)]
+#[derive(Debug, Clone, Args)]
 struct CompilerOptionsArgs {
     #[clap(short, long, value_enum, default_value_t = OptLvlArg::O2)]
     opt_lvl: OptLvlArg,
@@ -76,6 +80,9 @@ fn main() -> Result<(), EulerError> {
         Command::Run(compiler_opts) => {
             compile_project(compiler_opts.into())?;
             // compile_and_run_source(&file_path, compiler_opts.into())?;
+        }
+        Command::Path { path, comp_opts } => {
+            compile_and_run_source(&path, comp_opts.into())?;
         }
     };
 
