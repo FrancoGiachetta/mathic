@@ -1,7 +1,6 @@
 use std::{
     cell::{Cell, RefCell},
     ops::Range,
-    path::PathBuf,
 };
 
 use crate::{
@@ -54,16 +53,16 @@ pub struct MathicParser<'a> {
     lexer: RefCell<MathicLexer<'a>>,
     current_span: Cell<Span>,
     _panic_mode: bool,
-    file_path: PathBuf,
+    module_name: String,
 }
 
 impl<'a> MathicParser<'a> {
-    pub fn new(source: &'a str, file_path: Option<PathBuf>) -> Self {
+    pub fn new(source: &'a str, module_name: Option<String>) -> Self {
         Self {
             lexer: RefCell::new(MathicLexer::new(source)),
             current_span: Cell::new(Span::from(0..0)),
             _panic_mode: false,
-            file_path: file_path.unwrap_or("".into()),
+            module_name: module_name.unwrap_or("".into()),
         }
     }
 
@@ -96,12 +95,7 @@ impl<'a> MathicParser<'a> {
             }
         }
 
-        let module_name = self
-            .file_path
-            .to_str()
-            .unwrap()
-            .to_string()
-            .replace("/", "_");
+        let module_name = self.module_name.clone();
 
         Ok(MathicModule {
             module_name,

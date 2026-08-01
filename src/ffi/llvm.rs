@@ -13,8 +13,7 @@ use llvm_sys::{
         LLVMOrcThreadSafeContextRef,
         lljit::{
             LLVMOrcCreateLLJIT, LLVMOrcCreateLLJITBuilder, LLVMOrcDisposeLLJIT,
-             LLVMOrcLLJITAddLLVMIRModule, LLVMOrcLLJITGetMainJITDylib,
-            LLVMOrcLLJITRef,
+            LLVMOrcLLJITAddLLVMIRModule, LLVMOrcLLJITGetMainJITDylib, LLVMOrcLLJITRef,
         },
     },
     prelude::LLVMContextRef,
@@ -143,7 +142,6 @@ pub fn create_llvm_jit(
         }
 
         let jit = jit.assume_init();
-
 
         let dylib = LLVMOrcLLJITGetMainJITDylib(jit);
         let err = LLVMOrcLLJITAddLLVMIRModule(jit, dylib, tsm);

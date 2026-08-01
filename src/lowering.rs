@@ -35,9 +35,9 @@ pub fn lower_program(program: &MathicModule) -> Result<Ir, LoweringError> {
     tracing::info!("Starting lowering phase");
     let mut ir_builder = IrBuilder::new();
 
-    // Save program's items' declarations. This is for on-demand lowering, allowing
-    // to reference function no yet declared. For example, a function call
-    // of a not yet declared function.
+    // Save program's items' declarations. This is for on-demand lowering,
+    // allowing to reference function no yet declared. For example, a function
+    // call of a not yet declared function.
     for item in program.items.iter() {
         match item {
             TopLevelItem::Func(f) => ir_builder.decl_table.add_func_decl(f.clone()),
@@ -57,6 +57,7 @@ pub fn lower_program(program: &MathicModule) -> Result<Ir, LoweringError> {
     }
 
     tracing::info!("Lowering complete: {:?}", start.elapsed());
+
     Ok(ir_builder.build())
 }
 

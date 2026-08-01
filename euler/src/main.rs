@@ -1,5 +1,6 @@
 use std::{
-    env, fs, path::{Path, PathBuf},
+    env, fs,
+    path::{Path, PathBuf},
 };
 
 use clap::{self, Args, Parser, Subcommand, ValueEnum};
@@ -22,13 +23,15 @@ struct MathiCLI {
 
 #[derive(Debug, Subcommand)]
 enum Command {
-    New { project_name: String },
+    New {
+        project_name: String,
+    },
     Run(CompilerOptionsArgs),
     Path {
         path: PathBuf,
         #[clap(flatten)]
-        comp_opts: CompilerOptionsArgs
-    }
+        comp_opts: CompilerOptionsArgs,
+    },
 }
 
 #[derive(Debug, Clone, Args)]

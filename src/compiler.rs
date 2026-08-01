@@ -1,4 +1,4 @@
-use std::{collections::HashSet, env, io::Write, path::PathBuf};
+use std::{collections::HashSet, env, io::Write, path::PathBuf, sync::Arc};
 
 use melior::{
     Context,
@@ -9,6 +9,7 @@ use melior::{
         transform::create_canonicalizer,
     },
 };
+use rayon::iter::{IntoParallelRefIterator, ParallelIterator};
 
 use std::{fs, path::Path};
 
@@ -22,7 +23,7 @@ use crate::{
             create_symbolic_extract_eval, create_symbolic_to_arith,
         },
     },
-    lowering,
+    lowering::{self, ir::Ir, lower_program},
     parser::{
         MathicParser,
         ast::{
@@ -105,7 +106,12 @@ impl MathicCompiler {
             self.parse_file(main_file_path, &mut parsed_files)?
         };
 
-        dbg!(compilation_unit);
+        let ir = compilation_unit
+            .par_iter()
+            .map(|p| lower_program(p))
+            .collect::<Result<Vec<Ir>, _>>()?;
+
+        dbg!(ir);
 
         Ok(())
     }
@@ -189,7 +195,7 @@ impl MathicCompiler {
         &self,
         path: PathBuf,
         parsed_files: &mut HashSet<String>,
-    ) -> MathicResult<Vec<MathicModule>> {
+    ) -> MathicResult<Vec<Arc<MathicModule>>> {
         let base_path = path.parent().unwrap().to_owned();
 
         dbg!("BASE PATH: {}", &base_path);
@@ -202,8 +208,11 @@ impl MathicCompiler {
 
         let mut compilation_unit = Vec::new();
 
-        let program = {
-            let parser = MathicParser::new(&source, Some(path.clone()));
+        let mut program = {
+            let parser = MathicParser::new(
+                &source,
+                Some(path.with_extension("").to_string_lossy().to_string()),
+            );
             match parser.parse() {
                 Err(e) => {
                     diagnostics::format_error(&path, &e.into());
@@ -249,7 +258,9 @@ impl MathicCompiler {
             }
         }
 
-        compilation_unit.insert(0, program);
+        program.modules = compilation_unit.to_vec();
+
+        compilation_unit.insert(0, Arc::new(program));
 
         Ok(compilation_unit)
     }
