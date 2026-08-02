@@ -35,13 +35,24 @@ pub fn lower_program(program: &MathicModule) -> Result<Ir, LoweringError> {
     tracing::info!("Starting lowering phase");
     let mut ir_builder = IrBuilder::new(program.modules.clone());
 
+    // Save program's items' declarations. This is for on-demand lowering, allowing
+    // to reference function no yet declared. For example, a function call
+    // of a not yet declared function.
+    for item in program.items.iter() {
+        match item {
+            TopLevelItem::Func(f) => ir_builder.decl_table.add_func_decl(f.clone()),
+            TopLevelItem::Import(imp) => lower_import(&mut ir_builder, imp)?,
+            TopLevelItem::Struct(s) => ir_builder.decl_table.add_struct_decl(s.clone()),
+        }
+    }
+
     for item in program.items.iter() {
         match item {
             TopLevelItem::Func(f) => lower_top_level_function(&mut ir_builder, f)?,
-            TopLevelItem::Import(imp) => lower_import(&mut ir_builder, imp)?,
             TopLevelItem::Struct(s) => {
                 let _ = lower_top_level_struct(&mut ir_builder, s)?;
             }
+            _ => {}
         }
     }
 

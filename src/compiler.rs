@@ -337,8 +337,7 @@ impl MathicCompiler {
             .iter()
             .map(|(p, m)| {
                 (
-                    dbg!(p)
-                        .strip_prefix(&*SRC_ROOT)
+                    p.strip_prefix(&*SRC_ROOT)
                         .unwrap()
                         .with_extension("")
                         .to_string_lossy()
