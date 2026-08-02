@@ -1,5 +1,6 @@
 use std::{
     cell::{Cell, RefCell},
+    collections::HashMap,
     ops::Range,
 };
 
@@ -53,21 +54,19 @@ pub struct MathicParser<'a> {
     lexer: RefCell<MathicLexer<'a>>,
     current_span: Cell<Span>,
     _panic_mode: bool,
-    module_name: String,
 }
 
 impl<'a> MathicParser<'a> {
-    pub fn new(source: &'a str, module_name: Option<String>) -> Self {
+    pub fn new(source: &'a str) -> Self {
         Self {
             lexer: RefCell::new(MathicLexer::new(source)),
             current_span: Cell::new(Span::from(0..0)),
             _panic_mode: false,
-            module_name: module_name.unwrap_or("".into()),
         }
     }
 
     #[instrument(target = "parsing", skip(self))]
-    pub fn parse(&self) -> ParserResult<MathicModule> {
+    pub fn parse(&self, module_name: String) -> ParserResult<MathicModule> {
         tracing::debug!("Starting parsing");
         let mut items = Vec::new();
 
@@ -95,11 +94,9 @@ impl<'a> MathicParser<'a> {
             }
         }
 
-        let module_name = self.module_name.clone();
-
         Ok(MathicModule {
             module_name,
-            modules: Vec::new(),
+            modules: HashMap::new(),
             items,
         })
     }

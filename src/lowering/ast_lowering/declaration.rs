@@ -124,6 +124,7 @@ pub fn lower_inner_function(
         },
         func.ir_builder,
         span,
+        false,
     )?;
 
     // Save function's declaration. This for on-demand lowering, allowing

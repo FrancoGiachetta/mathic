@@ -42,6 +42,7 @@ pub struct Function {
     pub params_tys: Vec<TypeIndex>,
     pub return_ty: TypeIndex,
     pub span: Span,
+    pub is_external: bool,
 }
 
 impl Function {
@@ -80,6 +81,7 @@ pub struct FunctionBuilder<'glb> {
     pub return_ty: TypeIndex,
     pub ir_builder: &'glb mut IrBuilder,
     pub span: Span,
+    pub is_external: bool,
 }
 
 impl<'ir> FunctionBuilder<'ir> {
@@ -90,6 +92,7 @@ impl<'ir> FunctionBuilder<'ir> {
         return_ty: TypeIndex,
         ir_builder: &'ir mut IrBuilder,
         span: Span,
+        is_external: bool,
     ) -> Result<Self, LoweringError> {
         let mut func_builder = Self {
             name,
@@ -100,6 +103,7 @@ impl<'ir> FunctionBuilder<'ir> {
             return_ty,
             ir_builder,
             span,
+            is_external,
         };
 
         for param in params.iter() {
@@ -131,6 +135,7 @@ impl<'ir> FunctionBuilder<'ir> {
             basic_blocks: self.basic_blocks,
             return_ty: self.return_ty,
             span: self.span,
+            is_external: self.is_external,
         }
     }
 

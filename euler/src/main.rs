@@ -119,9 +119,16 @@ fn compile_project(compiler_opts: CompilerOpts) -> Result<(), EulerError> {
 
     let compiler = MathicCompiler::new().map_err(MathicError::from)?;
 
-    let module = compiler
+    let modules = compiler
         .compile_project(compiler_opts)
         .map_err(MathicError::from)?;
+    let executor = MathicJITExecutor::new(&modules, compiler_opts)?;
+
+    tracing::debug!("Executor Created");
+    let result = executor.call_function("main");
+
+    tracing::debug!("Execution Done");
+    println!("RESULT: {:?}", result);
 
     Ok(())
 }
@@ -130,7 +137,7 @@ fn compile_and_run_source(source: &Path, compiler_opts: CompilerOpts) -> Result<
     let compiler = MathicCompiler::new().map_err(MathicError::from)?;
 
     let module = compiler.compile_path(source, compiler_opts)?;
-    let executor = MathicJITExecutor::new(module, compiler_opts)?;
+    let executor = MathicJITExecutor::new(&[module], compiler_opts)?;
 
     tracing::debug!("Executor Created");
     let result = executor.call_function("main");

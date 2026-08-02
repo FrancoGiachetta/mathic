@@ -72,3 +72,20 @@ pub enum AstType {
         inner: Option<Box<AstType>>,
     },
 }
+
+impl TopLevelItem {
+    #[inline(always)]
+    pub fn get_name(&self) -> String {
+        match self {
+            TopLevelItem::Func(item) => item.name.clone(),
+            TopLevelItem::Struct(item) => item.name.clone(),
+            TopLevelItem::Import(item) => item.join("_"),
+        }
+    }
+}
+
+impl Path {
+    pub fn join(&self, sep: &str) -> String {
+        self.idents.join(sep)
+    }
+}

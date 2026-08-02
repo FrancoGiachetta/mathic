@@ -1,3 +1,5 @@
+use std::{collections::HashMap, sync::Arc};
+
 use crate::{
     diagnostics::LoweringError,
     lowering::ir::{
@@ -6,7 +8,7 @@ use crate::{
         symbols::{DeclTable, SymbolTableBuilder, TypeIndex},
         types::MathicType,
     },
-    parser::Span,
+    parser::{Span, ast::MathicModule},
 };
 
 pub mod adts;
@@ -53,13 +55,15 @@ impl Ir {
 pub struct IrBuilder {
     pub decl_table: DeclTable,
     pub sym_table: SymbolTableBuilder,
+    pub modules: HashMap<String, Arc<MathicModule>>,
 }
 
 impl IrBuilder {
-    pub fn new() -> Self {
+    pub fn new(modules: HashMap<String, Arc<MathicModule>>) -> Self {
         Self {
             decl_table: DeclTable::default(),
             sym_table: SymbolTableBuilder::default(),
+            modules,
         }
     }
 

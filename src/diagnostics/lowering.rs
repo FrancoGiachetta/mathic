@@ -1,4 +1,4 @@
-use std::path::{Path, PathBuf};
+use std::path::Path;
 
 use ariadne::{Report, ReportBuilder, ReportKind};
 use thiserror::Error;
@@ -54,7 +54,7 @@ pub enum LoweringError {
     TypeRequiresTypeParameter { name: String, span: Span },
 
     #[error("Cannot resolve path: {path}")]
-    UnResolvedPath { path: PathBuf, span: Span },
+    UnResolvedPath { path: String, span: Span },
 }
 
 pub fn format_lowering_error<'err>(

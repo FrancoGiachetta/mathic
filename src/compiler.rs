@@ -1,4 +1,10 @@
-use std::{collections::HashSet, env, io::Write, path::PathBuf, sync::Arc};
+use std::{
+    collections::{HashMap, HashSet},
+    env,
+    io::Write,
+    path::PathBuf,
+    sync::{Arc, LazyLock},
+};
 
 use melior::{
     Context,
@@ -9,7 +15,7 @@ use melior::{
         transform::create_canonicalizer,
     },
 };
-use rayon::iter::{IntoParallelRefIterator, ParallelIterator};
+use rayon::iter::{IntoParallelIterator, ParallelIterator};
 
 use std::{fs, path::Path};
 
@@ -32,6 +38,12 @@ use crate::{
         },
     },
 };
+
+static SRC_ROOT: LazyLock<PathBuf> = LazyLock::new(|| {
+    env::current_dir()
+        .expect("could not get current dir")
+        .join("src")
+});
 
 #[derive(Debug, Clone, Copy, Default)]
 pub struct CompilerOpts {
@@ -98,22 +110,71 @@ impl MathicCompiler {
         })
     }
 
-    pub fn compile_project(&self, _compiler_options: CompilerOpts) -> MathicResult<()> {
-        let main_file_path = env::current_dir()?.join("src/main.mth");
+    pub fn compile_project(&self, compiler_options: CompilerOpts) -> MathicResult<Vec<Module<'_>>> {
+        let main_file_path = PathBuf::from("main.mth");
 
         let compilation_unit = {
             let mut parsed_files = HashSet::new();
             self.parse_file(main_file_path, &mut parsed_files)?
         };
 
-        let ir = compilation_unit
-            .par_iter()
-            .map(|p| lower_program(p))
-            .collect::<Result<Vec<Ir>, _>>()?;
+        let irs = compilation_unit
+            .into_par_iter()
+            .map(|(path, p)| (path, lower_program(&p)))
+            .collect::<Vec<_>>();
 
-        dbg!(ir);
+        irs.into_iter()
+            .map(|(path, ir)| self.compile_module(&ir?, path, compiler_options))
+            .collect::<Result<Vec<Module>, _>>()
+    }
 
-        Ok(())
+    pub fn compile_module<'func>(
+        &'func self,
+        ir: &Ir,
+        file_path: PathBuf,
+        compiler_options: CompilerOpts,
+    ) -> MathicResult<Module<'func>> {
+        if compiler_options.dump_mathir {
+            let mathir_path = PathBuf::from("program.mathir");
+
+            let mut f_mathir = fs::File::create(mathir_path)?;
+
+            write!(f_mathir, "{}", ir)?;
+        }
+
+        // Generate Module.
+        let mut module = ffi::create_module(&self.ctx, compiler_options.opt_lvl)?;
+
+        {
+            let codegen = MathicCodeGen::new(&self.ctx, ir, &module, Some(file_path));
+            let mut helper = CompilerHelper::new();
+
+            codegen.generate_module(&mut helper)?;
+        }
+
+        if compiler_options.dump_mlir {
+            let file_path = PathBuf::from("dump-prepass.mlir");
+
+            let mut f_prepass_program = fs::File::create(file_path)?;
+
+            write!(f_prepass_program, "{}", module.as_operation())?;
+        }
+
+        debug_assert!(module.as_operation().verify());
+        tracing::debug!("Module crated successfully");
+
+        // Run Passes to the generated module.
+        Self::run_passes(&self.ctx, &mut module)?;
+
+        tracing::debug!("Passes ran successfully");
+
+        if compiler_options.dump_mlir {
+            let file_path = PathBuf::from("dump.mlir");
+            let mut f = fs::File::create(file_path).unwrap();
+            write!(f, "{}", module.as_operation()).unwrap();
+        }
+
+        Ok(module)
     }
 
     pub fn compile_path<'func>(
@@ -141,8 +202,8 @@ impl MathicCompiler {
     ) -> MathicResult<Module<'_>> {
         // Source code parsing.
         let ast = {
-            let parser = MathicParser::new(source, None);
-            parser.parse()?
+            let parser = MathicParser::new(source);
+            parser.parse("program".to_string())?
         };
 
         // AST lowering and semantic checks.
@@ -195,27 +256,29 @@ impl MathicCompiler {
         &self,
         path: PathBuf,
         parsed_files: &mut HashSet<String>,
-    ) -> MathicResult<Vec<Arc<MathicModule>>> {
-        let base_path = path.parent().unwrap().to_owned();
+    ) -> MathicResult<HashMap<PathBuf, Arc<MathicModule>>> {
+        let abs_path = SRC_ROOT.join(&path);
+        let base_path = abs_path.parent().unwrap();
 
-        dbg!("BASE PATH: {}", &base_path);
+        let source = fs::read_to_string(&abs_path)?;
 
-        let source = fs::read_to_string(&path)?;
-
-        if !parsed_files.insert(path.to_string_lossy().into_owned()) {
-            return Ok(Vec::with_capacity(0));
+        if !parsed_files.insert(abs_path.to_string_lossy().into_owned()) {
+            return Ok(HashMap::with_capacity(0));
         }
 
-        let mut compilation_unit = Vec::new();
+        let mut compilation_unit = HashMap::new();
 
         let mut program = {
-            let parser = MathicParser::new(
-                &source,
-                Some(path.with_extension("").to_string_lossy().to_string()),
-            );
-            match parser.parse() {
+            let parser = MathicParser::new(&source);
+            let module_name = path
+                .with_extension("")
+                .to_string_lossy()
+                .replace("/", "::")
+                .to_string();
+
+            match parser.parse(module_name) {
                 Err(e) => {
-                    diagnostics::format_error(&path, &e.into());
+                    diagnostics::format_error(&abs_path, &e.into());
                     std::process::exit(1);
                 }
                 Ok(module) => module,
@@ -236,31 +299,56 @@ impl MathicCompiler {
                 let path = if full_path.is_file() {
                     full_path
                 } else {
-                    let idents_without_last = idents.get(..idents.len() - 1).ok_or(
-                        MathicError::Lowering(LoweringError::UnResolvedPath {
-                            path: full_path,
-                            span: *span,
-                        }),
-                    )?;
+                    let idents_without_last = idents.get(..idents.len() - 1).ok_or({
+                        let path = full_path
+                            .strip_prefix(&*SRC_ROOT)
+                            .unwrap()
+                            .to_string_lossy()
+                            .replace("/", "::");
+
+                        MathicError::Lowering(LoweringError::UnResolvedPath { path, span: *span })
+                    })?;
                     base_path
                         .join(idents_without_last.join("/"))
                         .with_added_extension("mth")
                 };
 
                 if !path.exists() {
+                    let path = path
+                        .strip_prefix(&*SRC_ROOT)
+                        .unwrap()
+                        .to_string_lossy()
+                        .replace("/", "::");
+
                     return Err(MathicError::Lowering(LoweringError::UnResolvedPath {
                         path,
                         span: *span,
                     }));
                 }
 
-                compilation_unit.extend(self.parse_file(path, parsed_files)?);
+                compilation_unit.extend(self.parse_file(
+                    path.strip_prefix(&*SRC_ROOT).unwrap().to_owned(),
+                    parsed_files,
+                )?);
             }
         }
 
-        program.modules = compilation_unit.to_vec();
+        program.modules = compilation_unit
+            .iter()
+            .map(|(p, m)| {
+                (
+                    dbg!(p)
+                        .strip_prefix(&*SRC_ROOT)
+                        .unwrap()
+                        .with_extension("")
+                        .to_string_lossy()
+                        .replace("/", "::"),
+                    m.clone(),
+                )
+            })
+            .collect();
 
-        compilation_unit.insert(0, Arc::new(program));
+        compilation_unit.insert(SRC_ROOT.join(&path), Arc::new(program));
 
         Ok(compilation_unit)
     }

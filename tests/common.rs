@@ -20,7 +20,7 @@ pub fn compile_and_execute(path: &Path) -> i64 {
         .compile_path(path, opts)
         .expect("Failed to compile source");
 
-    let executor = MathicJITExecutor::new(module, opts).expect("Failed to create executor");
+    let executor = MathicJITExecutor::new(&[module], opts).expect("Failed to create executor");
 
     executor
         .call_function("main")

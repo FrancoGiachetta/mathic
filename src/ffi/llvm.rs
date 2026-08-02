@@ -47,7 +47,7 @@ pub fn initialize_llvm() {
 
 pub fn lower_mlir_to_llvm(
     llvm_ctx: LLVMContextRef,
-    module: Module,
+    module: &Module,
     opt_lvl: usize,
     dump_llvmir: bool,
 ) -> Result<*mut LLVMModule, CodegenError> {
@@ -114,17 +114,21 @@ unsafe extern "C" {
 }
 
 pub fn create_llvm_jit(
-    module: Module,
+    modules: &[Module],
     opt_lvl: usize,
     dump_llvm: bool,
 ) -> Result<LLVMOrcLLJITRef, CodegenError> {
     unsafe {
         let context = LLVMContextCreate();
         let tsm_context = LLVMOrcCreateNewThreadSafeContextFromLLVMContext(context);
-        let tsm = LLVMOrcCreateNewThreadSafeModule(
-            lower_mlir_to_llvm(context, module, opt_lvl, dump_llvm)?,
-            tsm_context,
-        );
+        let mut tsms = vec![];
+
+        for m in modules {
+            tsms.push(LLVMOrcCreateNewThreadSafeModule(
+                lower_mlir_to_llvm(context, m, opt_lvl, dump_llvm)?,
+                tsm_context,
+            ));
+        }
 
         let builder = LLVMOrcCreateLLJITBuilder();
         let mut jit: MaybeUninit<LLVMOrcLLJITRef> = MaybeUninit::uninit();
@@ -136,7 +140,9 @@ pub fn create_llvm_jit(
             let msg = CStr::from_ptr(error).to_string_lossy().into_owned();
 
             LLVMDisposeErrorMessage(error);
-            LLVMOrcDisposeThreadSafeModule(tsm);
+            for tsm in tsms {
+                LLVMOrcDisposeThreadSafeModule(tsm);
+            }
 
             return Err(CodegenError::LLVMError(msg));
         }
@@ -144,16 +150,19 @@ pub fn create_llvm_jit(
         let jit = jit.assume_init();
 
         let dylib = LLVMOrcLLJITGetMainJITDylib(jit);
-        let err = LLVMOrcLLJITAddLLVMIRModule(jit, dylib, tsm);
 
-        if !err.is_null() {
-            let error = LLVMGetErrorMessage(err);
-            let msg = CStr::from_ptr(error).to_string_lossy().into_owned();
+        for tsm in tsms {
+            let err = LLVMOrcLLJITAddLLVMIRModule(jit, dylib, tsm);
 
-            LLVMOrcDisposeLLJIT(jit);
-            LLVMDisposeErrorMessage(error);
+            if !err.is_null() {
+                let error = LLVMGetErrorMessage(err);
+                let msg = CStr::from_ptr(error).to_string_lossy().into_owned();
 
-            return Err(CodegenError::LLVMError(msg));
+                LLVMOrcDisposeLLJIT(jit);
+                LLVMDisposeErrorMessage(error);
+
+                return Err(CodegenError::LLVMError(msg));
+            }
         }
 
         Ok(jit)

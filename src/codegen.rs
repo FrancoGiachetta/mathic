@@ -4,13 +4,13 @@ use ariadne::Source;
 use melior::{
     Context,
     dialect::llvm,
-    ir::{Location, Module, Type, r#type::IntegerType},
+    ir::{Identifier, Location, Module, Type, attribute::StringAttribute, r#type::IntegerType},
 };
 
 use crate::{
     MathicResult,
     codegen::{compiler_helper::CompilerHelper, dialect_integration::symbolic},
-    diagnostics::{CodegenError, MathicError},
+    diagnostics::CodegenError,
     lowering::ir::{
         Ir,
         function::Function,
@@ -92,14 +92,16 @@ impl<'ctx> MathicCodeGen<'ctx> {
             global_functions.len()
         );
 
-        // Check if main function is present
-        if !global_functions.iter().any(|f| f.name == "main") {
-            return Err(MathicError::Codegen(CodegenError::MissingMainFunction));
-        }
-
         for func in global_functions {
             tracing::debug!("Compiling function: {}", func.name);
-            self.compile_function(func, &[], helper)?;
+            self.compile_function(
+                func,
+                &[(
+                    Identifier::new(self.ctx, "sym_visibility"),
+                    StringAttribute::new(self.ctx, "private").into(), // declarations must be non-public
+                )],
+                helper,
+            )?;
         }
 
         tracing::info!("Code generation complete: {:?}", start.elapsed());

@@ -20,9 +20,9 @@ pub struct MathicJITExecutor {
 
 impl MathicJITExecutor {
     // Creates the LLJIT
-    pub fn new(module: Module, compiler_options: CompilerOpts) -> MathicResult<Self> {
+    pub fn new(modules: &[Module], compiler_options: CompilerOpts) -> MathicResult<Self> {
         let engine = ffi::llvm::create_llvm_jit(
-            module,
+            modules,
             compiler_options.opt_lvl.into(),
             compiler_options.dump_llvmir,
         )?;
