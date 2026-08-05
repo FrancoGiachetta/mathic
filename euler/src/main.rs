@@ -118,7 +118,8 @@ fn compile_project(compiler_opts: CompilerOpts) -> Result<(), EulerError> {
 
     let compiler = MathicCompiler::new().map_err(MathicError::from)?;
 
-    let modules = compiler.compile_project(compiler_opts)?;
+    let src_root = env::current_dir()?.join("src");
+    let modules = compiler.compile_project(&src_root, compiler_opts)?;
     let executor = MathicJITExecutor::new(&modules, compiler_opts)?;
 
     tracing::debug!("Executor Created");

@@ -1,9 +1,8 @@
 use std::{
     collections::{HashMap, HashSet},
-    env,
     io::Write,
     path::PathBuf,
-    sync::{Arc, LazyLock},
+    sync::Arc,
 };
 
 use melior::{
@@ -38,12 +37,6 @@ use crate::{
         },
     },
 };
-
-static SRC_ROOT: LazyLock<PathBuf> = LazyLock::new(|| {
-    env::current_dir()
-        .expect("could not get current dir")
-        .join("src")
-});
 
 #[derive(Debug, Clone, Copy, Default)]
 pub struct CompilerOpts {
@@ -110,12 +103,16 @@ impl MathicCompiler {
         })
     }
 
-    pub fn compile_project(&self, compiler_options: CompilerOpts) -> MathicResult<Vec<Module<'_>>> {
+    pub fn compile_project(
+        &self,
+        src_root: &Path,
+        compiler_options: CompilerOpts,
+    ) -> MathicResult<Vec<Module<'_>>> {
         let main_file_path = PathBuf::from("main.mth");
 
         let compilation_unit = {
             let mut parsed_files = HashSet::new();
-            self.parse_file(main_file_path, &mut parsed_files)?
+            self.parse_file(src_root, main_file_path, &mut parsed_files)?
         };
 
         let irs = compilation_unit
@@ -124,18 +121,19 @@ impl MathicCompiler {
             .collect::<Vec<_>>();
 
         irs.into_iter()
-            .map(|(path, ir)| self.compile_module(&ir?, path, compiler_options))
+            .map(|(path, ir)| self.compile_module(&ir?, src_root, path, compiler_options))
             .collect::<Result<Vec<Module>, _>>()
     }
 
     pub fn compile_module<'func>(
         &'func self,
         ir: &Ir,
+        src_root: &Path,
         file_path: PathBuf,
         compiler_options: CompilerOpts,
     ) -> MathicResult<Module<'func>> {
         let relative_path = file_path
-            .strip_prefix(&*SRC_ROOT)
+            .strip_prefix(src_root)
             .unwrap_or(&file_path)
             .to_owned();
 
@@ -272,10 +270,11 @@ impl MathicCompiler {
 
     pub fn parse_file(
         &self,
+        src_root: &Path,
         path: PathBuf,
         parsed_files: &mut HashSet<String>,
     ) -> MathicResult<HashMap<PathBuf, Arc<MathicModule>>> {
-        let abs_path = SRC_ROOT.join(&path);
+        let abs_path = src_root.join(&path);
         let base_path = abs_path.parent().unwrap();
 
         let source = fs::read_to_string(&abs_path)?;
@@ -319,7 +318,7 @@ impl MathicCompiler {
                 } else {
                     let idents_without_last = idents.get(..idents.len() - 1).ok_or({
                         let path = full_path
-                            .strip_prefix(&*SRC_ROOT)
+                            .strip_prefix(src_root)
                             .unwrap()
                             .to_string_lossy()
                             .replace("/", "::");
@@ -333,7 +332,7 @@ impl MathicCompiler {
 
                 if !path.exists() {
                     let path = path
-                        .strip_prefix(&*SRC_ROOT)
+                        .strip_prefix(src_root)
                         .unwrap()
                         .to_string_lossy()
                         .replace("/", "::");
@@ -345,7 +344,8 @@ impl MathicCompiler {
                 }
 
                 compilation_unit.extend(self.parse_file(
-                    path.strip_prefix(&*SRC_ROOT).unwrap().to_owned(),
+                    src_root,
+                    path.strip_prefix(src_root).unwrap().to_owned(),
                     parsed_files,
                 )?);
             }
@@ -353,7 +353,7 @@ impl MathicCompiler {
 
         program.modules = compilation_unit.values().cloned().collect();
 
-        compilation_unit.insert(SRC_ROOT.join(&path), Arc::new(program));
+        compilation_unit.insert(src_root.join(&path), Arc::new(program));
 
         Ok(compilation_unit)
     }
