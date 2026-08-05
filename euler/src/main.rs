@@ -82,7 +82,6 @@ fn main() -> Result<(), EulerError> {
         Command::New { project_name } => create_project(project_name)?,
         Command::Run(compiler_opts) => {
             compile_project(compiler_opts.into())?;
-            // compile_and_run_source(&file_path, compiler_opts.into())?;
         }
         Command::Path { path, comp_opts } => {
             compile_and_run_source(&path, comp_opts.into())?;
@@ -95,7 +94,7 @@ fn main() -> Result<(), EulerError> {
 fn create_project(project_name: String) -> Result<(), EulerError> {
     let curr_dir = env::current_dir()?;
     let project_path = curr_dir.join(&project_name);
-    std::fs::create_dir_all(&project_path.join("src"))?;
+    std::fs::create_dir_all(project_path.join("src"))?;
 
     let main_file_path = project_path.join("src/main.mth");
     let main_file_content = r#"df main() i32 {
@@ -119,13 +118,11 @@ fn compile_project(compiler_opts: CompilerOpts) -> Result<(), EulerError> {
 
     let compiler = MathicCompiler::new().map_err(MathicError::from)?;
 
-    let modules = compiler
-        .compile_project(compiler_opts)
-        .map_err(MathicError::from)?;
+    let modules = compiler.compile_project(compiler_opts)?;
     let executor = MathicJITExecutor::new(&modules, compiler_opts)?;
 
     tracing::debug!("Executor Created");
-    let result = executor.call_function("main");
+    let result = executor.call_function("main::main");
 
     tracing::debug!("Execution Done");
     println!("RESULT: {:?}", result);

@@ -115,8 +115,11 @@ pub fn lower_inner_function(
         ..
     } = stmt;
 
+    let mangled_function_name = func
+        .ir_builder
+        .get_mangled_name(&func.ir_builder.module_name, name);
     let mut inner_func = FunctionBuilder::new(
-        name.clone(),
+        mangled_function_name,
         params,
         match return_ty {
             Some(ty) => lower_inner_ast_type(func, ty, span)?,
@@ -132,7 +135,9 @@ pub fn lower_inner_function(
     // of a not yet declared function.
     for stmt in body.iter() {
         match &stmt.kind {
-            StmtKind::Decl(DeclStmt::Func(f)) => inner_func.decl_table.add_func_decl(f.clone()),
+            StmtKind::Decl(DeclStmt::Func(f)) => {
+                inner_func.decl_table.add_func_decl(f.clone(), None)
+            }
             StmtKind::Decl(DeclStmt::Struct(f)) => inner_func.decl_table.add_struct_decl(f.clone()),
             _ => {}
         }

@@ -134,8 +134,17 @@ impl MathicCompiler {
         file_path: PathBuf,
         compiler_options: CompilerOpts,
     ) -> MathicResult<Module<'func>> {
+        let relative_path = file_path
+            .strip_prefix(&*SRC_ROOT)
+            .unwrap_or(&file_path)
+            .to_owned();
+
         if compiler_options.dump_mathir {
-            let mathir_path = PathBuf::from("program.mathir");
+            let mathir_path = PathBuf::from("mathir_dumps")
+                .join(&relative_path)
+                .with_extension("mathir");
+
+            fs::create_dir_all(mathir_path.parent().unwrap())?;
 
             let mut f_mathir = fs::File::create(mathir_path)?;
 
@@ -153,9 +162,13 @@ impl MathicCompiler {
         }
 
         if compiler_options.dump_mlir {
-            let file_path = PathBuf::from("dump-prepass.mlir");
+            let mlir_path = PathBuf::from("mlir_dumps")
+                .join(format!("{}-dump-prepass", relative_path.display()))
+                .with_extension("mlir");
 
-            let mut f_prepass_program = fs::File::create(file_path)?;
+            fs::create_dir_all(mlir_path.parent().unwrap())?;
+
+            let mut f_prepass_program = fs::File::create(mlir_path)?;
 
             write!(f_prepass_program, "{}", module.as_operation())?;
         }
@@ -169,8 +182,13 @@ impl MathicCompiler {
         tracing::debug!("Passes ran successfully");
 
         if compiler_options.dump_mlir {
-            let file_path = PathBuf::from("dump.mlir");
-            let mut f = fs::File::create(file_path).unwrap();
+            let mlir_path = PathBuf::from("mlir_dumps")
+                .join(format!("{}-dump-postpass", relative_path.display()))
+                .with_extension("mlir");
+
+            fs::create_dir_all(mlir_path.parent().unwrap())?;
+
+            let mut f = fs::File::create(mlir_path).unwrap();
             write!(f, "{}", module.as_operation()).unwrap();
         }
 
@@ -333,19 +351,7 @@ impl MathicCompiler {
             }
         }
 
-        program.modules = compilation_unit
-            .iter()
-            .map(|(p, m)| {
-                (
-                    p.strip_prefix(&*SRC_ROOT)
-                        .unwrap()
-                        .with_extension("")
-                        .to_string_lossy()
-                        .replace("/", "::"),
-                    m.clone(),
-                )
-            })
-            .collect();
+        program.modules = compilation_unit.values().cloned().collect();
 
         compilation_unit.insert(SRC_ROOT.join(&path), Arc::new(program));
 

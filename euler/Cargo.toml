@@ -4,7 +4,7 @@ version = "0.1.0"
 edition = "2024"
 
 [dependencies]
-clap = "4.6.4"
+clap = { workspace = true }
 mathic = { workspace = true }
 thiserror = { workspace = true }
 tracing = { workspace = true }

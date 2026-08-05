@@ -33,14 +33,14 @@ use tracing::instrument;
 pub fn lower_program(program: &MathicModule) -> Result<Ir, LoweringError> {
     let start = std::time::Instant::now();
     tracing::info!("Starting lowering phase");
-    let mut ir_builder = IrBuilder::new(program.modules.clone());
+    let mut ir_builder = IrBuilder::new(program.module_name.clone(), program.modules.clone());
 
     // Save program's items' declarations. This is for on-demand lowering, allowing
     // to reference function no yet declared. For example, a function call
     // of a not yet declared function.
     for item in program.items.iter() {
         match item {
-            TopLevelItem::Func(f) => ir_builder.decl_table.add_func_decl(f.clone()),
+            TopLevelItem::Func(f) => ir_builder.decl_table.add_func_decl(f.clone(), None),
             TopLevelItem::Import(imp) => lower_import(&mut ir_builder, imp)?,
             TopLevelItem::Struct(s) => ir_builder.decl_table.add_struct_decl(s.clone()),
         }
@@ -65,20 +65,30 @@ fn lower_import(ir_builder: &mut IrBuilder, import_path: &Path) -> Result<(), Lo
     let import_path_str = import_path.idents[..import_path.idents.len() - 1].join("::");
 
     // we only care about imports which reference items.
-    if let Some(m) = ir_builder.modules.get(&import_path_str).cloned() {
+    if let Some(module_idx) = ir_builder.decl_table.get_module_idx(&import_path_str) {
         let item_name = &import_path.idents[import_path.idents.len() - 1];
+        let module = ir_builder.decl_table.get_module(module_idx).unwrap();
+        let imported_item = module
+            .items
+            .iter()
+            .find(|i| &i.get_name() == item_name)
+            .cloned();
 
-        match m.items.iter().find(|i| &i.get_name() == item_name) {
+        match imported_item {
             Some(i) => match i {
                 TopLevelItem::Func(func) => {
-                    ir_builder.decl_table.add_func_decl(func.clone());
+                    ir_builder
+                        .decl_table
+                        .add_func_decl(func.clone(), Some(module_idx));
 
                     let return_ty = match &func.return_ty {
                         Some(ty) => lower_top_level_ast_type(ir_builder, ty, import_path.span)?,
                         None => ir_builder.get_or_insert_type_idx(MathicType::Void),
                     };
+                    let mangled_function_name =
+                        ir_builder.get_mangled_name(&import_path_str, &func.name);
                     let extern_func = FunctionBuilder::new(
-                        func.name.clone(),
+                        mangled_function_name,
                         &func.params,
                         return_ty,
                         ir_builder,
@@ -124,15 +134,22 @@ fn lower_top_level_function(
         None => ir_builder.get_or_insert_type_idx(MathicType::Void),
     };
 
-    let mut func_builder =
-        FunctionBuilder::new(name.clone(), params, return_ty, ir_builder, *span, false)?;
+    let mangled_function_name = ir_builder.get_mangled_name(&ir_builder.module_name, name);
+    let mut func_builder = FunctionBuilder::new(
+        mangled_function_name,
+        params,
+        return_ty,
+        ir_builder,
+        *span,
+        false,
+    )?;
 
     // Save function's declaration. This for on-demand lowering, allowing
     // to reference function no yet declared. For example, a function call
     // of a not yet declared function.
     for stmt in body.iter() {
         if let StmtKind::Decl(DeclStmt::Func(f)) = &stmt.kind {
-            func_builder.decl_table.add_func_decl(f.clone());
+            func_builder.decl_table.add_func_decl(f.clone(), None);
         }
     }
 

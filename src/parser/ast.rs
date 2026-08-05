@@ -1,4 +1,4 @@
-use std::{collections::HashMap, sync::Arc};
+use std::sync::Arc;
 
 use super::ast::declaration::TopLevelItem;
 
@@ -10,6 +10,6 @@ pub mod statement;
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct MathicModule {
     pub module_name: String,
-    pub modules: HashMap<String, Arc<MathicModule>>,
+    pub modules: Vec<Arc<MathicModule>>,
     pub items: Vec<TopLevelItem>,
 }

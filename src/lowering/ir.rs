@@ -1,4 +1,4 @@
-use std::{collections::HashMap, sync::Arc};
+use std::sync::Arc;
 
 use crate::{
     diagnostics::LoweringError,
@@ -53,17 +53,17 @@ impl Ir {
 /// Helper struct to build the IR.
 #[derive(Debug, Default)]
 pub struct IrBuilder {
+    pub module_name: String,
     pub decl_table: DeclTable,
     pub sym_table: SymbolTableBuilder,
-    pub modules: HashMap<String, Arc<MathicModule>>,
 }
 
 impl IrBuilder {
-    pub fn new(modules: HashMap<String, Arc<MathicModule>>) -> Self {
+    pub fn new(module_name: String, modules: Vec<Arc<MathicModule>>) -> Self {
         Self {
-            decl_table: DeclTable::default(),
+            module_name,
             sym_table: SymbolTableBuilder::default(),
-            modules,
+            decl_table: DeclTable::new(modules),
         }
     }
 
@@ -95,6 +95,10 @@ impl IrBuilder {
 
     pub fn get_user_def_type(&self, name: &str) -> Option<TypeIndex> {
         self.sym_table.user_def_types.get(name).copied()
+    }
+
+    pub fn get_mangled_name(&self, module: &str, name: &str) -> String {
+        format!("{}::{}", module, name)
     }
 
     pub fn build(self) -> Ir {

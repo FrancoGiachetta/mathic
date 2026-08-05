@@ -1,4 +1,4 @@
-use std::collections::HashMap;
+use std::{collections::HashMap, sync::Arc};
 
 use crate::{
     diagnostics::LoweringError,
@@ -9,7 +9,10 @@ use crate::{
     },
     parser::{
         Span,
-        ast::declaration::{FuncDecl, StructDecl},
+        ast::{
+            MathicModule,
+            declaration::{FuncDecl, StructDecl},
+        },
     },
 };
 
@@ -20,25 +23,48 @@ use crate::{
 #[derive(Debug, Clone, Default)]
 #[allow(dead_code)]
 pub struct DeclTable {
-    functions: HashMap<String, FuncDecl>,
+    pub name_to_module: HashMap<String, usize>,
+    pub modules: Vec<Arc<MathicModule>>,
+    functions: HashMap<String, (FuncDecl, Option<usize>)>,
     structs: HashMap<String, StructDecl>,
 }
 
 impl DeclTable {
-    pub fn add_func_decl(&mut self, func: FuncDecl) {
-        self.functions.insert(func.name.clone(), func);
+    pub fn new(modules: Vec<Arc<MathicModule>>) -> Self {
+        let name_to_module = modules
+            .iter()
+            .enumerate()
+            .map(|(idx, m)| (m.module_name.clone(), idx))
+            .collect();
+
+        Self {
+            name_to_module,
+            modules,
+            ..Default::default()
+        }
+    }
+    pub fn add_func_decl(&mut self, func: FuncDecl, module_idx: Option<usize>) {
+        self.functions.insert(func.name.clone(), (func, module_idx));
     }
 
     pub fn add_struct_decl(&mut self, strct: StructDecl) {
         self.structs.insert(strct.name.clone(), strct);
     }
 
-    pub fn get_function_decl(&self, name: &str) -> Option<&FuncDecl> {
+    pub fn get_function_decl(&self, name: &str) -> Option<&(FuncDecl, Option<usize>)> {
         self.functions.get(name)
     }
 
     pub fn get_struct_decl(&self, name: &str) -> Option<&StructDecl> {
         self.structs.get(name)
+    }
+
+    pub fn get_module_idx(&self, module_name: &str) -> Option<usize> {
+        self.name_to_module.get(module_name).copied()
+    }
+
+    pub fn get_module(&self, module_idx: usize) -> Option<&Arc<MathicModule>> {
+        self.modules.get(module_idx)
     }
 }
 

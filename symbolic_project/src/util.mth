@@ -1,5 +1,0 @@
-df add(a: i64, b: i64) i64 {
-    sym x: expr<i64>;
-    let e: expr<i64> = x + a;
-    return eval(e, x, b);
-}

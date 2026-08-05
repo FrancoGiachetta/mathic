@@ -1,6 +1,5 @@
 use std::{
     cell::{Cell, RefCell},
-    collections::HashMap,
     ops::Range,
 };
 
@@ -96,7 +95,7 @@ impl<'a> MathicParser<'a> {
 
         Ok(MathicModule {
             module_name,
-            modules: HashMap::new(),
+            modules: Vec::new(),
             items,
         })
     }

@@ -100,7 +100,7 @@ fn lower_call(
     span: Span,
 ) -> Result<RValInstruct, LoweringError> {
     let mut arg_values: Vec<RValInstruct> = Vec::new();
-    let func_prototype = func.get_function_decl(&callee, span)?;
+    let (func_prototype, module_idx) = func.get_function_decl(&callee, span)?;
 
     if func_prototype.params.len() != func_args.len() {
         return Err(LoweringError::WrongArgumentCount {
@@ -141,8 +141,16 @@ fn lower_call(
 
     let dest_block_idx = func.last_block_idx() + 1;
 
+    let mangled_callee_name = {
+        let module_name = match module_idx {
+            None => &func.ir_builder.module_name,
+            Some(idx) => &func.ir_builder.decl_table.modules[idx].module_name,
+        };
+        func.ir_builder.get_mangled_name(module_name, &callee)
+    };
+
     func.get_basic_block_mut(func.last_block_idx()).terminator = Terminator::Call {
-        callee,
+        callee: mangled_callee_name,
         args: arg_values,
         span: Some(span),
         return_dest: Value::InMemory {
@@ -724,7 +732,7 @@ fn lower_expression_type(
             }
         },
         ExprStmtKind::Call { callee, .. } => {
-            let func_decl = func.get_function_decl(callee, span)?;
+            let (func_decl, _) = func.get_function_decl(callee, span)?;
             match func_decl.return_ty {
                 Some(ty) => lower_inner_ast_type(func, &ty, span)?,
                 None => func.get_or_insert_global_type_idx(MathicType::Void),

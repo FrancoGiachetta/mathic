@@ -644,7 +644,6 @@ name = "mathic"
 version = "0.2.0"
 dependencies = [
  "ariadne",
- "clap",
  "criterion",
  "libc",
  "llvm-sys",

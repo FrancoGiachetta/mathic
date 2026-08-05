@@ -1,5 +1,0 @@
-imp util::add;
-
-df main() i64 {
-    return add(5, 10);
-}

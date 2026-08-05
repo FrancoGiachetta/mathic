@@ -139,7 +139,11 @@ impl<'ir> FunctionBuilder<'ir> {
         }
     }
 
-    pub fn get_function_decl(&self, name: &str, span: Span) -> Result<FuncDecl, LoweringError> {
+    pub fn get_function_decl(
+        &self,
+        name: &str,
+        span: Span,
+    ) -> Result<(FuncDecl, Option<usize>), LoweringError> {
         match self.decl_table.get_function_decl(name).cloned() {
             Some(f) => Ok(f),
             None => match self.ir_builder.decl_table.get_function_decl(name).cloned() {

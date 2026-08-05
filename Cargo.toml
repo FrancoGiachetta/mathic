@@ -8,6 +8,7 @@ repository = "https://github.com/FrancoGiachetta/mathic"
 members = ["euler"]
 
 [workspace.dependencies]
+clap = { version = "4.6.4", features = ["derive"] }
 mathic = { path = "." }
 thiserror = "2.0.10"
 tracing = "0.1.44"
@@ -26,7 +27,6 @@ repository.workspace = true
 
 [dependencies]
 ariadne = "0.6.0"
-clap = { version = "4.5.24", features = ["derive"] }
 libc = "0.2.182"
 llvm-sys = "211.0.0"
 logos = "0.16.0"
