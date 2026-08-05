@@ -11,7 +11,7 @@ use crate::{
             types::{FloatTy, MathicType, NumericTy, SintTy, UintTy, lower_inner_ast_type},
             value::{ConstExpr, NumericConst, Value, ValueModifier},
         },
-        lower_import,
+        utils::resolve_external_func,
     },
     parser::{
         Span,
@@ -41,7 +41,7 @@ pub fn lower_expr(
             if callee_name == "eval" {
                 return lower_eval_builtin(func, args, expr.span);
             }
-            lower_call(func, &callee, args, expr.span)?
+            lower_call(func, callee, args, expr.span)?
         }
         ExprStmtKind::Assign {
             name,
@@ -109,18 +109,18 @@ fn lower_call(
     span: Span,
 ) -> Result<RValInstruct, LoweringError> {
     let mut arg_values: Vec<RValInstruct> = Vec::new();
-    let callee_name = match &callee.kind {
-        ExprStmtKind::Primary(PrimaryExpr::Ident(ident)) => ident,
+    let (func_prototype, module_idx) = match &callee.kind {
+        ExprStmtKind::Primary(PrimaryExpr::Ident(ident)) => func.get_function_decl(ident, span)?,
         ExprStmtKind::Primary(PrimaryExpr::Path(path)) => {
-            // we are referecing a function from another module, so we need to
-            // import it into the current module.
-            lower_import(func.ir_builder, path)?;
+            // We are referencing a function from another module, so we resolve
+            // it directly and declare it as external.
+            let (func_decl, module_idx) = resolve_external_func(func.ir_builder, path)?;
 
-            &path.join("::")
+            (func_decl, Some(module_idx))
         }
         _ => unreachable!(),
     };
-    let (func_prototype, module_idx) = func.get_function_decl(callee_name, span)?;
+    let callee_name = func_prototype.name;
 
     if func_prototype.params.len() != func_args.len() {
         return Err(LoweringError::WrongArgumentCount {
@@ -752,12 +752,16 @@ fn lower_expression_type(
             }
         },
         ExprStmtKind::Call { callee, .. } => {
-            let callee_name = match &callee.kind {
-                ExprStmtKind::Primary(PrimaryExpr::Ident(ident)) => ident,
-                ExprStmtKind::Primary(PrimaryExpr::Path(path)) => &path.join("::"),
+            let (func_decl, _) = match &callee.kind {
+                ExprStmtKind::Primary(PrimaryExpr::Ident(ident)) => {
+                    func.get_function_decl(ident, span)?
+                }
+                ExprStmtKind::Primary(PrimaryExpr::Path(path)) => {
+                    let (func_decl, module_idx) = resolve_external_func(func.ir_builder, path)?;
+                    (func_decl, Some(module_idx))
+                }
                 _ => unreachable!(),
             };
-            let (func_decl, _) = func.get_function_decl(callee_name, span)?;
             match func_decl.return_ty {
                 Some(ty) => lower_inner_ast_type(func, &ty, span)?,
                 None => func.get_or_insert_global_type_idx(MathicType::Void),

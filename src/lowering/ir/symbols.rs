@@ -43,8 +43,23 @@ impl DeclTable {
             ..Default::default()
         }
     }
-    pub fn add_func_decl(&mut self, func: FuncDecl, module_idx: Option<usize>) {
-        self.functions.insert(func.name.clone(), (func, module_idx));
+    pub fn add_func_decl(
+        &mut self,
+        func: FuncDecl,
+        module_idx: Option<usize>,
+    ) -> Result<(), LoweringError> {
+        let name = func.name.clone();
+
+        if self.functions.contains_key(&name) {
+            return Err(LoweringError::DuplicateDeclaration {
+                name,
+                span: func.span,
+            });
+        }
+
+        self.functions.insert(name, (func, module_idx));
+
+        Ok(())
     }
 
     pub fn add_struct_decl(&mut self, strct: StructDecl) {
