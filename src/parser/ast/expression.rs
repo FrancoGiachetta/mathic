@@ -22,7 +22,7 @@ pub enum ExprStmtKind {
         fields: HashMap<String, ExprStmt>,
     },
     Call {
-        callee: String,
+        callee: Box<ExprStmt>,
         args: Vec<ExprStmt>,
     },
     Group(Box<ExprStmt>),
