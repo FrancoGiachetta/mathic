@@ -1,5 +1,6 @@
 mod ast_lowering;
 pub mod ir;
+mod utils;
 
 use crate::{
     diagnostics::LoweringError,
@@ -40,7 +41,7 @@ pub fn lower_program(program: &MathicModule) -> Result<Ir, LoweringError> {
     // of a not yet declared function.
     for item in program.items.iter() {
         match item {
-            TopLevelItem::Func(f) => ir_builder.decl_table.add_func_decl(f.clone(), None),
+            TopLevelItem::Func(f) => ir_builder.decl_table.add_func_decl(f.clone(), None)?,
             TopLevelItem::Import(imp) => lower_import(&mut ir_builder, imp)?,
             TopLevelItem::Struct(s) => ir_builder.decl_table.add_struct_decl(s.clone()),
         }
@@ -62,53 +63,26 @@ pub fn lower_program(program: &MathicModule) -> Result<Ir, LoweringError> {
 }
 
 fn lower_import(ir_builder: &mut IrBuilder, import_path: &Path) -> Result<(), LoweringError> {
-    let import_path_str = import_path.idents[..import_path.idents.len() - 1].join("::");
+    // Only lower imports which do referen items.
+    if import_path.idents.len() == 1 {
+        return Ok(());
+    }
 
-    // we only care about imports which reference items.
-    if let Some(module_idx) = ir_builder.decl_table.get_module_idx(&import_path_str) {
-        let item_name = &import_path.idents[import_path.idents.len() - 1];
-        let module = ir_builder.decl_table.get_module(module_idx).unwrap();
-        let imported_item = module
-            .items
-            .iter()
-            .find(|i| &i.get_name() == item_name)
-            .cloned();
+    let module_path = import_path.idents[..import_path.idents.len() - 1].join("::");
+    let item_name = &import_path.idents[import_path.idents.len() - 1];
 
-        match imported_item {
-            Some(i) => match i {
-                TopLevelItem::Func(func) => {
-                    ir_builder
-                        .decl_table
-                        .add_func_decl(func.clone(), Some(module_idx));
+    let (item, module_idx) =
+        utils::find_module_item(ir_builder, &module_path, item_name, import_path.span)?;
 
-                    let return_ty = match &func.return_ty {
-                        Some(ty) => lower_top_level_ast_type(ir_builder, ty, import_path.span)?,
-                        None => ir_builder.get_or_insert_type_idx(MathicType::Void),
-                    };
-                    let mangled_function_name =
-                        ir_builder.get_mangled_name(&import_path_str, &func.name);
-                    let extern_func = FunctionBuilder::new(
-                        mangled_function_name,
-                        &func.params,
-                        return_ty,
-                        ir_builder,
-                        import_path.span,
-                        true,
-                    )?
-                    .build();
-
-                    ir_builder.add_function(extern_func);
-                }
-                TopLevelItem::Struct(strct) => ir_builder.decl_table.add_struct_decl(strct.clone()),
-                _ => {}
-            },
-            None => {
-                return Err(LoweringError::UnResolvedPath {
-                    path: import_path_str,
-                    span: import_path.span,
-                });
-            }
-        };
+    match item {
+        TopLevelItem::Func(func) => {
+            ir_builder
+                .decl_table
+                .add_func_decl(func.clone(), Some(module_idx))?;
+            utils::add_extern_function(ir_builder, &module_path, &func, import_path.span)?;
+        }
+        TopLevelItem::Struct(strct) => ir_builder.decl_table.add_struct_decl(strct.clone()),
+        _ => {}
     }
 
     Ok(())
@@ -149,7 +123,7 @@ fn lower_top_level_function(
     // of a not yet declared function.
     for stmt in body.iter() {
         if let StmtKind::Decl(DeclStmt::Func(f)) = &stmt.kind {
-            func_builder.decl_table.add_func_decl(f.clone(), None);
+            func_builder.decl_table.add_func_decl(f.clone(), None)?;
         }
     }
 
