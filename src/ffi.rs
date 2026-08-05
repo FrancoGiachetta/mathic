@@ -19,6 +19,7 @@ use crate::{
 pub mod dialect_integration;
 pub mod llvm;
 
+/// Creates an empty MLIR Module.
 pub fn create_module<'ctx>(
     ctx: &'ctx Context,
     opt_lvl: OptLvl,

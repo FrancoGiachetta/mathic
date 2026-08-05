@@ -62,6 +62,10 @@ pub fn lower_program(program: &MathicModule) -> Result<Ir, LoweringError> {
     Ok(ir_builder.build())
 }
 
+/// Lowering an import statement.
+///
+/// It only cares about import that references items (like functions) and adds
+/// them to the declaration table of the current ir being built.
 fn lower_import(ir_builder: &mut IrBuilder, import_path: &Path) -> Result<(), LoweringError> {
     // Only lower imports which do referen items.
     if import_path.idents.len() == 1 {

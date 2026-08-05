@@ -109,6 +109,10 @@ impl MathicCompiler {
         &self.diagnostics
     }
 
+    /// Compiles a project.
+    ///
+    /// It has ondemand compilation, meaning the of a module is never
+    /// referenced it will not be compiled.
     pub fn compile_project(
         &self,
         src_root: &Path,
@@ -160,7 +164,8 @@ impl MathicCompiler {
         Ok(modules)
     }
 
-    pub fn compile_module<'func>(
+    /// Handles the code generation of a Mathir.
+    fn compile_module<'func>(
         &'func self,
         ir: &Ir,
         src_root: &Path,
@@ -243,6 +248,7 @@ impl MathicCompiler {
         Ok(module)
     }
 
+    /// Compiles a single path.
     pub fn compile_path<'func>(
         &'func self,
         file_path: &Path,
@@ -253,6 +259,7 @@ impl MathicCompiler {
         self.compile_source(&source, Some(file_path.to_path_buf()), compiler_options)
     }
 
+    /// Compiles a source program.
     pub fn compile_source<'func>(
         &'func self,
         source: &str,
@@ -345,6 +352,12 @@ impl MathicCompiler {
         Ok(module)
     }
 
+    /// Parses a file.
+    ///
+    /// There may be recursive calls to this function for cases with the module
+    /// imports another.
+    ///
+    /// Returns HashMap with the mapping the paths parsed to their AST.
     fn parse_file(
         &self,
         src_root: &Path,

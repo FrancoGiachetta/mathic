@@ -8,7 +8,6 @@ mod parser;
 
 use thiserror::Error;
 
-/// Errors that are not part of the compilation itself (I/O, synchronization...).
 #[derive(Debug, Error)]
 pub enum MathicError {
     #[error("compilation failed")]

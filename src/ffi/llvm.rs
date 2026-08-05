@@ -45,7 +45,7 @@ pub fn initialize_llvm() {
     }
 }
 
-pub fn lower_mlir_to_llvm(
+fn lower_mlir_to_llvmir(
     llvm_ctx: LLVMContextRef,
     module: &Module,
     opt_lvl: usize,
@@ -113,6 +113,9 @@ unsafe extern "C" {
     ) -> LLVMOrcThreadSafeContextRef;
 }
 
+/// Creates a LLVM's OrcLLJIT given a vector of modules.
+///
+/// It takes care of the linkage of the modules.
 pub fn create_llvm_jit(
     modules: &[Module],
     opt_lvl: usize,
@@ -125,7 +128,7 @@ pub fn create_llvm_jit(
 
         for m in modules {
             tsms.push(LLVMOrcCreateNewThreadSafeModule(
-                lower_mlir_to_llvm(context, m, opt_lvl, dump_llvm)?,
+                lower_mlir_to_llvmir(context, m, opt_lvl, dump_llvm)?,
                 tsm_context,
             ));
         }

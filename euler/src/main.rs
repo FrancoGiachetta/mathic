@@ -156,7 +156,7 @@ fn compile_and_run_source(source: &Path, compiler_opts: CompilerOpts) -> Result<
     let executor = MathicJITExecutor::new(&[module], compiler_opts)?;
 
     tracing::debug!("Executor Created");
-    let result = executor.call_function("main");
+    let result = executor.call_function("main::main");
 
     tracing::debug!("Execution Done");
     println!("RESULT: {:?}", result);

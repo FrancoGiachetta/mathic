@@ -161,6 +161,10 @@ impl MathicCodeGen<'_> {
 
         let region = Region::new();
 
+        // External functions have no body. MLIR needs every function that is
+        // called to be declared in the module. Since the actual body is in an
+        // external module, they have no body. Later, the linker will handle
+        // the resolution.
         if !ir_func.is_external {
             let (mut fn_ctx, mlir_blocks) =
                 self.create_fn_ctx(&region, location, ir_func, &entry_block_params)?;

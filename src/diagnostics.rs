@@ -32,7 +32,7 @@ pub enum CompilationError {
     Lowering(#[from] LoweringError),
 }
 
-/// Accumulates compilation errors, one per file per phase.
+/// Accumulates compilation errors.
 #[derive(Debug, Default)]
 pub struct DiagnosticsManager {
     errors: Mutex<Vec<(PathBuf, CompilationError)>>,
@@ -43,6 +43,7 @@ impl DiagnosticsManager {
         Self::default()
     }
 
+    /// Adds an error.
     pub fn report(&self, file_path: PathBuf, error: CompilationError) -> MathicResult<()> {
         self.errors
             .lock()
@@ -52,6 +53,7 @@ impl DiagnosticsManager {
         Ok(())
     }
 
+    /// Adds an error and returns a compilation error.
     pub fn report_and_fail(&self, file_path: PathBuf, error: CompilationError) -> MathicError {
         let mut lock = match self.errors.lock() {
             Ok(l) => l,
