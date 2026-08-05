@@ -122,7 +122,7 @@ fn compile_project(compiler_opts: CompilerOpts) -> Result<(), EulerError> {
 
     let modules = match compiler.compile_project(&src_root, compiler_opts) {
         Ok(modules) => modules,
-        Err(e) if matches!(e, MathicError::CompilationFailed) => {
+        Err(MathicError::CompilationFailed) => {
             compiler.diagnostics().print_all()?;
             std::process::exit(1);
         }
