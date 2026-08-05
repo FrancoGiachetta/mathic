@@ -89,7 +89,7 @@ pub enum SyntaxError {
     },
 }
 
-#[derive(Debug, Error)]
+#[derive(Debug, Clone, Error)]
 pub enum ParseError {
     #[error("Lexical error")]
     Lexical(LexError, Span),

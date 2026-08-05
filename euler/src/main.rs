@@ -5,8 +5,8 @@ use std::{
 
 use clap::{self, Args, Parser, Subcommand, ValueEnum};
 use mathic::{
+    MathicError,
     compiler::{CompilerOpts, MathicCompiler, OptLvl},
-    diagnostics::MathicError,
     executor::{MathicExecutor, jit::MathicJITExecutor},
 };
 use tracing_subscriber::{EnvFilter, FmtSubscriber};
@@ -116,10 +116,21 @@ fn compile_project(compiler_opts: CompilerOpts) -> Result<(), EulerError> {
         return Err(EulerError::MainFileNotFound);
     }
 
-    let compiler = MathicCompiler::new().map_err(MathicError::from)?;
+    let compiler = MathicCompiler::new()?;
 
     let src_root = env::current_dir()?.join("src");
-    let modules = compiler.compile_project(&src_root, compiler_opts)?;
+
+    let modules = match compiler.compile_project(&src_root, compiler_opts) {
+        Ok(modules) => modules,
+        Err(e) if matches!(e, MathicError::CompilationFailed) => {
+            compiler.diagnostics().print_all()?;
+            std::process::exit(1);
+        }
+        Err(e) => {
+            return Err(EulerError::from(e));
+        }
+    };
+
     let executor = MathicJITExecutor::new(&modules, compiler_opts)?;
 
     tracing::debug!("Executor Created");
@@ -132,9 +143,16 @@ fn compile_project(compiler_opts: CompilerOpts) -> Result<(), EulerError> {
 }
 
 fn compile_and_run_source(source: &Path, compiler_opts: CompilerOpts) -> Result<(), EulerError> {
-    let compiler = MathicCompiler::new().map_err(MathicError::from)?;
+    let compiler = MathicCompiler::new()?;
 
-    let module = compiler.compile_path(source, compiler_opts)?;
+    let module = match compiler.compile_path(source, compiler_opts) {
+        Ok(module) => module,
+        Err(e) => {
+            compiler.diagnostics().print_all()?;
+            return Err(e.into());
+        }
+    };
+
     let executor = MathicJITExecutor::new(&[module], compiler_opts)?;
 
     tracing::debug!("Executor Created");

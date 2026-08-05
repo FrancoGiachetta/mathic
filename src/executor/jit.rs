@@ -9,8 +9,8 @@ use melior::ir::Module;
 use std::mem;
 
 use crate::{
-    MathicResult, codegen::compiler_helper::debugging, compiler::CompilerOpts,
-    diagnostics::CodegenError, executor::MathicExecutor, ffi,
+    codegen::compiler_helper::debugging, compiler::CompilerOpts, diagnostics::CodegenError,
+    executor::MathicExecutor, ffi,
 };
 
 /// A wrapper over melior's ExecutionEngine.
@@ -20,7 +20,7 @@ pub struct MathicJITExecutor {
 
 impl MathicJITExecutor {
     // Creates the LLJIT
-    pub fn new(modules: &[Module], compiler_options: CompilerOpts) -> MathicResult<Self> {
+    pub fn new(modules: &[Module], compiler_options: CompilerOpts) -> Result<Self, CodegenError> {
         let engine = ffi::llvm::create_llvm_jit(
             modules,
             compiler_options.opt_lvl.into(),

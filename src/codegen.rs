@@ -8,7 +8,6 @@ use melior::{
 };
 
 use crate::{
-    MathicResult,
     codegen::{compiler_helper::CompilerHelper, dialect_integration::symbolic},
     diagnostics::CodegenError,
     lowering::ir::{
@@ -83,7 +82,7 @@ impl<'ctx> MathicCodeGen<'ctx> {
     ///
     /// Populates the module for a compile unit.
     #[instrument(target = "codegen", skip(self, helper))]
-    pub fn generate_module(&self, helper: &mut CompilerHelper) -> MathicResult<()> {
+    pub fn generate_module(&self, helper: &mut CompilerHelper) -> Result<(), CodegenError> {
         let start = std::time::Instant::now();
         let global_functions = self.ir.get_functions();
 

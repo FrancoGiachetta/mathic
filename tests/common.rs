@@ -3,19 +3,12 @@
 use std::{
     env,
     path::{Path, PathBuf},
-    sync::OnceLock,
 };
 
 use mathic::{
     compiler::{CompilerOpts, MathicCompiler},
     executor::{MathicExecutor, jit::MathicJITExecutor},
 };
-
-static COMPILER: OnceLock<MathicCompiler> = OnceLock::new();
-
-fn get_compiler() -> &'static MathicCompiler {
-    COMPILER.get_or_init(|| MathicCompiler::new().expect("Failed to create the compiler"))
-}
 
 /// Resolves a path relative to the crate root (`CARGO_MANIFEST_DIR`).
 fn absolute_path(path: &Path) -> PathBuf {
@@ -29,14 +22,17 @@ fn absolute_path(path: &Path) -> PathBuf {
 
 pub fn compile_and_execute(path: &Path) -> i64 {
     let opts = CompilerOpts::default();
+    let compiler = MathicCompiler::new().expect("Failed to create the compiler");
 
-    get_compiler()
+    let module = compiler
         .compile_path(path, opts)
-        .and_then(|module| {
-            let executor = MathicJITExecutor::new(&[module], opts)?;
-            Ok(executor.call_function("program::main")?)
-        })
-        .unwrap()
+        .expect("compilation failed");
+
+    let executor = MathicJITExecutor::new(&[module], opts).expect("Failed to create the executor");
+
+    executor
+        .call_function("program::main")
+        .expect("execution failed")
 }
 
 /// Compiles and executes a whole project (a directory containing a `src/`
@@ -46,12 +42,15 @@ pub fn compile_and_execute_project(project_dir: &Path) -> i64 {
     let src_root = absolute_path(project_dir).join("src");
 
     let opts = CompilerOpts::default();
+    let compiler = MathicCompiler::new().expect("Failed to create the compiler");
 
-    get_compiler()
+    let modules = compiler
         .compile_project(&src_root, opts)
-        .and_then(|modules| {
-            let executor = MathicJITExecutor::new(&modules, opts)?;
-            Ok(executor.call_function("main::main")?)
-        })
-        .unwrap()
+        .expect("compilation failed");
+
+    let executor = MathicJITExecutor::new(&modules, opts).expect("Failed to create the executor");
+
+    executor
+        .call_function("main::main")
+        .expect("execution failed")
 }

@@ -5,7 +5,7 @@ use thiserror::Error;
 
 use crate::{diagnostics::ReportSpan, lowering::ir::types::MathicType, parser::Span};
 
-#[derive(Debug, Error)]
+#[derive(Debug, Clone, Error)]
 pub enum LoweringError {
     #[error("Undeclared variable '{name}'")]
     UndeclaredVariable { name: String, span: Span },
