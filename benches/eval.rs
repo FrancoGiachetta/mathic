@@ -32,7 +32,7 @@ fn bench_mathic(c: &mut Criterion) {
 
             group.bench_function(name, |b| {
                 b.iter(|| {
-                    let res = executor.call_function("main").unwrap();
+                    let res = executor.call_function("program::main").unwrap();
                     black_box(res);
                     assert_eq!(res, expected);
                 });
