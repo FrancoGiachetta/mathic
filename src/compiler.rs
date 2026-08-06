@@ -14,13 +14,13 @@ use melior::{
         transform::create_canonicalizer,
     },
 };
-use rayon::iter::{IntoParallelIterator, ParallelIterator};
+use rayon::iter::{IntoParallelIterator, IntoParallelRefIterator, ParallelIterator};
 
 use std::{fs, path::Path};
 
 use crate::{
     MathicError, MathicResult,
-    codegen::{MathicCodeGen, compiler_helper::CompilerHelper},
+    codegen::{MathicCodeGen, compiler_helper::CompilerHelper, module::MathicModule},
     diagnostics::{CodegenError, CompilationError, DiagnosticsManager, LoweringError},
     ffi::{
         self,
@@ -32,7 +32,7 @@ use crate::{
     parser::{
         MathicParser,
         ast::{
-            MathicModule,
+            IrModule,
             declaration::{Path as MathicPath, TopLevelItem},
         },
     },
@@ -117,7 +117,7 @@ impl MathicCompiler {
         &self,
         src_root: &Path,
         compiler_options: CompilerOpts,
-    ) -> MathicResult<Vec<Module<'_>>> {
+    ) -> MathicResult<Vec<MathicModule<'_>>> {
         self.diagnostics.clear()?;
 
         let main_file_path = PathBuf::from("main.mth");
@@ -151,17 +151,29 @@ impl MathicCompiler {
             return Err(MathicError::CompilationFailed);
         }
 
-        let mut modules = Vec::with_capacity(lowered.len());
+        let modules = lowered
+            .par_iter()
+            .map(|(path, ir)| {
+                (
+                    path,
+                    self.compile_module(ir, src_root, path, compiler_options),
+                )
+            })
+            .collect::<Vec<_>>();
 
-        for (path, ir) in lowered {
-            modules.push(self.compile_module(&ir, src_root, path, compiler_options)?);
+        let mut compiled_modules = Vec::with_capacity(modules.len());
+
+        for (_, module) in modules {
+            if let Ok(module) = module {
+                compiled_modules.push(module);
+            }
         }
 
         if self.diagnostics.has_errors()? {
             return Err(MathicError::CompilationFailed);
         }
 
-        Ok(modules)
+        Ok(compiled_modules)
     }
 
     /// Handles the code generation of a Mathir.
@@ -169,12 +181,12 @@ impl MathicCompiler {
         &'func self,
         ir: &Ir,
         src_root: &Path,
-        file_path: PathBuf,
+        file_path: &Path,
         compiler_options: CompilerOpts,
-    ) -> MathicResult<Module<'func>> {
+    ) -> MathicResult<MathicModule<'func>> {
         let relative_path = file_path
             .strip_prefix(src_root)
-            .unwrap_or(&file_path)
+            .unwrap_or(file_path)
             .to_owned();
 
         if compiler_options.dump_mathir {
@@ -190,23 +202,28 @@ impl MathicCompiler {
         }
 
         // Generate Module.
-        let mut module = match ffi::create_module(&self.ctx, compiler_options.opt_lvl) {
+        let mut module = match MathicModule::new(&self.ctx, compiler_options.opt_lvl) {
             Ok(module) => module,
             Err(e) => {
                 return Err(self
                     .diagnostics
-                    .report_and_fail(file_path, CompilationError::Codegen(e)));
+                    .report_and_fail(file_path.to_path_buf(), CompilationError::Codegen(e)));
             }
         };
 
         {
-            let codegen = MathicCodeGen::new(&self.ctx, ir, &module, Some(file_path.clone()));
+            let codegen = MathicCodeGen::new(
+                &self.ctx,
+                ir,
+                module.as_inner(),
+                Some(file_path.to_path_buf()),
+            );
             let mut helper = CompilerHelper::new();
 
             if let Err(e) = codegen.generate_module(&mut helper) {
                 return Err(self
                     .diagnostics
-                    .report_and_fail(file_path, CompilationError::Codegen(e)));
+                    .report_and_fail(file_path.to_path_buf(), CompilationError::Codegen(e)));
             }
         }
 
@@ -219,17 +236,17 @@ impl MathicCompiler {
 
             let mut f_prepass_program = fs::File::create(mlir_path)?;
 
-            write!(f_prepass_program, "{}", module.as_operation())?;
+            write!(f_prepass_program, "{}", module.inner_to_operation())?;
         }
 
-        debug_assert!(module.as_operation().verify());
+        debug_assert!(module.inner_to_operation().verify());
         tracing::debug!("Module crated successfully");
 
         // Run Passes to the generated module.
-        if let Err(e) = Self::run_passes(&self.ctx, &mut module) {
+        if let Err(e) = Self::run_passes(&self.ctx, module.as_inner_mut()) {
             return Err(self
                 .diagnostics
-                .report_and_fail(file_path, CompilationError::Codegen(e)));
+                .report_and_fail(file_path.to_path_buf(), CompilationError::Codegen(e)));
         }
 
         tracing::debug!("Passes ran successfully");
@@ -242,7 +259,7 @@ impl MathicCompiler {
             fs::create_dir_all(mlir_path.parent().unwrap())?;
 
             let mut f = fs::File::create(mlir_path).unwrap();
-            write!(f, "{}", module.as_operation()).unwrap();
+            write!(f, "{}", module.inner_to_operation())?;
         }
 
         Ok(module)
@@ -253,7 +270,7 @@ impl MathicCompiler {
         &'func self,
         file_path: &Path,
         compiler_options: CompilerOpts,
-    ) -> MathicResult<Module<'func>> {
+    ) -> MathicResult<MathicModule<'func>> {
         let source = fs::read_to_string(file_path)?;
 
         self.compile_source(&source, Some(file_path.to_path_buf()), compiler_options)
@@ -265,7 +282,7 @@ impl MathicCompiler {
         source: &str,
         file_path: Option<PathBuf>,
         compiler_options: CompilerOpts,
-    ) -> MathicResult<Module<'func>> {
+    ) -> MathicResult<MathicModule<'func>> {
         self.diagnostics.clear()?;
 
         let path = file_path
@@ -303,7 +320,7 @@ impl MathicCompiler {
         }
 
         // Generate Module.
-        let mut module = match ffi::create_module(&self.ctx, compiler_options.opt_lvl) {
+        let mut module = match MathicModule::new(&self.ctx, compiler_options.opt_lvl) {
             Ok(module) => module,
             Err(e) => {
                 self.diagnostics
@@ -313,7 +330,7 @@ impl MathicCompiler {
         };
 
         {
-            let codegen = MathicCodeGen::new(&self.ctx, &ir, &module, file_path);
+            let codegen = MathicCodeGen::new(&self.ctx, &ir, module.as_inner(), file_path);
             let mut helper = CompilerHelper::new();
 
             if let Err(e) = codegen.generate_module(&mut helper) {
@@ -328,14 +345,14 @@ impl MathicCompiler {
 
             let mut f_prepass_program = fs::File::create(file_path)?;
 
-            write!(f_prepass_program, "{}", module.as_operation())?;
+            write!(f_prepass_program, "{}", module.inner_to_operation())?;
         }
 
-        debug_assert!(module.as_operation().verify());
+        debug_assert!(module.inner_to_operation().verify());
         tracing::debug!("Module crated successfully");
 
         // Run Passes to the generated module.
-        if let Err(e) = Self::run_passes(&self.ctx, &mut module) {
+        if let Err(e) = Self::run_passes(&self.ctx, module.as_inner_mut()) {
             self.diagnostics
                 .report(path, CompilationError::Codegen(e))?;
             return Err(MathicError::CompilationFailed);
@@ -346,7 +363,7 @@ impl MathicCompiler {
         if compiler_options.dump_mlir {
             let file_path = PathBuf::from("dump.mlir");
             let mut f = fs::File::create(file_path).unwrap();
-            write!(f, "{}", module.as_operation()).unwrap();
+            write!(f, "{}", module.inner_to_operation()).unwrap();
         }
 
         Ok(module)
@@ -363,7 +380,7 @@ impl MathicCompiler {
         src_root: &Path,
         path: PathBuf,
         parsed_files: &mut HashSet<String>,
-    ) -> MathicResult<HashMap<PathBuf, Arc<MathicModule>>> {
+    ) -> MathicResult<HashMap<PathBuf, Arc<IrModule>>> {
         let abs_path = src_root.join(&path);
         let base_path = abs_path.parent().unwrap();
 

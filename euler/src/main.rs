@@ -131,7 +131,7 @@ fn compile_project(compiler_opts: CompilerOpts) -> Result<(), EulerError> {
         }
     };
 
-    let executor = MathicJITExecutor::new(&modules, compiler_opts)?;
+    let executor = MathicJITExecutor::new(modules, compiler_opts)?;
 
     tracing::debug!("Executor Created");
     let result = executor.call_function("main::main");
@@ -153,7 +153,7 @@ fn compile_and_run_source(source: &Path, compiler_opts: CompilerOpts) -> Result<
         }
     };
 
-    let executor = MathicJITExecutor::new(&[module], compiler_opts)?;
+    let executor = MathicJITExecutor::new(vec![module], compiler_opts)?;
 
     tracing::debug!("Executor Created");
     let result = executor.call_function("main::main");

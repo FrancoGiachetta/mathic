@@ -5,12 +5,14 @@ use llvm_sys::{
         lljit::{LLVMOrcDisposeLLJIT, LLVMOrcLLJITLookup, LLVMOrcLLJITRef},
     },
 };
-use melior::ir::Module;
 use std::mem;
 
 use crate::{
-    codegen::compiler_helper::debugging, compiler::CompilerOpts, diagnostics::CodegenError,
-    executor::MathicExecutor, ffi,
+    codegen::{compiler_helper::debugging, module::MathicModule},
+    compiler::CompilerOpts,
+    diagnostics::CodegenError,
+    executor::MathicExecutor,
+    ffi,
 };
 
 /// A wrapper over melior's ExecutionEngine.
@@ -20,9 +22,16 @@ pub struct MathicJITExecutor {
 
 impl MathicJITExecutor {
     // Creates the LLJIT
-    pub fn new(modules: &[Module], compiler_options: CompilerOpts) -> Result<Self, CodegenError> {
+    pub fn new(
+        modules: Vec<MathicModule>,
+        compiler_options: CompilerOpts,
+    ) -> Result<Self, CodegenError> {
+        let modules = modules
+            .into_iter()
+            .map(|m| m.inner_owned())
+            .collect::<Vec<_>>();
         let engine = ffi::llvm::create_llvm_jit(
-            modules,
+            &modules,
             compiler_options.opt_lvl.into(),
             compiler_options.dump_llvmir,
         )?;

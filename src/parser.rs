@@ -6,7 +6,7 @@ use std::{
 use crate::{
     diagnostics::parse::{ExpectedToken, FoundToken, ParseError, SyntaxError},
     parser::{
-        ast::{MathicModule, declaration::TopLevelItem},
+        ast::{IrModule, declaration::TopLevelItem},
         lexer::{LexerOutput, MathicLexer, SpannedToken},
         token::Token,
     },
@@ -65,7 +65,7 @@ impl<'a> MathicParser<'a> {
     }
 
     #[instrument(target = "parsing", skip(self))]
-    pub fn parse(&self, module_name: String) -> ParserResult<MathicModule> {
+    pub fn parse(&self, module_name: String) -> ParserResult<IrModule> {
         tracing::debug!("Starting parsing");
         let mut items = Vec::new();
 
@@ -93,7 +93,7 @@ impl<'a> MathicParser<'a> {
             }
         }
 
-        Ok(MathicModule {
+        Ok(IrModule {
             module_name,
             modules: Vec::new(),
             items,

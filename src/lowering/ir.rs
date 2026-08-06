@@ -8,7 +8,7 @@ use crate::{
         symbols::{DeclTable, SymbolTableBuilder, TypeIndex},
         types::MathicType,
     },
-    parser::{Span, ast::MathicModule},
+    parser::{Span, ast::IrModule},
 };
 
 pub mod adts;
@@ -59,7 +59,7 @@ pub struct IrBuilder {
 }
 
 impl IrBuilder {
-    pub fn new(module_name: String, modules: Vec<Arc<MathicModule>>) -> Self {
+    pub fn new(module_name: String, modules: Vec<Arc<IrModule>>) -> Self {
         Self {
             module_name,
             sym_table: SymbolTableBuilder::default(),

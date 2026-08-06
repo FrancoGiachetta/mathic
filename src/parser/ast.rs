@@ -8,8 +8,8 @@ pub mod expression;
 pub mod statement;
 
 #[derive(Debug, Clone, PartialEq, Eq)]
-pub struct MathicModule {
+pub struct IrModule {
     pub module_name: String,
-    pub modules: Vec<Arc<MathicModule>>,
+    pub modules: Vec<Arc<Self>>,
     pub items: Vec<TopLevelItem>,
 }

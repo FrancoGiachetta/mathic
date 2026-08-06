@@ -28,7 +28,7 @@ fn bench_mathic(c: &mut Criterion) {
                 ..Default::default()
             };
             let module = compiler.compile_source(src, None, comp_opts).unwrap();
-            let executor = MathicJITExecutor::new(&[module], comp_opts).unwrap();
+            let executor = MathicJITExecutor::new(vec![module], comp_opts).unwrap();
 
             group.bench_function(name, |b| {
                 b.iter(|| {

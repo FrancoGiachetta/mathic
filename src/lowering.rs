@@ -17,7 +17,7 @@ use crate::{
     parser::{
         Span,
         ast::{
-            MathicModule,
+            IrModule,
             declaration::{AstType, DeclStmt, FuncDecl, Path, StructDecl, TopLevelItem},
             statement::StmtKind,
         },
@@ -31,7 +31,7 @@ use tracing::instrument;
 /// Given an AST, this function lowers it and returns a MATHIR. In the process,
 /// semantic check are perfomed to verify the correctness of the program.
 #[instrument(target = "lowering")]
-pub fn lower_program(program: &MathicModule) -> Result<Ir, LoweringError> {
+pub fn lower_program(program: &IrModule) -> Result<Ir, LoweringError> {
     let start = std::time::Instant::now();
     tracing::info!("Starting lowering phase");
     let mut ir_builder = IrBuilder::new(program.module_name.clone(), program.modules.clone());

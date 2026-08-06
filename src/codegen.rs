@@ -24,6 +24,7 @@ pub mod compiler_helper;
 mod dialect_integration;
 pub mod function_ctx;
 pub mod lvalue;
+pub mod module;
 pub mod rvalue;
 pub mod terminator;
 

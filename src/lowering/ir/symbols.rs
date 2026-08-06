@@ -10,7 +10,7 @@ use crate::{
     parser::{
         Span,
         ast::{
-            MathicModule,
+            IrModule,
             declaration::{FuncDecl, StructDecl},
         },
     },
@@ -24,13 +24,13 @@ use crate::{
 #[allow(dead_code)]
 pub struct DeclTable {
     pub name_to_module: HashMap<String, usize>,
-    pub modules: Vec<Arc<MathicModule>>,
+    pub modules: Vec<Arc<IrModule>>,
     functions: HashMap<String, (FuncDecl, Option<usize>)>,
     structs: HashMap<String, StructDecl>,
 }
 
 impl DeclTable {
-    pub fn new(modules: Vec<Arc<MathicModule>>) -> Self {
+    pub fn new(modules: Vec<Arc<IrModule>>) -> Self {
         let name_to_module = modules
             .iter()
             .enumerate()
@@ -78,7 +78,7 @@ impl DeclTable {
         self.name_to_module.get(module_name).copied()
     }
 
-    pub fn get_module(&self, module_idx: usize) -> Option<&Arc<MathicModule>> {
+    pub fn get_module(&self, module_idx: usize) -> Option<&Arc<IrModule>> {
         self.modules.get(module_idx)
     }
 }

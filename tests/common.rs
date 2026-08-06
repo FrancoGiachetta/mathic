@@ -33,7 +33,8 @@ pub fn compile_and_execute(path: &Path) -> i64 {
         .compile_path(path, opts)
         .expect("compilation failed");
 
-    let executor = MathicJITExecutor::new(&[module], opts).expect("Failed to create the executor");
+    let executor =
+        MathicJITExecutor::new(vec![module], opts).expect("Failed to create the executor");
 
     executor
         .call_function("program::main")
@@ -53,7 +54,7 @@ pub fn compile_and_execute_project(project_dir: &Path) -> i64 {
         .compile_project(&src_root, opts)
         .expect("compilation failed");
 
-    let executor = MathicJITExecutor::new(&modules, opts).expect("Failed to create the executor");
+    let executor = MathicJITExecutor::new(modules, opts).expect("Failed to create the executor");
 
     executor
         .call_function("main::main")
