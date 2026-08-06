@@ -6,8 +6,6 @@
 
 <!-- List the key changes made in this PR. -->
 
--
-
 ## Checklist
 
 - [ ] Code follows the project's style guidelines

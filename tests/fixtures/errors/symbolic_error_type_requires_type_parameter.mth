@@ -1,0 +1,5 @@
+df main() i32 {
+    sym x: expr;
+
+    return 0;
+}

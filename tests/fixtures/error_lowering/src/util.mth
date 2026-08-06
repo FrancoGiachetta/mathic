@@ -1,0 +1,4 @@
+df u() i32 {
+    let y: i32 = missing_in_util;
+    return y;
+}

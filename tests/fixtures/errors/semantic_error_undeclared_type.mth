@@ -1,0 +1,4 @@
+df main() i32 {
+    let x: Foo = 1;
+    return x;
+}

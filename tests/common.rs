@@ -20,6 +20,11 @@ fn absolute_path(path: &Path) -> PathBuf {
     }
 }
 
+/// Resolves the `src/` root of a project directory relative to the crate root.
+pub fn project_src_root(project_dir: &Path) -> PathBuf {
+    absolute_path(project_dir).join("src")
+}
+
 pub fn compile_and_execute(path: &Path) -> i64 {
     let opts = CompilerOpts::default();
     let compiler = MathicCompiler::new().expect("Failed to create the compiler");

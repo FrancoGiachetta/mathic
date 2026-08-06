@@ -88,6 +88,19 @@ impl DiagnosticsManager {
         Ok(())
     }
 
+    /// Runs a function over the reported errors.
+    pub fn with_errors<R>(
+        &self,
+        f: impl FnOnce(&[(PathBuf, CompilationError)]) -> R,
+    ) -> MathicResult<R> {
+        let errors = self
+            .errors
+            .lock()
+            .map_err(|e| MathicError::LockPoisoned(e.to_string()))?;
+
+        Ok(f(&errors))
+    }
+
     pub fn print_all(&self) -> MathicResult<()> {
         let errors = self
             .errors
