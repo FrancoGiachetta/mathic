@@ -11,8 +11,9 @@ use mathic::{
 };
 use tracing_subscriber::{EnvFilter, FmtSubscriber};
 
-use crate::error::EulerError;
+use crate::{config::ConfigToml, error::EulerError};
 
+mod config;
 mod error;
 
 #[derive(Debug, Parser)]
@@ -96,6 +97,9 @@ fn create_project(project_name: String) -> Result<(), EulerError> {
     let project_path = curr_dir.join(&project_name);
     std::fs::create_dir_all(project_path.join("src"))?;
 
+    let config_toml = ConfigToml::new(&project_name);
+    let mathic_toml_path = project_path.join("Mathic.toml");
+
     let main_file_path = project_path.join("src/main.mth");
     let main_file_content = r#"df main() i32 {
     sym x:expr<i32> ;
@@ -104,6 +108,7 @@ fn create_project(project_name: String) -> Result<(), EulerError> {
     return eval(x+y, x, 10);
 }"#;
 
+    std::fs::write(mathic_toml_path, toml::to_string(&config_toml)?)?;
     std::fs::write(&main_file_path, main_file_content)?;
 
     println!("Project '{}' created successfully!", project_name);
