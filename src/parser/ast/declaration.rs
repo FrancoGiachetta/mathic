@@ -62,6 +62,7 @@ pub struct Param {
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Path {
     pub idents: Vec<String>,
+    pub import_all: bool,
     pub span: Span,
 }
 
