@@ -35,7 +35,6 @@ logos-display = "0.1.3"
 melior = { version = "0.26.3", features = ["helpers"] }
 mlir-sys = "210.0.1"
 rayon = "1.12.0"
-toml = { workspace = true }
 thiserror = { workspace = true }
 tracing = { workspace = true }
 
