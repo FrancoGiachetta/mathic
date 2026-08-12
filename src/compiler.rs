@@ -411,7 +411,12 @@ impl MathicCompiler {
         };
 
         for item in &program.items {
-            if let TopLevelItem::Import(MathicPath { idents, span }) = item {
+            if let TopLevelItem::Import(MathicPath {
+                idents,
+                span,
+                import_all: _,
+            }) = item
+            {
                 let full_path = base_path.join(idents.join("/")).with_added_extension("mth");
 
                 // * if the full path of the import is a file, then we
