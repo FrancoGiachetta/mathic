@@ -56,12 +56,7 @@ pub fn resolve_path(
         .join("::");
     let item_name = &path.idents[path.idents.len() - 1];
 
-    Ok(find_module_item(
-        ir_builder,
-        &module_path,
-        item_name,
-        path.span,
-    )?)
+    find_module_item(ir_builder, &module_path, item_name, path.span)
 }
 
 /// Resolves an imported function reference (e.g. `util::add`) to the
