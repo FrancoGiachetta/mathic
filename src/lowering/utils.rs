@@ -10,39 +10,10 @@ use crate::{
     },
 };
 
-/// Finds a top level item within a module.
-pub fn find_module_item(
-    ir_builder: &IrBuilder,
-    module_path: &str,
-    item_name: &str,
-    span: Span,
-) -> Result<(TopLevelItem, usize), LoweringError> {
-    let Some(module_idx) = ir_builder.decl_table.get_module_idx(module_path) else {
-        return Err(LoweringError::UnResolvedPath {
-            path: module_path.to_string(),
-            span,
-        });
-    };
-
-    let module = ir_builder.decl_table.get_module(module_idx).unwrap();
-
-    let item = module
-        .items
-        .iter()
-        .find(|i| i.get_name() == item_name)
-        .cloned()
-        .ok_or(LoweringError::UnResolvedPath {
-            path: module_path.to_string(),
-            span,
-        })?;
-
-    Ok((item, module_idx))
-}
-
 /// Adds an external function declaration to the IR.
 pub fn add_extern_function(
     ir_builder: &mut IrBuilder,
-    module_path: &str,
+    module_path: &Path,
     func: &FuncDecl,
     span: Span,
 ) -> Result<(), LoweringError> {
@@ -50,7 +21,8 @@ pub fn add_extern_function(
         Some(ty) => lower_top_level_ast_type(ir_builder, ty, span)?,
         None => ir_builder.get_or_insert_type_idx(MathicType::Void),
     };
-    let mangled_function_name = ir_builder.get_mangled_name(module_path, &func.name);
+    let module_path = module_path.idents[..module_path.idents.len() - 1].join("::");
+    let mangled_function_name = ir_builder.get_mangled_name(&module_path, &func.name);
     let extern_func = FunctionBuilder::new(
         mangled_function_name,
         &func.params,
@@ -64,6 +36,32 @@ pub fn add_extern_function(
     ir_builder.add_function(extern_func);
 
     Ok(())
+}
+
+/// Resolves a [`Path`].
+///
+/// Returns the [`TopLevelItem`] together with the index of the module the item
+/// lives in. Otherwise returns a [`LoweringError`].
+pub fn resolve_path(
+    ir_builder: &IrBuilder,
+    path: &Path,
+) -> Result<(TopLevelItem, usize), LoweringError> {
+    let module_path = path
+        .idents
+        .get(..path.idents.len() - 1)
+        .ok_or(LoweringError::UnResolvedPath {
+            path: path.idents.join("::"),
+            span: path.span,
+        })?
+        .join("::");
+    let item_name = &path.idents[path.idents.len() - 1];
+
+    Ok(find_module_item(
+        ir_builder,
+        &module_path,
+        item_name,
+        path.span,
+    )?)
 }
 
 /// Resolves an imported function reference (e.g. `util::add`) to the
@@ -92,7 +90,7 @@ pub fn resolve_external_func(
                 .is_some_and(|(_, module)| *module == Some(module_idx));
 
             if !(declared_by_path || declared_by_import) {
-                add_extern_function(ir_builder, &module_path, &func, path.span)?;
+                add_extern_function(ir_builder, path, &func, path.span)?;
             }
 
             Ok((func, module_idx))
@@ -102,4 +100,33 @@ pub fn resolve_external_func(
             span: path.span,
         }),
     }
+}
+
+/// Finds a top level item within a module.
+fn find_module_item(
+    ir_builder: &IrBuilder,
+    module_path: &str,
+    item_name: &str,
+    span: Span,
+) -> Result<(TopLevelItem, usize), LoweringError> {
+    let Some(module_idx) = ir_builder.decl_table.get_module_idx(module_path) else {
+        return Err(LoweringError::UnResolvedPath {
+            path: module_path.to_string(),
+            span,
+        });
+    };
+
+    let module = ir_builder.decl_table.get_module(module_idx).unwrap();
+
+    let item = module
+        .items
+        .iter()
+        .find(|i| i.get_name() == item_name)
+        .cloned()
+        .ok_or(LoweringError::UnResolvedPath {
+            path: module_path.to_string(),
+            span,
+        })?;
+
+    Ok((item, module_idx))
 }

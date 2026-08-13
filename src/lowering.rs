@@ -72,18 +72,14 @@ fn lower_import(ir_builder: &mut IrBuilder, import_path: &Path) -> Result<(), Lo
         return Ok(());
     }
 
-    let module_path = import_path.idents[..import_path.idents.len() - 1].join("::");
-    let item_name = &import_path.idents[import_path.idents.len() - 1];
-
-    let (item, module_idx) =
-        utils::find_module_item(ir_builder, &module_path, item_name, import_path.span)?;
+    let (item, module_idx) = utils::resolve_path(ir_builder, import_path)?;
 
     match item {
         TopLevelItem::Func(func) => {
             ir_builder
                 .decl_table
                 .add_func_decl(func.clone(), Some(module_idx))?;
-            utils::add_extern_function(ir_builder, &module_path, &func, import_path.span)?;
+            utils::add_extern_function(ir_builder, import_path, &func, import_path.span)?;
         }
         TopLevelItem::Struct(strct) => ir_builder.decl_table.add_struct_decl(strct.clone()),
         _ => {}

@@ -11,11 +11,15 @@ use crate::{
             types::{FloatTy, MathicType, NumericTy, SintTy, UintTy, lower_inner_ast_type},
             value::{ConstExpr, NumericConst, Value, ValueModifier},
         },
-        utils::resolve_external_func,
+        lower_top_level_struct,
+        utils::{self, resolve_external_func},
     },
     parser::{
         Span,
-        ast::expression::{BinaryOp, ExprStmt, ExprStmtKind, LogicalOp, PrimaryExpr, UnaryOp},
+        ast::{
+            declaration::TopLevelItem,
+            expression::{BinaryOp, ExprStmt, ExprStmtKind, LogicalOp, PrimaryExpr, UnaryOp},
+        },
     },
 };
 
@@ -613,7 +617,7 @@ fn lower_primary_value(
             };
             (value, local.ty)
         }
-        PrimaryExpr::Path(_) => todo!(),
+        PrimaryExpr::Path(_) => unreachable!(),
         PrimaryExpr::Num(n) => match ty_hint {
             Some(ty) => (
                 Value::Const(match func.get_type(ty, span)? {
@@ -722,7 +726,25 @@ fn lower_expression_type(
     Ok(match expr {
         ExprStmtKind::Primary(primary_expr) => match primary_expr {
             PrimaryExpr::Ident(name) => func.sym_table.get_local_from_name(name, span)?.ty,
-            PrimaryExpr::Path(_) => todo!(),
+            PrimaryExpr::Path(path) => {
+                let (item, _) = utils::resolve_path(func.ir_builder, path)?;
+
+                match item {
+                    TopLevelItem::Struct(strct) => {
+                        let adt_index = lower_top_level_struct(func.ir_builder, &strct)?;
+                        func.get_or_insert_global_type_idx(MathicType::Adt {
+                            index: adt_index,
+                            is_local: false,
+                        })
+                    }
+                    _ => {
+                        return Err(LoweringError::UnResolvedPath {
+                            path: path.join("::"),
+                            span: path.span,
+                        });
+                    }
+                }
+            }
             PrimaryExpr::Num(_) => match ty_hint {
                 Some(ty) => ty,
                 None => func.get_or_insert_global_type_idx(MathicType::Numeric(NumericTy::Sint(
