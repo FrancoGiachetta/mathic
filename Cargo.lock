@@ -657,7 +657,6 @@ dependencies = [
  "rayon",
  "rstest",
  "thiserror",
- "toml",
  "tracing",
 ]
 
