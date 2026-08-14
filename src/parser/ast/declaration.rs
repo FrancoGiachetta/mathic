@@ -2,8 +2,9 @@ use crate::parser::{Span, ast::expression::ExprStmt, ast::statement::Stmt};
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum TopLevelItem {
-    Struct(StructDecl),
     Func(FuncDecl),
+    Import(Path),
+    Struct(StructDecl),
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -59,9 +60,32 @@ pub struct Param {
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
+pub struct Path {
+    pub idents: Vec<String>,
+    pub span: Span,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum AstType {
     Type {
         ty: String,
         inner: Option<Box<AstType>>,
     },
+}
+
+impl TopLevelItem {
+    #[inline(always)]
+    pub fn get_name(&self) -> String {
+        match self {
+            TopLevelItem::Func(item) => item.name.clone(),
+            TopLevelItem::Struct(item) => item.name.clone(),
+            TopLevelItem::Import(item) => item.join("_"),
+        }
+    }
+}
+
+impl Path {
+    pub fn join(&self, sep: &str) -> String {
+        self.idents.join(sep)
+    }
 }

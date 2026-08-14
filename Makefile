@@ -5,7 +5,7 @@ build:
 .PHONY: check
 check: 
 	cargo fmt --all -- --check
-	cargo clippy --all-targets --all-features -- -D warnings
+	cargo clippy --workspace --all-targets --all-features -- -D warnings
 
 .PHONY: clean
 clean: clean-dumps 
@@ -23,6 +23,4 @@ fmt:
 
 .PHONY: test
 test:
-	cargo nextest run test
-
-
+	cargo nextest run --no-fail-fast

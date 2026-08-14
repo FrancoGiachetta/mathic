@@ -1,0 +1,13 @@
+[package]
+name = "euler"
+version = "0.1.0"
+edition = "2024"
+
+[dependencies]
+clap = { workspace = true }
+mathic = { workspace = true }
+serde = { version = "1.0.229", features = ["derive"] }
+toml = { workspace = true }
+thiserror = { workspace = true }
+tracing = { workspace = true }
+tracing-subscriber = { workspace = true, features = ["env-filter"] }

@@ -1,7 +1,7 @@
 use crate::parser::{
     MathicParser, ParserResult, Span,
     ast::{
-        declaration::{AstType, FuncDecl, Param, StructDecl, StructField, SymDecl, VarDecl},
+        declaration::{AstType, FuncDecl, Param, Path, StructDecl, StructField, SymDecl, VarDecl},
         statement::BlockStmt,
     },
     token::Token,
@@ -118,6 +118,16 @@ impl<'a> MathicParser<'a> {
         let span = Span::from_merged_spans(start_span, self.current_span());
 
         Ok(StructDecl { name, fields, span })
+    }
+
+    pub fn parse_import(&self) -> ParserResult<Path> {
+        self.next()?; // Consume "imp"
+
+        let idents = self.parse_path()?;
+
+        self.consume_token(Token::Semicolon)?;
+
+        Ok(idents)
     }
 
     fn parse_params(&self) -> ParserResult<Vec<Param>> {

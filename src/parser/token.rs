@@ -45,6 +45,8 @@ pub enum Token {
     Slash,
 
     // Multi char.
+    #[token("::")]
+    ColonColon,
     #[token("<=")]
     EqLess,
     #[token(">=")]
@@ -85,6 +87,8 @@ pub enum Token {
     True,
     #[token("false")]
     False,
+    #[token("imp")]
+    Import,
 
     // Literals.
     #[regex(r#""[^"]*""#)]

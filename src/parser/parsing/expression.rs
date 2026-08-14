@@ -1,7 +1,6 @@
 use std::collections::HashMap;
 
 use crate::diagnostics::parse::{ExpectedToken, ParseError, SyntaxError};
-use crate::parser::lexer::SpannedToken;
 use crate::parser::{
     MathicParser, ParserResult, Span,
     ast::expression::{
@@ -67,7 +66,17 @@ impl<'a> MathicParser<'a> {
         let mut expr = self.parse_logic_or()?;
 
         if self.match_token(Token::LBrace)?.is_some() {
-            expr = self.parse_struct_init(lookahead)?;
+            if matches!(
+                expr.kind,
+                ExprStmtKind::Primary(PrimaryExpr::Path(_) | PrimaryExpr::Ident(_))
+            ) {
+                expr = self.parse_struct_init(Box::new(expr))?;
+            } else {
+                return Err(ParseError::Syntax(SyntaxError::UnexpectedToken {
+                    found: lookahead.into(),
+                    expected: ExpectedToken::Identifier,
+                }));
+            }
         }
 
         Ok(expr)
@@ -281,13 +290,14 @@ impl<'a> MathicParser<'a> {
         let lookahead = self.peek_not_none()?;
         let mut expr = self.parse_primary_expr()?;
 
-        while lookahead.token == Token::Ident
+        while matches!(lookahead.token, Token::Ident)
             && (self.check_next(Token::LParen)? || self.check_next(Token::Dot)?)
         {
             let t = self.next()?; // consume Dot.
             match t.token {
                 Token::LParen => {
-                    expr = self.finish_call(lookahead.lexeme.to_string(), expr.span)?;
+                    let span = expr.span;
+                    expr = self.finish_call(Box::new(expr), span)?;
                 }
                 Token::Dot => {
                     let field_name = self.consume_token(Token::Ident)?.lexeme.to_string();
@@ -307,7 +317,7 @@ impl<'a> MathicParser<'a> {
         Ok(expr)
     }
 
-    fn finish_call(&self, callee: String, span: Span) -> ParserResult<ExprStmt> {
+    fn finish_call(&self, callee: Box<ExprStmt>, span: Span) -> ParserResult<ExprStmt> {
         let args = self.parse_call_args()?;
 
         self.consume_token(Token::RParen)?;
@@ -320,27 +330,17 @@ impl<'a> MathicParser<'a> {
         })
     }
 
-    pub fn parse_struct_init(&self, lookahead: SpannedToken) -> ParserResult<ExprStmt> {
+    pub fn parse_struct_init(&self, expr: Box<ExprStmt>) -> ParserResult<ExprStmt> {
         let fields = self.parse_struct_init_fields()?;
 
         self.consume_token(Token::RBrace)?;
 
-        let expr = if let Token::Ident = lookahead.token {
-            ExprStmt {
-                kind: ExprStmtKind::StructInit {
-                    name: lookahead.lexeme.to_string(),
-                    fields,
-                },
-                span: lookahead.span,
-            }
-        } else {
-            return Err(ParseError::Syntax(SyntaxError::UnexpectedToken {
-                found: lookahead.into(),
-                expected: ExpectedToken::Identifier,
-            }));
-        };
+        let span = expr.span;
 
-        Ok(expr)
+        Ok(ExprStmt {
+            kind: ExprStmtKind::StructInit { expr, fields },
+            span,
+        })
     }
 
     fn parse_primary_expr(&self) -> ParserResult<ExprStmt> {
@@ -348,11 +348,20 @@ impl<'a> MathicParser<'a> {
         let span = lookahead.span;
 
         let kind = match lookahead.token {
+            Token::Ident => {
+                if self.match_token(Token::ColonColon)?.is_some() {
+                    let mut path = self.parse_path()?;
+                    path.idents.insert(0, lookahead.lexeme.to_string());
+
+                    ExprStmtKind::Primary(PrimaryExpr::Path(path))
+                } else {
+                    ExprStmtKind::Primary(PrimaryExpr::Ident(lookahead.lexeme.to_string()))
+                }
+            }
             Token::Str => ExprStmtKind::Primary(PrimaryExpr::Str(lookahead.lexeme.to_string())),
             Token::Num => ExprStmtKind::Primary(PrimaryExpr::Num(lookahead.lexeme.to_string())),
             Token::True => ExprStmtKind::Primary(PrimaryExpr::Bool(true)),
             Token::False => ExprStmtKind::Primary(PrimaryExpr::Bool(false)),
-            Token::Ident => ExprStmtKind::Primary(PrimaryExpr::Ident(lookahead.lexeme.to_string())),
             Token::LParen => {
                 let expr = self.parse_expr()?;
                 let close_paren = self.consume_token(Token::RParen)?;
@@ -399,7 +408,6 @@ impl<'a> MathicParser<'a> {
             Vec::with_capacity(0)
         } else {
             let mut args = vec![self.parse_expr()?];
-
             while self.match_token(Token::Comma)?.is_some() {
                 args.push(self.parse_expr()?);
             }

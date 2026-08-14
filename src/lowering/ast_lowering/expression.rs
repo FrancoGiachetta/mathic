@@ -2,13 +2,19 @@ use std::collections::HashMap;
 
 use crate::{
     diagnostics::LoweringError,
-    lowering::ir::{
-        basic_block::Terminator,
-        function::{FunctionBuilder, LocalKind},
-        instruction::{InitInstruct, LValInstruct, RValInstruct, RValueKind},
-        symbols::TypeIndex,
-        types::{FloatTy, MathicType, NumericTy, SintTy, UintTy, lower_inner_ast_type},
-        value::{ConstExpr, NumericConst, Value, ValueModifier},
+    lowering::{
+        ir::{
+            basic_block::Terminator,
+            function::{FunctionBuilder, LocalKind},
+            instruction::{InitInstruct, LValInstruct, RValInstruct, RValueKind},
+            symbols::TypeIndex,
+            types::{
+                FloatTy, MathicType, NumericTy, SintTy, UintTy, lower_inner_ast_type,
+                resolve_struct_type,
+            },
+            value::{ConstExpr, NumericConst, Value, ValueModifier},
+        },
+        utils::{resolve_external_func, resolve_external_struct},
     },
     parser::{
         Span,
@@ -29,18 +35,24 @@ pub fn lower_expr(
             return lower_expr(func, expr, ty_hint);
         }
         ExprStmtKind::Call { callee, args } => {
-            if callee == "eval" {
+            let callee_name = match &callee.kind {
+                ExprStmtKind::Primary(PrimaryExpr::Ident(ident)) => ident,
+                ExprStmtKind::Primary(PrimaryExpr::Path(path)) => &path.join("::"),
+                _ => unreachable!(),
+            };
+
+            if callee_name == "eval" {
                 return lower_eval_builtin(func, args, expr.span);
             }
-            lower_call(func, callee.clone(), args, expr.span)?
+            lower_call(func, callee, args, expr.span)?
         }
         ExprStmtKind::Assign {
             name,
             expr: assign_expr,
         } => lower_assignment(func, name, assign_expr, expr.span)?,
         ExprStmtKind::Logical { lhs, op, rhs } => lower_logical_op(func, lhs, *op, rhs, expr.span)?,
-        ExprStmtKind::StructInit { name, fields } => lower_adt_init(func, name, fields, expr.span)?,
         ExprStmtKind::Index { .. } => todo!(),
+        ExprStmtKind::StructInit { expr, fields } => lower_adt_init(func, expr, fields, expr.span)?,
         ExprStmtKind::StructGet {
             expr: struct_expr,
             field_name,
@@ -95,16 +107,27 @@ fn lower_assignment(
 
 fn lower_call(
     func: &mut FunctionBuilder,
-    callee: String,
+    callee: &ExprStmt,
     func_args: &[ExprStmt],
     span: Span,
 ) -> Result<RValInstruct, LoweringError> {
     let mut arg_values: Vec<RValInstruct> = Vec::new();
-    let func_prototype = func.get_function_decl(&callee, span)?;
+    let (func_prototype, module_idx) = match &callee.kind {
+        ExprStmtKind::Primary(PrimaryExpr::Ident(ident)) => func.get_function_decl(ident, span)?,
+        ExprStmtKind::Primary(PrimaryExpr::Path(path)) => {
+            // We are referencing a function from another module, so we resolve
+            // it directly and declare it as external.
+            let (func_decl, module_idx) = resolve_external_func(func.ir_builder, path)?;
+
+            (func_decl, Some(module_idx))
+        }
+        _ => unreachable!(),
+    };
+    let callee_name = func_prototype.name;
 
     if func_prototype.params.len() != func_args.len() {
         return Err(LoweringError::WrongArgumentCount {
-            name: callee.to_string(),
+            name: callee_name.to_string(),
             expected: func_prototype.params.len(),
             got: func_args.len(),
             span,
@@ -141,8 +164,16 @@ fn lower_call(
 
     let dest_block_idx = func.last_block_idx() + 1;
 
+    let mangled_callee_name = {
+        let module_name = match module_idx {
+            None => &func.ir_builder.module_name,
+            Some(idx) => &func.ir_builder.decl_table.modules[idx].module_name,
+        };
+        func.ir_builder.get_mangled_name(module_name, &callee_name)
+    };
+
     func.get_basic_block_mut(func.last_block_idx()).terminator = Terminator::Call {
-        callee,
+        callee: mangled_callee_name,
         args: arg_values,
         span: Some(span),
         return_dest: Value::InMemory {
@@ -404,11 +435,18 @@ fn lower_unary_op(
 
 fn lower_adt_init(
     func: &mut FunctionBuilder,
-    name: &str,
+    expr: &ExprStmt,
     fields: &HashMap<String, ExprStmt>,
     span: Span,
 ) -> Result<RValInstruct, LoweringError> {
-    let adt_ty = func.get_user_def_type(name, span)?;
+    let adt_ty = match &expr.kind {
+        ExprStmtKind::Primary(PrimaryExpr::Ident(name)) => resolve_struct_type(func, name, span)?,
+        ExprStmtKind::Primary(PrimaryExpr::Path(path)) => {
+            let (adt_ty_idx, _) = resolve_external_struct(func.ir_builder, path)?;
+            adt_ty_idx
+        }
+        _ => unreachable!(),
+    };
     let adt_body = func.get_adt(adt_ty, span)?.clone();
     let mut init_fields = vec![None; fields.len()];
 
@@ -585,6 +623,7 @@ fn lower_primary_value(
             };
             (value, local.ty)
         }
+        PrimaryExpr::Path(_) => unimplemented!(),
         PrimaryExpr::Num(n) => match ty_hint {
             Some(ty) => (
                 Value::Const(match func.get_type(ty, span)? {
@@ -693,6 +732,10 @@ fn lower_expression_type(
     Ok(match expr {
         ExprStmtKind::Primary(primary_expr) => match primary_expr {
             PrimaryExpr::Ident(name) => func.sym_table.get_local_from_name(name, span)?.ty,
+            PrimaryExpr::Path(path) => {
+                let (adt_ty, _) = resolve_external_struct(func.ir_builder, path)?;
+                adt_ty
+            }
             PrimaryExpr::Num(_) => match ty_hint {
                 Some(ty) => ty,
                 None => func.get_or_insert_global_type_idx(MathicType::Numeric(NumericTy::Sint(
@@ -722,7 +765,16 @@ fn lower_expression_type(
             }
         },
         ExprStmtKind::Call { callee, .. } => {
-            let func_decl = func.get_function_decl(callee, span)?;
+            let (func_decl, _) = match &callee.kind {
+                ExprStmtKind::Primary(PrimaryExpr::Ident(ident)) => {
+                    func.get_function_decl(ident, span)?
+                }
+                ExprStmtKind::Primary(PrimaryExpr::Path(path)) => {
+                    let (func_decl, module_idx) = resolve_external_func(func.ir_builder, path)?;
+                    (func_decl, Some(module_idx))
+                }
+                _ => unreachable!(),
+            };
             match func_decl.return_ty {
                 Some(ty) => lower_inner_ast_type(func, &ty, span)?,
                 None => func.get_or_insert_global_type_idx(MathicType::Void),
@@ -735,7 +787,16 @@ fn lower_expression_type(
         ExprStmtKind::Assign { expr, .. } | ExprStmtKind::StructSet { rhs: expr, .. } => {
             lower_expression_type(func, &expr.kind, None, span)?
         }
-        ExprStmtKind::StructInit { name, .. } => func.get_user_def_type(name, span)?,
+        ExprStmtKind::StructInit { expr, .. } => match &expr.kind {
+            ExprStmtKind::Primary(PrimaryExpr::Ident(name)) => {
+                resolve_struct_type(func, name, span)?
+            }
+            ExprStmtKind::Primary(PrimaryExpr::Path(path)) => {
+                let (adt_ty_idx, _) = resolve_external_struct(func.ir_builder, path)?;
+                adt_ty_idx
+            }
+            _ => unreachable!(),
+        },
         ExprStmtKind::StructGet { expr, field_name } => {
             let adt_ty = lower_expression_type(func, &expr.kind, ty_hint, span)?;
             let adt = func.get_adt(adt_ty, span)?;

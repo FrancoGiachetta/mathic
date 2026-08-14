@@ -160,49 +160,56 @@ impl MathicCodeGen<'_> {
         }
 
         let region = Region::new();
-        let (mut fn_ctx, mlir_blocks) =
-            self.create_fn_ctx(&region, location, ir_func, &entry_block_params)?;
 
-        // Precompile inner functions.
-        for inner_func in ir_func.get_inner_functions() {
-            self.compile_function(
-                inner_func,
-                &[(
-                    Identifier::new(self.ctx, "sym_visibility"),
-                    StringAttribute::new(self.ctx, "private").into(),
-                )],
-                helper,
-            )?;
-        }
+        // External functions have no body. MLIR needs every function that is
+        // called to be declared in the module. Since the actual body is in an
+        // external module, they have no body. Later, the linker will handle
+        // the resolution.
+        if !ir_func.is_external {
+            let (mut fn_ctx, mlir_blocks) =
+                self.create_fn_ctx(&region, location, ir_func, &entry_block_params)?;
 
-        // Generate code for every basic_block. For each of them, we first
-        // compile their instructions and their terminator instruction.
-        for (block, mlir_block) in ir_func.basic_blocks.iter().zip(&mlir_blocks) {
-            // Override locals with the block arg they should be pointing at.
-            // Block args must always refer to a valid local value.
-            for (idx, arg) in block.args.iter().enumerate() {
-                let block_arg = mlir_block.arg(idx)?;
-                if self.get_type(ir_func, arg.ty)?.is_symbolic() {
-                    fn_ctx.assign_local(arg.local_idx, block_arg);
-                } else {
-                    mlir_block.store(
-                        self.ctx,
-                        location,
-                        fn_ctx.get_local(arg.local_idx)?.0,
-                        block_arg,
-                    )?;
-                }
+            // Precompile inner functions.
+            for inner_func in ir_func.get_inner_functions() {
+                self.compile_function(
+                    inner_func,
+                    &[(
+                        Identifier::new(self.ctx, "sym_visibility"),
+                        StringAttribute::new(self.ctx, "private").into(),
+                    )],
+                    helper,
+                )?;
             }
 
-            self.compile_block(&mut fn_ctx, mlir_block, &block.instructions, helper)?;
+            // Generate code for every basic_block. For each of them, we first
+            // compile their instructions and their terminator instruction.
+            for (block, mlir_block) in ir_func.basic_blocks.iter().zip(&mlir_blocks) {
+                // Override locals with the block arg they should be pointing at.
+                // Block args must always refer to a valid local value.
+                for (idx, arg) in block.args.iter().enumerate() {
+                    let block_arg = mlir_block.arg(idx)?;
+                    if self.get_type(ir_func, arg.ty)?.is_symbolic() {
+                        fn_ctx.assign_local(arg.local_idx, block_arg);
+                    } else {
+                        mlir_block.store(
+                            self.ctx,
+                            location,
+                            fn_ctx.get_local(arg.local_idx)?.0,
+                            block_arg,
+                        )?;
+                    }
+                }
 
-            self.compile_terminator(
-                &mut fn_ctx,
-                &mlir_blocks,
-                mlir_block,
-                &block.terminator,
-                helper,
-            )?;
+                self.compile_block(&mut fn_ctx, mlir_block, &block.instructions, helper)?;
+
+                self.compile_terminator(
+                    &mut fn_ctx,
+                    &mlir_blocks,
+                    mlir_block,
+                    &block.terminator,
+                    helper,
+                )?;
+            }
         }
 
         // Generate the function itself and add it to the module.

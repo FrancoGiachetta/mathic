@@ -1,0 +1,9 @@
+struct Point {
+    x: i64
+}
+
+df main() i32 {
+    let p: Point = Point { x: 1 };
+
+    return p.z;
+}

@@ -1,13 +1,16 @@
-use std::cell::{Cell, RefCell};
-use std::ops::Range;
+use std::{
+    cell::{Cell, RefCell},
+    ops::Range,
+};
 
-use ast::Program;
-use lexer::{MathicLexer, SpannedToken};
-use token::Token;
-
-use crate::diagnostics::parse::{ExpectedToken, FoundToken, ParseError, SyntaxError};
-use crate::parser::ast::declaration::TopLevelItem;
-use crate::parser::lexer::LexerOutput;
+use crate::{
+    diagnostics::parse::{ExpectedToken, FoundToken, ParseError, SyntaxError},
+    parser::{
+        ast::{IrModule, declaration::TopLevelItem},
+        lexer::{LexerOutput, MathicLexer, SpannedToken},
+        token::Token,
+    },
+};
 use tracing::instrument;
 
 pub mod ast;
@@ -62,7 +65,7 @@ impl<'a> MathicParser<'a> {
     }
 
     #[instrument(target = "parsing", skip(self))]
-    pub fn parse(&self) -> ParserResult<Program> {
+    pub fn parse(&self, module_name: String) -> ParserResult<IrModule> {
         tracing::debug!("Starting parsing");
         let mut items = Vec::new();
 
@@ -74,6 +77,7 @@ impl<'a> MathicParser<'a> {
         {
             match token {
                 Token::Df => items.push(TopLevelItem::Func(self.parse_func()?)),
+                Token::Import => items.push(TopLevelItem::Import(self.parse_import()?)),
                 Token::Struct => items.push(TopLevelItem::Struct(self.parse_struct()?)),
                 _ => {
                     return Err(ParseError::Syntax(SyntaxError::UnexpectedToken {
@@ -89,7 +93,11 @@ impl<'a> MathicParser<'a> {
             }
         }
 
-        Ok(Program { items })
+        Ok(IrModule {
+            module_name,
+            modules: Vec::new(),
+            items,
+        })
     }
 
     /// Returns the next token, advancing the lexer.

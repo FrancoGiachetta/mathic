@@ -1,6 +1,6 @@
 use std::collections::HashMap;
 
-use crate::parser::{Span, token::Token};
+use crate::parser::{Span, ast::declaration::Path, token::Token};
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct ExprStmt {
@@ -18,11 +18,11 @@ pub enum ExprStmtKind {
         rhs: Box<ExprStmt>,
     },
     StructInit {
-        name: String,
+        expr: Box<ExprStmt>,
         fields: HashMap<String, ExprStmt>,
     },
     Call {
-        callee: String,
+        callee: Box<ExprStmt>,
         args: Vec<ExprStmt>,
     },
     Group(Box<ExprStmt>),
@@ -95,6 +95,7 @@ pub enum LogicalOp {
 #[derive(Debug, Clone, PartialEq, Eq)]
 #[allow(dead_code)]
 pub enum PrimaryExpr {
+    Path(Path),
     Ident(String),
     Num(String),
     Str(String),

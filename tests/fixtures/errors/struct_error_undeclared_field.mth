@@ -1,0 +1,10 @@
+struct Point {
+    x: i64,
+    y: i64
+}
+
+df main() i32 {
+    let p: Point = Point { x: 1, z: 2 };
+
+    return 0;
+}

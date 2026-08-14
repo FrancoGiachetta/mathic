@@ -1,5 +1,6 @@
 mod ast_lowering;
 pub mod ir;
+mod utils;
 
 use crate::{
     diagnostics::LoweringError,
@@ -16,8 +17,8 @@ use crate::{
     parser::{
         Span,
         ast::{
-            Program,
-            declaration::{AstType, DeclStmt, FuncDecl, StructDecl, TopLevelItem},
+            IrModule,
+            declaration::{AstType, DeclStmt, FuncDecl, Path, StructDecl, TopLevelItem},
             statement::StmtKind,
         },
     },
@@ -30,18 +31,19 @@ use tracing::instrument;
 /// Given an AST, this function lowers it and returns a MATHIR. In the process,
 /// semantic check are perfomed to verify the correctness of the program.
 #[instrument(target = "lowering")]
-pub fn lower_program(program: &Program) -> Result<Ir, LoweringError> {
+pub fn lower_program(program: &IrModule) -> Result<Ir, LoweringError> {
     let start = std::time::Instant::now();
     tracing::info!("Starting lowering phase");
-    let mut ir_builder = IrBuilder::new();
+    let mut ir_builder = IrBuilder::new(program.module_name.clone(), program.modules.clone());
 
     // Save program's items' declarations. This is for on-demand lowering, allowing
     // to reference function no yet declared. For example, a function call
     // of a not yet declared function.
     for item in program.items.iter() {
         match item {
-            TopLevelItem::Func(f) => ir_builder.decl_table.add_func_decl(f.clone()),
-            TopLevelItem::Struct(s) => ir_builder.decl_table.add_struct_decl(s.clone()),
+            TopLevelItem::Func(f) => ir_builder.decl_table.add_func_decl(f.clone(), None)?,
+            TopLevelItem::Import(imp) => lower_import(&mut ir_builder, imp)?,
+            TopLevelItem::Struct(s) => ir_builder.decl_table.add_struct_decl(s.clone(), None)?,
         }
     }
 
@@ -51,11 +53,41 @@ pub fn lower_program(program: &Program) -> Result<Ir, LoweringError> {
             TopLevelItem::Struct(s) => {
                 let _ = lower_top_level_struct(&mut ir_builder, s)?;
             }
+            _ => {}
         }
     }
 
     tracing::info!("Lowering complete: {:?}", start.elapsed());
+
     Ok(ir_builder.build())
+}
+
+/// Lowering an import statement.
+///
+/// It only cares about import that references items (like functions) and adds
+/// them to the declaration table of the current ir being built.
+fn lower_import(ir_builder: &mut IrBuilder, import_path: &Path) -> Result<(), LoweringError> {
+    // Only lower imports which do referen items.
+    if import_path.idents.len() == 1 {
+        return Ok(());
+    }
+
+    let (item, module_idx) = utils::resolve_path(ir_builder, import_path)?;
+
+    match item {
+        TopLevelItem::Func(func) => {
+            ir_builder
+                .decl_table
+                .add_func_decl(func.clone(), Some(module_idx))?;
+            utils::add_extern_function(ir_builder, import_path, &func, import_path.span)?;
+        }
+        TopLevelItem::Struct(strct) => ir_builder
+            .decl_table
+            .add_struct_decl(strct.clone(), Some(module_idx))?,
+        _ => {}
+    }
+
+    Ok(())
 }
 
 /// Lowers global functions.
@@ -78,15 +110,22 @@ fn lower_top_level_function(
         None => ir_builder.get_or_insert_type_idx(MathicType::Void),
     };
 
-    let mut func_builder =
-        FunctionBuilder::new(name.clone(), params, return_ty, ir_builder, *span)?;
+    let mangled_function_name = ir_builder.get_mangled_name(&ir_builder.module_name, name);
+    let mut func_builder = FunctionBuilder::new(
+        mangled_function_name,
+        params,
+        return_ty,
+        ir_builder,
+        *span,
+        false,
+    )?;
 
     // Save function's declaration. This for on-demand lowering, allowing
     // to reference function no yet declared. For example, a function call
     // of a not yet declared function.
     for stmt in body.iter() {
         if let StmtKind::Decl(DeclStmt::Func(f)) = &stmt.kind {
-            func_builder.decl_table.add_func_decl(f.clone());
+            func_builder.decl_table.add_func_decl(f.clone(), None)?;
         }
     }
 
@@ -185,12 +224,8 @@ pub fn lower_top_level_ast_type(
                     }
 
                     match ir_builder.decl_table.get_struct_decl(other).cloned() {
-                        Some(d) => {
-                            let adt_index = lower_top_level_struct(ir_builder, &d)?;
-                            ir_builder.get_or_insert_type_idx(MathicType::Adt {
-                                index: adt_index,
-                                is_local: false,
-                            })
+                        Some((s, module_idx)) => {
+                            utils::get_or_insert_struct_type(ir_builder, &s, module_idx, span)?
                         }
                         None => {
                             return Err(LoweringError::UndeclaredType { span });

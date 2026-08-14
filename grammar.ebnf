@@ -18,9 +18,10 @@
 
 program = top_decl { top_decl } ;
 
-top_decl    = func_decl | struct_decl ;
-func_decl   = 'df' IDENT '(' [ param_list ] ')' [ type ] block ;
-struct_decl = 'struct' IDENT '{' [ struct_fields ] '}' ;
+top_decl      = func_decl | struct_decl | imports_decls ;
+imports_decls = 'imp' path ';' ;
+func_decl     = 'df' IDENT '(' [ param_list ] ')' [ type ] block ;
+struct_decl   = 'struct' IDENT '{' [ struct_fields ] '}' ;
 
 
 (* ================================================================ *)
@@ -33,7 +34,7 @@ declaration = func_decl
             | sym_decl
             ;
 
-var_decl = 'let' IDENT ':' IDENT '=' expr ';' ;
+var_decl = 'let' IDENT ':' type '=' expr ';' ;
 sym_decl = 'sym' IDENT ':' type ';' ;
 
 
@@ -90,7 +91,7 @@ unary       = ( '!' | '-' ) unary
             ;
 call        = primary { '(' [ arg_list ] ')' | '[' expr ']' | '.' IDENT } ;
 struct_init = '{' IDENT ':' expr { ',' IDENT ':' expr } '}' ;
-primary     = 'true' | 'false' | IDENT | INT | FLOAT | STRING | '(' expr ')' ;
+primary     = 'true' | 'false' | IDENT | path | INT | FLOAT | STRING | '(' expr ')' ;
 
 
 (* ================================================================ *)
@@ -100,7 +101,8 @@ primary     = 'true' | 'false' | IDENT | INT | FLOAT | STRING | '(' expr ')' ;
 param_list    = ( IDENT ':' type ) { ',' ( IDENT ':' type ) } ;
 struct_fields = [ 'pub' ] IDENT ':' type { ',' [ 'pub' ] IDENT ':' type } ;
 arg_list      = expr { ',' expr } ;
-type = IDENT { '<' IDENT '>' } ;
+path          = IDENT { '::' IDENT } ;
+type          = path { '<' IDENT '>' } ;
 
 (* ---- Terminal token classes ---- *)
 (* IDENT    : [a-zA-Z_][a-zA-Z0-9_]*                                *)
