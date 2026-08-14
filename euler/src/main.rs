@@ -21,9 +21,7 @@ struct MathiCLI {
 
 #[derive(Debug, Subcommand)]
 enum Command {
-    New {
-        project_name: String,
-    },
+    New { project_name: String },
     Run(CompilerOptionsArgs),
 }
 
