@@ -8,10 +8,8 @@
 
 ## Features
 
-- **Symbolic expressions** — first-class symbolic algebra: declare symbolic variables, compose expressions with `+`, `-`, `*`, `/`, and evaluate with concrete values at runtime.
-- **JIT compilation** — programs are compiled on-the-fly via MLIR/LLVM and executed natively.
-- **MLIR-powered** — a custom MLIR dialect (`symbolic`) represents symbolic expressions, lowered to `arith` + `func` for native codegen.
-- **Statically typed** — type-checked at compile time.
+- **Symbolic algebra**: declare symbolic variables, compose arithmetic expressions, and evaluate them with concrete values at runtime.
+- **Statically typed**: type-checked at compile time.
 
 ## Example
 
@@ -31,8 +29,6 @@ df main() i32 {
     return r1 + r2 + r3;
 }
 ```
-
-Declares symbolic variables (`sym`), composes expressions with arithmetic, and evaluates them with concrete values at runtime.
 
 ## Prerequisites
 
@@ -93,14 +89,30 @@ cargo install mathic
 
 ## Usage
 
-```bash
-euler <file>.mth
+```sh
+# Create a new project
+euler new <name>
+cd <name>
+# Compile and run the project in the current directory (requires src/main.mth)
+euler run
 ```
 
-## Project
+Options for `euler run`:
+
+```bash
+euler run --opt-lvl <O0|O1|O2|O3>   # optimization level (default O2)
+euler run --dump-mathir            # dump MATHIR to mathir_dumps/
+euler run --dump-mlir              # dump MLIR to mlir_dumps/
+euler run --dump-llvmir            # dump LLVM IR
+```
+
+## Project Docs
 
 See [docs/](docs/README.md) for the full project structure and pipeline.
-See [docs/dialects/Symbolic.md](docs/dialects/Symbolic.md) for the symbolic dialect reference.
+
+## Contributing
+
+See [CONTRIBUTING.md](CONTRIBUTING.md).
 
 ## Status
 
