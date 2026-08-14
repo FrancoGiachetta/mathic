@@ -8,18 +8,17 @@ use crate::{
             function::{FunctionBuilder, LocalKind},
             instruction::{InitInstruct, LValInstruct, RValInstruct, RValueKind},
             symbols::TypeIndex,
-            types::{FloatTy, MathicType, NumericTy, SintTy, UintTy, lower_inner_ast_type},
+            types::{
+                FloatTy, MathicType, NumericTy, SintTy, UintTy, lower_inner_ast_type,
+                resolve_struct_type,
+            },
             value::{ConstExpr, NumericConst, Value, ValueModifier},
         },
-        lower_top_level_struct,
-        utils::{self, resolve_external_func},
+        utils::{resolve_external_func, resolve_external_struct},
     },
     parser::{
         Span,
-        ast::{
-            declaration::TopLevelItem,
-            expression::{BinaryOp, ExprStmt, ExprStmtKind, LogicalOp, PrimaryExpr, UnaryOp},
-        },
+        ast::expression::{BinaryOp, ExprStmt, ExprStmtKind, LogicalOp, PrimaryExpr, UnaryOp},
     },
 };
 
@@ -52,8 +51,8 @@ pub fn lower_expr(
             expr: assign_expr,
         } => lower_assignment(func, name, assign_expr, expr.span)?,
         ExprStmtKind::Logical { lhs, op, rhs } => lower_logical_op(func, lhs, *op, rhs, expr.span)?,
-        ExprStmtKind::StructInit { name, fields } => lower_adt_init(func, name, fields, expr.span)?,
         ExprStmtKind::Index { .. } => todo!(),
+        ExprStmtKind::StructInit { expr, fields } => lower_adt_init(func, expr, fields, expr.span)?,
         ExprStmtKind::StructGet {
             expr: struct_expr,
             field_name,
@@ -436,11 +435,18 @@ fn lower_unary_op(
 
 fn lower_adt_init(
     func: &mut FunctionBuilder,
-    name: &str,
+    expr: &ExprStmt,
     fields: &HashMap<String, ExprStmt>,
     span: Span,
 ) -> Result<RValInstruct, LoweringError> {
-    let adt_ty = func.get_user_def_type(name, span)?;
+    let adt_ty = match &expr.kind {
+        ExprStmtKind::Primary(PrimaryExpr::Ident(name)) => resolve_struct_type(func, name, span)?,
+        ExprStmtKind::Primary(PrimaryExpr::Path(path)) => {
+            let (adt_ty_idx, _) = resolve_external_struct(func.ir_builder, path)?;
+            adt_ty_idx
+        }
+        _ => unreachable!(),
+    };
     let adt_body = func.get_adt(adt_ty, span)?.clone();
     let mut init_fields = vec![None; fields.len()];
 
@@ -617,7 +623,7 @@ fn lower_primary_value(
             };
             (value, local.ty)
         }
-        PrimaryExpr::Path(_) => unreachable!(),
+        PrimaryExpr::Path(_) => unimplemented!(),
         PrimaryExpr::Num(n) => match ty_hint {
             Some(ty) => (
                 Value::Const(match func.get_type(ty, span)? {
@@ -727,23 +733,8 @@ fn lower_expression_type(
         ExprStmtKind::Primary(primary_expr) => match primary_expr {
             PrimaryExpr::Ident(name) => func.sym_table.get_local_from_name(name, span)?.ty,
             PrimaryExpr::Path(path) => {
-                let (item, _) = utils::resolve_path(func.ir_builder, path)?;
-
-                match item {
-                    TopLevelItem::Struct(strct) => {
-                        let adt_index = lower_top_level_struct(func.ir_builder, &strct)?;
-                        func.get_or_insert_global_type_idx(MathicType::Adt {
-                            index: adt_index,
-                            is_local: false,
-                        })
-                    }
-                    _ => {
-                        return Err(LoweringError::UnResolvedPath {
-                            path: path.join("::"),
-                            span: path.span,
-                        });
-                    }
-                }
+                let (adt_ty, _) = resolve_external_struct(func.ir_builder, path)?;
+                adt_ty
             }
             PrimaryExpr::Num(_) => match ty_hint {
                 Some(ty) => ty,
@@ -796,7 +787,16 @@ fn lower_expression_type(
         ExprStmtKind::Assign { expr, .. } | ExprStmtKind::StructSet { rhs: expr, .. } => {
             lower_expression_type(func, &expr.kind, None, span)?
         }
-        ExprStmtKind::StructInit { name, .. } => func.get_user_def_type(name, span)?,
+        ExprStmtKind::StructInit { expr, .. } => match &expr.kind {
+            ExprStmtKind::Primary(PrimaryExpr::Ident(name)) => {
+                resolve_struct_type(func, name, span)?
+            }
+            ExprStmtKind::Primary(PrimaryExpr::Path(path)) => {
+                let (adt_ty_idx, _) = resolve_external_struct(func.ir_builder, path)?;
+                adt_ty_idx
+            }
+            _ => unreachable!(),
+        },
         ExprStmtKind::StructGet { expr, field_name } => {
             let adt_ty = lower_expression_type(func, &expr.kind, ty_hint, span)?;
             let adt = func.get_adt(adt_ty, span)?;

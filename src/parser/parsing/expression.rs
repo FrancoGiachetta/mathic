@@ -1,7 +1,6 @@
 use std::collections::HashMap;
 
 use crate::diagnostics::parse::{ExpectedToken, ParseError, SyntaxError};
-use crate::parser::lexer::SpannedToken;
 use crate::parser::{
     MathicParser, ParserResult, Span,
     ast::expression::{
@@ -67,7 +66,17 @@ impl<'a> MathicParser<'a> {
         let mut expr = self.parse_logic_or()?;
 
         if self.match_token(Token::LBrace)?.is_some() {
-            expr = self.parse_struct_init(lookahead)?;
+            if matches!(
+                expr.kind,
+                ExprStmtKind::Primary(PrimaryExpr::Path(_) | PrimaryExpr::Ident(_))
+            ) {
+                expr = self.parse_struct_init(Box::new(expr))?;
+            } else {
+                return Err(ParseError::Syntax(SyntaxError::UnexpectedToken {
+                    found: lookahead.into(),
+                    expected: ExpectedToken::Identifier,
+                }));
+            }
         }
 
         Ok(expr)
@@ -321,27 +330,17 @@ impl<'a> MathicParser<'a> {
         })
     }
 
-    pub fn parse_struct_init(&self, lookahead: SpannedToken) -> ParserResult<ExprStmt> {
+    pub fn parse_struct_init(&self, expr: Box<ExprStmt>) -> ParserResult<ExprStmt> {
         let fields = self.parse_struct_init_fields()?;
 
         self.consume_token(Token::RBrace)?;
 
-        let expr = if let Token::Ident = lookahead.token {
-            ExprStmt {
-                kind: ExprStmtKind::StructInit {
-                    name: lookahead.lexeme.to_string(),
-                    fields,
-                },
-                span: lookahead.span,
-            }
-        } else {
-            return Err(ParseError::Syntax(SyntaxError::UnexpectedToken {
-                found: lookahead.into(),
-                expected: ExpectedToken::Identifier,
-            }));
-        };
+        let span = expr.span;
 
-        Ok(expr)
+        Ok(ExprStmt {
+            kind: ExprStmtKind::StructInit { expr, fields },
+            span,
+        })
     }
 
     fn parse_primary_expr(&self) -> ParserResult<ExprStmt> {

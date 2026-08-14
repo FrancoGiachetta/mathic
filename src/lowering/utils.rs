@@ -1,12 +1,12 @@
 use crate::{
     diagnostics::LoweringError,
     lowering::{
-        ir::{IrBuilder, function::FunctionBuilder, types::MathicType},
-        lower_top_level_ast_type,
+        ir::{IrBuilder, function::FunctionBuilder, symbols::TypeIndex, types::MathicType},
+        lower_top_level_ast_type, lower_top_level_struct,
     },
     parser::{
         Span,
-        ast::declaration::{FuncDecl, Path, TopLevelItem},
+        ast::declaration::{FuncDecl, Path, StructDecl, TopLevelItem},
     },
 };
 
@@ -95,6 +95,66 @@ pub fn resolve_external_func(
             span: path.span,
         }),
     }
+}
+
+/// Resolves a [`Path`] to an external struct, registering the struct's ADT type
+/// under its module-qualified name if it is not already present.
+///
+/// Returns the struct's [`TypeIndex`] together with the index of the module the
+/// struct lives in.
+pub fn resolve_external_struct(
+    ir_builder: &mut IrBuilder,
+    path: &Path,
+) -> Result<(TypeIndex, usize), LoweringError> {
+    let module_path = path.idents[..path.idents.len() - 1].join("::");
+    let item_name = &path.idents[path.idents.len() - 1];
+
+    let (item, module_idx) = find_module_item(ir_builder, &module_path, item_name, path.span)?;
+
+    match item {
+        TopLevelItem::Struct(strct) => {
+            let adt_ty =
+                get_or_insert_struct_type(ir_builder, &strct, Some(module_idx), path.span)?;
+            Ok((adt_ty, module_idx))
+        }
+        _ => Err(LoweringError::UnResolvedPath {
+            path: path.join("::"),
+            span: path.span,
+        }),
+    }
+}
+
+/// Registers a [`StructDecl`]'s ADT type, deduplicating by name.
+///
+/// A struct local to the current module is registered under its plain name
+/// (e.g. `Point`), while a struct from another module is registered under its
+/// module-qualified name (e.g. `util::Point`), mirroring how function symbols
+/// are mangled in the IR. Returns the struct's [`TypeIndex`].
+pub fn get_or_insert_struct_type(
+    ir_builder: &mut IrBuilder,
+    strct_decl: &StructDecl,
+    module_idx: Option<usize>,
+    span: Span,
+) -> Result<TypeIndex, LoweringError> {
+    let key = match module_idx {
+        None => strct_decl.name.clone(),
+        Some(idx) => {
+            let module = ir_builder.decl_table.get_module(idx).unwrap();
+            ir_builder.get_mangled_name(&module.module_name, &strct_decl.name)
+        }
+    };
+
+    if let Some(ty) = ir_builder.get_user_def_type(&key) {
+        return Ok(ty);
+    }
+
+    let mut strct = strct_decl.clone();
+    strct.name = key.clone();
+    lower_top_level_struct(ir_builder, &strct)?;
+
+    ir_builder
+        .get_user_def_type(&key)
+        .ok_or(LoweringError::UnResolvedPath { path: key, span })
 }
 
 /// Finds a top level item within a module.

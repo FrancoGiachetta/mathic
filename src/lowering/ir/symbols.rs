@@ -26,7 +26,7 @@ pub struct DeclTable {
     pub name_to_module: HashMap<String, usize>,
     pub modules: Vec<Arc<IrModule>>,
     functions: HashMap<String, (FuncDecl, Option<usize>)>,
-    structs: HashMap<String, StructDecl>,
+    structs: HashMap<String, (StructDecl, Option<usize>)>,
 }
 
 impl DeclTable {
@@ -62,15 +62,29 @@ impl DeclTable {
         Ok(())
     }
 
-    pub fn add_struct_decl(&mut self, strct: StructDecl) {
-        self.structs.insert(strct.name.clone(), strct);
+    pub fn add_struct_decl(
+        &mut self,
+        strct: StructDecl,
+        module_idx: Option<usize>,
+    ) -> Result<(), LoweringError> {
+        let name = strct.name.clone();
+
+        if self.structs.contains_key(&name) {
+            return Err(LoweringError::DuplicateDeclaration {
+                name,
+                span: strct.span,
+            });
+        }
+        self.structs.insert(strct.name.clone(), (strct, module_idx));
+
+        Ok(())
     }
 
     pub fn get_function_decl(&self, name: &str) -> Option<&(FuncDecl, Option<usize>)> {
         self.functions.get(name)
     }
 
-    pub fn get_struct_decl(&self, name: &str) -> Option<&StructDecl> {
+    pub fn get_struct_decl(&self, name: &str) -> Option<&(StructDecl, Option<usize>)> {
         self.structs.get(name)
     }
 

@@ -18,7 +18,7 @@ pub enum ExprStmtKind {
         rhs: Box<ExprStmt>,
     },
     StructInit {
-        name: String,
+        expr: Box<ExprStmt>,
         fields: HashMap<String, ExprStmt>,
     },
     Call {
