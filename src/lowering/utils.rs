@@ -139,7 +139,11 @@ pub fn get_or_insert_struct_type(
     let key = match module_idx {
         None => strct_decl.name.clone(),
         Some(idx) => {
-            let module = ir_builder.decl_table.get_module(idx).unwrap();
+            let module = ir_builder
+                .decl_table
+                .get_module(idx)
+                .unwrap_or_else(|| panic!("module index {} should be valid", idx));
+
             ir_builder.get_mangled_name(&module.module_name, &strct_decl.name)
         }
     };
@@ -154,7 +158,7 @@ pub fn get_or_insert_struct_type(
 
     ir_builder
         .get_user_def_type(&key)
-        .ok_or(LoweringError::UnResolvedPath { path: key, span })
+        .ok_or(LoweringError::UndeclaredType { span })
 }
 
 /// Finds a top level item within a module.
@@ -171,7 +175,10 @@ fn find_module_item(
         });
     };
 
-    let module = ir_builder.decl_table.get_module(module_idx).unwrap();
+    let module = ir_builder
+        .decl_table
+        .get_module(module_idx)
+        .unwrap_or_else(|| panic!("module index {} should be valid", module_idx));
 
     let item = module
         .items

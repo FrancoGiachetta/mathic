@@ -294,7 +294,12 @@ pub fn resolve_struct_type(
     let key = match module_idx {
         None => strct.name.clone(),
         Some(idx) => {
-            let module = func.ir_builder.decl_table.get_module(idx).unwrap();
+            let module = func
+                .ir_builder
+                .decl_table
+                .get_module(idx)
+                .unwrap_or_else(|| panic!("module index {} should be valid", idx));
+
             func.ir_builder
                 .get_mangled_name(&module.module_name, &strct.name)
         }
