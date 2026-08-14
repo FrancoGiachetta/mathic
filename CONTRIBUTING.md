@@ -6,7 +6,7 @@ Thanks for your interest in contributing! This guide covers how to set up the pr
 
 ### Prerequisites
 
-**LLVM/MLIR 21** is required. See [README.md](README.md) for install instructions. After installing, export the toolchain prefixes:
+**LLVM/MLIR 21** is required. See [README.md](/README.md) for install instructions. After installing, export the toolchain prefixes:
 
 ```sh
 export LLVM_SYS_211_PREFIX=/path/to/llvm-21
@@ -23,10 +23,9 @@ The Rust toolchain is pinned in `rust-toolchain.toml` (1.94.0, with `rustfmt` an
 | Path        | Description                                        |
 |-------------|----------------------------------------------------|
 | `src/`      | The `mathic` compiler library                      |
-| `euler/`    | The CLI binary (`euler new`, `euler run`)          |
-| `Dialects/` | The custom `symbolic` MLIR dialect, written in C++ |
+| `euler/`    | The CLI binary                                     |
+| `Dialects/` | The custom `symbolic` MLIR dialect                 |
 | `docs/`     | Architecture and compilation process documentation |
-| `tests/`    | Integration tests                                  |
 
 ## Getting Started
 
@@ -41,8 +40,8 @@ Run these locally; CI runs the same checks:
 
 ```sh
 make fmt        # format Rust and the C++ dialect
-make check      # cargo fmt --check + cargo clippy with -D warnings
-make test       # full test suite (cargo nextest)
+make check      # checks format and clippy
+make test
 ```
 
 - Keep the code free of warnings — `make check` fails on any clippy warning (`-D warnings`).
@@ -55,8 +54,4 @@ make test       # full test suite (cargo nextest)
 - `src/lowering/` — AST to MATHIR (Mathic's intermediate representation).
 - `src/codegen/` — MATHIR to MLIR, using the `symbolic` dialect.
 - `src/executor/` — the JIT execution engine.
-- `tests/` — integration tests (`rstest`); `tests/fixtures/` holds expected-error cases.
-
-## License
-
-By contributing, you agree that your contributions are licensed under the [Apache-2.0](LICENSE) license.
+- `tests/` 
