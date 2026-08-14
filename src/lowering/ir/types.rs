@@ -270,7 +270,7 @@ impl MathicType {
     }
 }
 
-/// Resolves a struct type referenced by a plain name (no path).
+/// Resolves a struct type.
 ///
 /// Order of resolution:
 /// 1. Types already registered in the function's symbol table, i.e. function
