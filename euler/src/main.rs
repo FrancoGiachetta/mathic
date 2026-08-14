@@ -1,7 +1,4 @@
-use std::{
-    env, fs,
-    path::{Path, PathBuf},
-};
+use std::{env, fs};
 
 use clap::{self, Args, Parser, Subcommand, ValueEnum};
 use mathic::{
@@ -28,11 +25,6 @@ enum Command {
         project_name: String,
     },
     Run(CompilerOptionsArgs),
-    Path {
-        path: PathBuf,
-        #[clap(flatten)]
-        comp_opts: CompilerOptionsArgs,
-    },
 }
 
 #[derive(Debug, Clone, Args)]
@@ -84,9 +76,6 @@ fn main() -> Result<(), EulerError> {
         Command::Run(compiler_opts) => {
             compile_project(compiler_opts.into())?;
         }
-        Command::Path { path, comp_opts } => {
-            compile_and_run_source(&path, comp_opts.into())?;
-        }
     };
 
     Ok(())
@@ -137,28 +126,6 @@ fn compile_project(compiler_opts: CompilerOpts) -> Result<(), EulerError> {
     };
 
     let executor = MathicJITExecutor::new(modules, compiler_opts)?;
-
-    tracing::debug!("Executor Created");
-    let result = executor.call_function("main::main");
-
-    tracing::debug!("Execution Done");
-    println!("RESULT: {:?}", result);
-
-    Ok(())
-}
-
-fn compile_and_run_source(source: &Path, compiler_opts: CompilerOpts) -> Result<(), EulerError> {
-    let compiler = MathicCompiler::new()?;
-
-    let module = match compiler.compile_path(source, compiler_opts) {
-        Ok(module) => module,
-        Err(e) => {
-            compiler.diagnostics().print_all()?;
-            return Err(e.into());
-        }
-    };
-
-    let executor = MathicJITExecutor::new(vec![module], compiler_opts)?;
 
     tracing::debug!("Executor Created");
     let result = executor.call_function("main::main");
