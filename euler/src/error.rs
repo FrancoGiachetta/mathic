@@ -12,5 +12,7 @@ pub enum EulerError {
     #[error(transparent)]
     Io(#[from] io::Error),
     #[error(transparent)]
+    Toml(#[from] toml::ser::Error),
+    #[error(transparent)]
     CodegenError(#[from] CodegenError),
 }

@@ -1,7 +1,4 @@
-use std::{
-    env, fs,
-    path::{Path, PathBuf},
-};
+use std::{env, fs};
 
 use clap::{self, Args, Parser, Subcommand, ValueEnum};
 use mathic::{
@@ -11,8 +8,9 @@ use mathic::{
 };
 use tracing_subscriber::{EnvFilter, FmtSubscriber};
 
-use crate::error::EulerError;
+use crate::{config::ConfigToml, error::EulerError};
 
+mod config;
 mod error;
 
 #[derive(Debug, Parser)]
@@ -23,15 +21,8 @@ struct MathiCLI {
 
 #[derive(Debug, Subcommand)]
 enum Command {
-    New {
-        project_name: String,
-    },
+    New { project_name: String },
     Run(CompilerOptionsArgs),
-    Path {
-        path: PathBuf,
-        #[clap(flatten)]
-        comp_opts: CompilerOptionsArgs,
-    },
 }
 
 #[derive(Debug, Clone, Args)]
@@ -83,9 +74,6 @@ fn main() -> Result<(), EulerError> {
         Command::Run(compiler_opts) => {
             compile_project(compiler_opts.into())?;
         }
-        Command::Path { path, comp_opts } => {
-            compile_and_run_source(&path, comp_opts.into())?;
-        }
     };
 
     Ok(())
@@ -96,6 +84,9 @@ fn create_project(project_name: String) -> Result<(), EulerError> {
     let project_path = curr_dir.join(&project_name);
     std::fs::create_dir_all(project_path.join("src"))?;
 
+    let config_toml = ConfigToml::new(&project_name);
+    let mathic_toml_path = project_path.join("Mathic.toml");
+
     let main_file_path = project_path.join("src/main.mth");
     let main_file_content = r#"df main() i32 {
     sym x:expr<i32> ;
@@ -104,6 +95,7 @@ fn create_project(project_name: String) -> Result<(), EulerError> {
     return eval(x+y, x, 10);
 }"#;
 
+    std::fs::write(mathic_toml_path, toml::to_string(&config_toml)?)?;
     std::fs::write(&main_file_path, main_file_content)?;
 
     println!("Project '{}' created successfully!", project_name);
@@ -132,28 +124,6 @@ fn compile_project(compiler_opts: CompilerOpts) -> Result<(), EulerError> {
     };
 
     let executor = MathicJITExecutor::new(modules, compiler_opts)?;
-
-    tracing::debug!("Executor Created");
-    let result = executor.call_function("main::main");
-
-    tracing::debug!("Execution Done");
-    println!("RESULT: {:?}", result);
-
-    Ok(())
-}
-
-fn compile_and_run_source(source: &Path, compiler_opts: CompilerOpts) -> Result<(), EulerError> {
-    let compiler = MathicCompiler::new()?;
-
-    let module = match compiler.compile_path(source, compiler_opts) {
-        Ok(module) => module,
-        Err(e) => {
-            compiler.diagnostics().print_all()?;
-            return Err(e.into());
-        }
-    };
-
-    let executor = MathicJITExecutor::new(vec![module], compiler_opts)?;
 
     tracing::debug!("Executor Created");
     let result = executor.call_function("main::main");

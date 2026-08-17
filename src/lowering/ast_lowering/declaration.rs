@@ -138,7 +138,9 @@ pub fn lower_inner_function(
             StmtKind::Decl(DeclStmt::Func(f)) => {
                 inner_func.decl_table.add_func_decl(f.clone(), None)?
             }
-            StmtKind::Decl(DeclStmt::Struct(f)) => inner_func.decl_table.add_struct_decl(f.clone()),
+            StmtKind::Decl(DeclStmt::Struct(s)) => {
+                inner_func.decl_table.add_struct_decl(s.clone(), None)?
+            }
             _ => {}
         }
     }

@@ -23,6 +23,4 @@ fmt:
 
 .PHONY: test
 test:
-	cargo nextest run test
-
-
+	cargo nextest run --no-fail-fast

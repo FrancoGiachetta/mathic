@@ -43,7 +43,7 @@ pub fn lower_program(program: &IrModule) -> Result<Ir, LoweringError> {
         match item {
             TopLevelItem::Func(f) => ir_builder.decl_table.add_func_decl(f.clone(), None)?,
             TopLevelItem::Import(imp) => lower_import(&mut ir_builder, imp)?,
-            TopLevelItem::Struct(s) => ir_builder.decl_table.add_struct_decl(s.clone()),
+            TopLevelItem::Struct(s) => ir_builder.decl_table.add_struct_decl(s.clone(), None)?,
         }
     }
 
@@ -72,20 +72,18 @@ fn lower_import(ir_builder: &mut IrBuilder, import_path: &Path) -> Result<(), Lo
         return Ok(());
     }
 
-    let module_path = import_path.idents[..import_path.idents.len() - 1].join("::");
-    let item_name = &import_path.idents[import_path.idents.len() - 1];
-
-    let (item, module_idx) =
-        utils::find_module_item(ir_builder, &module_path, item_name, import_path.span)?;
+    let (item, module_idx) = utils::resolve_path(ir_builder, import_path)?;
 
     match item {
         TopLevelItem::Func(func) => {
             ir_builder
                 .decl_table
                 .add_func_decl(func.clone(), Some(module_idx))?;
-            utils::add_extern_function(ir_builder, &module_path, &func, import_path.span)?;
+            utils::add_extern_function(ir_builder, import_path, &func, import_path.span)?;
         }
-        TopLevelItem::Struct(strct) => ir_builder.decl_table.add_struct_decl(strct.clone()),
+        TopLevelItem::Struct(strct) => ir_builder
+            .decl_table
+            .add_struct_decl(strct.clone(), Some(module_idx))?,
         _ => {}
     }
 
@@ -226,12 +224,8 @@ pub fn lower_top_level_ast_type(
                     }
 
                     match ir_builder.decl_table.get_struct_decl(other).cloned() {
-                        Some(d) => {
-                            let adt_index = lower_top_level_struct(ir_builder, &d)?;
-                            ir_builder.get_or_insert_type_idx(MathicType::Adt {
-                                index: adt_index,
-                                is_local: false,
-                            })
+                        Some((s, module_idx)) => {
+                            utils::get_or_insert_struct_type(ir_builder, &s, module_idx, span)?
                         }
                         None => {
                             return Err(LoweringError::UndeclaredType { span });
