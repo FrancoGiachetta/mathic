@@ -38,6 +38,9 @@ fn main() {
 
     // Make the linker aware of the dialect's library dir.
 
+    #[cfg(target_arch = "aarch64")]
+    println!("cargo:rustc-link-arg=-Wl,-rpath,/opt/homebrew/lib");
+
     println!("cargo:rustc-link-search=native={}", lib_dir.display());
     println!("cargo:rustc-link-lib=static=MLIRSymbolicDialect");
     println!("cargo:rustc-link-lib=static=MLIRSymbolicTransforms");
