@@ -60,7 +60,7 @@ impl<'a> MathicParser<'a> {
         Self {
             lexer: RefCell::new(MathicLexer::new(source)),
             current_span: Cell::new(Span::from(0..0)),
-            _panic_mode: false,
+           _panic_mode: false,
         }
     }
 

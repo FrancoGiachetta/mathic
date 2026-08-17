@@ -413,6 +413,7 @@ impl MathicCompiler {
         for item in &program.items {
             if let TopLevelItem::Import(MathicPath {
                 idents,
+                group_paths: _,
                 span,
                 import_all: _,
             }) = item
