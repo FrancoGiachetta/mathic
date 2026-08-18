@@ -533,11 +533,11 @@ impl MathicCompiler {
 /// Gets the path to a module based on an import path relative to a base path.
 ///
 /// * if the full path of the import is a file, or not because is a group
-/// import, we take the path as is.
+///   import, we take the path as is.
 ///
 /// * if the full is not a file, it could only be that the import references a
-/// top level item, so we try to take the path formed by all them idents but
-/// the last one (top level item).
+///   top level item, so we try to take the path formed by all them idents but
+///   the last one (top level item).
 fn get_module_path(
     src_root: &Path,
     base_path: &Path,
