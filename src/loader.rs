@@ -1,5 +1,5 @@
 use std::{
-    collections::{HashMap, HashSet},
+    collections::HashMap,
     fs,
     path::{Path, PathBuf},
     sync::Arc,
@@ -20,14 +20,14 @@ use crate::{
 /// Loads a module and all the ones it imports.
 pub struct ModuleLoader<'a> {
     diagnostics: &'a DiagnosticsManager,
-    parsed_files: HashSet<String>,
+    parsed: HashMap<PathBuf, Arc<IrModule>>,
 }
 
 impl<'a> ModuleLoader<'a> {
     pub fn new(diagnostics: &'a DiagnosticsManager) -> Self {
         Self {
             diagnostics,
-            parsed_files: HashSet::new(),
+            parsed: HashMap::new(),
         }
     }
 
@@ -42,14 +42,11 @@ impl<'a> ModuleLoader<'a> {
         let abs_path = src_root.join(&path);
         let base_path = abs_path.parent().unwrap();
 
-        let source = fs::read_to_string(&abs_path)?;
-
-        if !self
-            .parsed_files
-            .insert(abs_path.to_string_lossy().into_owned())
-        {
-            return Ok(HashMap::with_capacity(0));
+        if let Some(module) = self.parsed.get(&abs_path) {
+            return Ok(HashMap::from([(abs_path, module.clone())]));
         }
+
+        let source = fs::read_to_string(&abs_path)?;
 
         let mut compilation_unit = HashMap::new();
 
@@ -97,7 +94,10 @@ impl<'a> ModuleLoader<'a> {
 
         program.modules = compilation_unit.values().cloned().collect();
 
-        compilation_unit.insert(src_root.join(&path), Arc::new(program));
+        let module = Arc::new(program);
+        self.parsed.insert(abs_path.clone(), module.clone());
+
+        compilation_unit.insert(abs_path, module);
 
         Ok(compilation_unit)
     }
