@@ -44,7 +44,7 @@ impl MathicParser<'_> {
                 Token::Ident => {
                     let mut new_path = self.parse_import_path()?;
 
-                    new_path.idents = [path.idents, new_path.idents].concat();
+                    new_path.concat_back(&path.idents);
 
                     path = new_path;
                 }
@@ -55,10 +55,16 @@ impl MathicParser<'_> {
                 Token::LBrace => {
                     self.next()?;
 
-                    path.group_paths.push(self.parse_import_path()?);
+                    let mut group_path = self.parse_import_path()?;
+
+                    group_path.concat_back(&path.idents);
+                    path.group_paths.push(group_path);
 
                     while self.match_token(Token::Comma)?.is_some() {
-                        path.group_paths.push(self.parse_import_path()?);
+                        let mut group_path = self.parse_import_path()?;
+
+                        group_path.concat_back(&path.idents);
+                        path.group_paths.push(group_path);
                     }
 
                     self.consume_token(Token::RBrace)?;

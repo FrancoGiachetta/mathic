@@ -90,4 +90,13 @@ impl Path {
     pub fn join(&self, sep: &str) -> String {
         self.idents.join(sep)
     }
+
+    #[allow(dead_code)]
+    pub fn concat(&mut self, idents: &[String]) {
+        self.idents = [&self.idents, idents].concat()
+    }
+
+    pub fn concat_back(&mut self, idents: &[String]) {
+        self.idents = [idents, &self.idents].concat()
+    }
 }
