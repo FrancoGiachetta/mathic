@@ -411,49 +411,17 @@ impl MathicCompiler {
         };
 
         for item in &program.items {
-            if let TopLevelItem::Import(MathicPath {
-                idents,
-                group_paths: _,
-                span,
-                import_all: _,
-            }) = item
-            {
-                let full_path = base_path.join(idents.join("/")).with_added_extension("mth");
-
-                // * if the full path of the import is a file, then we
-                // parse that file as normal.
-                //
-                // * if the full is not a file, it could only be
-                // that the import references a top level item, so we
-                // try to parse the path formed by all them idents but
-                // the last one (top leve item).
-                let import_path = if full_path.is_file() {
-                    full_path
-                } else {
-                    let Some(idents_without_last) = idents.get(..idents.len() - 1) else {
-                        let path = full_path
-                            .strip_prefix(src_root)
-                            .unwrap()
-                            .to_string_lossy()
-                            .replace("/", "::");
-
-                        self.diagnostics.report(
-                            abs_path.clone(),
-                            CompilationError::Lowering(LoweringError::UnResolvedPath {
-                                path,
-                                span: *span,
-                            }),
-                        )?;
+            if let TopLevelItem::Import(import_path) = item {
+                let new_base_path = match get_import_path(src_root, base_path, import_path) {
+                    Ok(res) => res,
+                    Err(err) => {
+                        self.diagnostics.report(abs_path.clone(), err)?;
                         continue;
-                    };
-
-                    base_path
-                        .join(idents_without_last.join("/"))
-                        .with_added_extension("mth")
+                    }
                 };
 
-                if !import_path.exists() {
-                    let path = import_path
+                if !new_base_path.exists() {
+                    let path = new_base_path
                         .strip_prefix(src_root)
                         .unwrap()
                         .to_string_lossy()
@@ -463,17 +431,20 @@ impl MathicCompiler {
                         abs_path.clone(),
                         CompilationError::Lowering(LoweringError::UnResolvedPath {
                             path,
-                            span: *span,
+                            span: import_path.span,
                         }),
                     )?;
                     continue;
                 }
 
-                compilation_unit.extend(self.parse_file(
+                self.resolve_path(
+                    &abs_path,
                     src_root,
-                    import_path.strip_prefix(src_root).unwrap().to_owned(),
+                    &new_base_path,
+                    import_path,
+                    &mut compilation_unit,
                     parsed_files,
-                )?);
+                )?;
             }
         }
 
@@ -497,5 +468,103 @@ impl MathicCompiler {
         pass_manager.run(module)?;
 
         Ok(())
+    }
+
+    ///
+    fn resolve_path(
+        &self,
+        abs_path: &Path,
+        src_root: &Path,
+        base_path: &Path,
+        import_path: &MathicPath,
+        compilation_unit: &mut HashMap<PathBuf, Arc<IrModule>>,
+        parsed_files: &mut HashSet<String>,
+    ) -> MathicResult<()> {
+        if import_path.group_paths.is_empty() {
+            compilation_unit.extend(self.parse_file(
+                src_root,
+                base_path.strip_prefix(src_root).unwrap().to_owned(),
+                parsed_files,
+            )?);
+        } else {
+            for import_path in &import_path.group_paths {
+                let new_base_path =
+                    get_import_path(src_root, base_path, import_path).or_else(|e| {
+                        self.diagnostics.report(abs_path.to_path_buf(), e)?;
+                        return Err(MathicError::CompilationFailed);
+                    })?;
+
+                if !new_base_path.exists() {
+                    let path = new_base_path
+                        .strip_prefix(src_root)
+                        .unwrap()
+                        .to_string_lossy()
+                        .replace("/", "::");
+
+                    self.diagnostics.report(
+                        abs_path.to_path_buf(),
+                        CompilationError::Lowering(LoweringError::UnResolvedPath {
+                            path,
+                            span: import_path.span,
+                        }),
+                    )?;
+
+                    return Err(MathicError::CompilationFailed);
+                }
+
+                self.resolve_path(
+                    abs_path,
+                    src_root,
+                    &new_base_path,
+                    import_path,
+                    compilation_unit,
+                    parsed_files,
+                )?;
+            }
+        }
+
+        Ok(())
+    }
+}
+fn get_import_path(
+    src_root: &Path,
+    base_path: &Path,
+    path: &MathicPath,
+) -> Result<PathBuf, CompilationError> {
+    let MathicPath {
+        idents,
+        group_paths,
+        span,
+        import_all: _,
+    } = path;
+
+    let full_path = base_path.join(idents.join("/")).with_added_extension("mth");
+
+    // * if the full path of the import is a file, or not because
+    // is a group import, we take the path as is.
+    //
+    // * if the full is not a file, it could only be
+    // that the import references a top level item, so we
+    // try to take the path formed by all them idents but
+    // the last one (top level item).
+    if full_path.is_file() || !group_paths.is_empty() {
+        Ok(full_path)
+    } else {
+        let Some(idents_without_last) = idents.get(..idents.len() - 1) else {
+            let path = full_path
+                .strip_prefix(src_root)
+                .unwrap()
+                .to_string_lossy()
+                .replace("/", "::");
+
+            return Err(CompilationError::Lowering(LoweringError::UnResolvedPath {
+                path,
+                span: *span,
+            }));
+        };
+
+        Ok(base_path
+            .join(idents_without_last.join("/"))
+            .with_added_extension("mth"))
     }
 }

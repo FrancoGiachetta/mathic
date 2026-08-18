@@ -66,9 +66,7 @@ impl MathicParser<'_> {
                 _ => {
                     return Err(ParseError::Syntax(SyntaxError::UnexpectedToken {
                         found: self.peek_not_none()?.into(),
-                        expected: ExpectedToken::Custom(
-                            "path segment, '*', or '{'".to_string(),
-                        ),
+                        expected: ExpectedToken::Custom("path segment, '*', or '{'".to_string()),
                     }));
                 }
             }
