@@ -412,7 +412,7 @@ impl MathicCompiler {
 
         for item in &program.items {
             if let TopLevelItem::Import(import_path) = item {
-                let new_base_path = match get_import_path(src_root, base_path, import_path) {
+                let new_base_path = match get_module_path(src_root, base_path, import_path) {
                     Ok(res) => res,
                     Err(err) => {
                         self.diagnostics.report(abs_path.clone(), err)?;
@@ -470,7 +470,7 @@ impl MathicCompiler {
         Ok(())
     }
 
-    ///
+    /// Resolves an import path to a module path and parses it.
     fn resolve_path(
         &self,
         abs_path: &Path,
@@ -487,12 +487,16 @@ impl MathicCompiler {
                 parsed_files,
             )?);
         } else {
-            for import_path in &import_path.group_paths {
-                let new_base_path =
-                    get_import_path(src_root, base_path, import_path).or_else(|e| {
-                        self.diagnostics.report(abs_path.to_path_buf(), e)?;
-                        return Err(MathicError::CompilationFailed);
-                    })?;
+            for member in &import_path.group_paths {
+                let module_dir = base_path.with_extension("");
+
+                let new_base_path = match get_module_path(src_root, &module_dir, member) {
+                    Ok(res) => res,
+                    Err(err) => {
+                        self.diagnostics.report(abs_path.to_path_buf(), err)?;
+                        continue;
+                    }
+                };
 
                 if !new_base_path.exists() {
                     let path = new_base_path
@@ -505,18 +509,17 @@ impl MathicCompiler {
                         abs_path.to_path_buf(),
                         CompilationError::Lowering(LoweringError::UnResolvedPath {
                             path,
-                            span: import_path.span,
+                            span: member.span,
                         }),
                     )?;
-
-                    return Err(MathicError::CompilationFailed);
+                    continue;
                 }
 
                 self.resolve_path(
                     abs_path,
                     src_root,
                     &new_base_path,
-                    import_path,
+                    member,
                     compilation_unit,
                     parsed_files,
                 )?;
@@ -526,7 +529,16 @@ impl MathicCompiler {
         Ok(())
     }
 }
-fn get_import_path(
+
+/// Gets the path to a module based on an import path relative to a base path.
+///
+/// * if the full path of the import is a file, or not because is a group
+/// import, we take the path as is.
+///
+/// * if the full is not a file, it could only be that the import references a
+/// top level item, so we try to take the path formed by all them idents but
+/// the last one (top level item).
+fn get_module_path(
     src_root: &Path,
     base_path: &Path,
     path: &MathicPath,
@@ -540,13 +552,6 @@ fn get_import_path(
 
     let full_path = base_path.join(idents.join("/")).with_added_extension("mth");
 
-    // * if the full path of the import is a file, or not because
-    // is a group import, we take the path as is.
-    //
-    // * if the full is not a file, it could only be
-    // that the import references a top level item, so we
-    // try to take the path formed by all them idents but
-    // the last one (top level item).
     if full_path.is_file() || !group_paths.is_empty() {
         Ok(full_path)
     } else {
