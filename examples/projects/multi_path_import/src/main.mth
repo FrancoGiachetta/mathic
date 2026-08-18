@@ -1,0 +1,5 @@
+imp util::{add, mul};
+
+df main() i64 {
+    return add(1, 2) + mul(3, 4);
+}

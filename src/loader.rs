@@ -73,38 +73,25 @@ impl<'a> ModuleLoader<'a> {
 
         for item in &program.items {
             if let TopLevelItem::Import(import_path) = item {
-                let new_base_path = match get_module_path(src_root, base_path, import_path) {
-                    Ok(res) => res,
-                    Err(err) => {
-                        self.diagnostics.report(abs_path.clone(), err)?;
-                        continue;
-                    }
-                };
-
-                if !new_base_path.exists() {
-                    let path = new_base_path
-                        .strip_prefix(src_root)
-                        .unwrap()
-                        .to_string_lossy()
-                        .replace("/", "::");
-
-                    self.diagnostics.report(
-                        abs_path.clone(),
-                        CompilationError::Lowering(LoweringError::UnResolvedPath {
-                            path,
-                            span: import_path.span,
-                        }),
+                if import_path.group_paths.is_empty() {
+                    self.resolve_import(
+                        &abs_path,
+                        src_root,
+                        base_path,
+                        import_path,
+                        &mut compilation_unit,
                     )?;
-                    continue;
+                } else {
+                    for member in &import_path.group_paths {
+                        self.resolve_import(
+                            &abs_path,
+                            src_root,
+                            base_path,
+                            member,
+                            &mut compilation_unit,
+                        )?;
+                    }
                 }
-
-                self.resolve_path(
-                    &abs_path,
-                    src_root,
-                    &new_base_path,
-                    import_path,
-                    &mut compilation_unit,
-                )?;
             }
         }
 
@@ -115,8 +102,9 @@ impl<'a> ModuleLoader<'a> {
         Ok(compilation_unit)
     }
 
-    /// Resolves an import path to a module path and parses it.
-    fn resolve_path(
+    /// Resolves an import (a module or an item import) to a module path and
+    /// parses it.
+    fn resolve_import(
         &mut self,
         abs_path: &Path,
         src_root: &Path,
@@ -124,43 +112,35 @@ impl<'a> ModuleLoader<'a> {
         import_path: &MathicPath,
         compilation_unit: &mut HashMap<PathBuf, Arc<IrModule>>,
     ) -> MathicResult<()> {
-        if import_path.group_paths.is_empty() {
-            compilation_unit.extend(self.load(
-                src_root,
-                base_path.strip_prefix(src_root).unwrap().to_owned(),
-            )?);
-        } else {
-            for member in &import_path.group_paths {
-                let module_dir = base_path.with_extension("");
-
-                let new_base_path = match get_module_path(src_root, &module_dir, member) {
-                    Ok(res) => res,
-                    Err(err) => {
-                        self.diagnostics.report(abs_path.to_path_buf(), err)?;
-                        continue;
-                    }
-                };
-
-                if !new_base_path.exists() {
-                    let path = new_base_path
-                        .strip_prefix(src_root)
-                        .unwrap()
-                        .to_string_lossy()
-                        .replace("/", "::");
-
-                    self.diagnostics.report(
-                        abs_path.to_path_buf(),
-                        CompilationError::Lowering(LoweringError::UnResolvedPath {
-                            path,
-                            span: member.span,
-                        }),
-                    )?;
-                    continue;
-                }
-
-                self.resolve_path(abs_path, src_root, &new_base_path, member, compilation_unit)?;
+        let new_base_path = match get_module_path(src_root, base_path, import_path) {
+            Ok(res) => res,
+            Err(err) => {
+                self.diagnostics.report(abs_path.to_path_buf(), err)?;
+                return Ok(());
             }
+        };
+
+        if !new_base_path.exists() {
+            let path = new_base_path
+                .strip_prefix(src_root)
+                .unwrap()
+                .to_string_lossy()
+                .replace("/", "::");
+
+            self.diagnostics.report(
+                abs_path.to_path_buf(),
+                CompilationError::Lowering(LoweringError::UnResolvedPath {
+                    path,
+                    span: import_path.span,
+                }),
+            )?;
+            return Ok(());
         }
+
+        compilation_unit.extend(self.load(
+            src_root,
+            new_base_path.strip_prefix(src_root).unwrap().to_owned(),
+        )?);
 
         Ok(())
     }
