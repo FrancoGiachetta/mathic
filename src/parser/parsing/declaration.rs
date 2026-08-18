@@ -123,7 +123,7 @@ impl<'a> MathicParser<'a> {
     pub fn parse_import(&self) -> ParserResult<Path> {
         self.next()?; // Consume "imp"
 
-        let idents = self.parse_import_path()?;
+        let idents = self.parse_import_path(None)?;
 
         self.consume_token(Token::Semicolon)?;
 

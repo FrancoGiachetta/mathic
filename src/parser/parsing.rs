@@ -29,7 +29,7 @@ impl MathicParser<'_> {
         })
     }
 
-    pub fn parse_import_path(&self) -> ParserResult<Path> {
+    pub fn parse_import_path(&self, base_path: Option<&[String]>) -> ParserResult<Path> {
         let ident = self.consume_token(Token::Ident)?;
         let start_span = ident.span;
         let mut path = Path {
@@ -39,14 +39,14 @@ impl MathicParser<'_> {
             import_all: false,
         };
 
+        if let Some(idents) = base_path {
+            path.concat_back(idents);
+        }
+
         if self.match_token(Token::ColonColon)?.is_some() {
             match self.peek_not_none()?.token {
                 Token::Ident => {
-                    let mut new_path = self.parse_import_path()?;
-
-                    new_path.concat_back(&path.idents);
-
-                    path = new_path;
+                    path = self.parse_import_path(Some(&path.idents))?;
                 }
                 Token::Star => {
                     self.next()?;
@@ -55,15 +55,11 @@ impl MathicParser<'_> {
                 Token::LBrace => {
                     self.next()?;
 
-                    let mut group_path = self.parse_import_path()?;
-
-                    group_path.concat_back(&path.idents);
+                    let group_path = self.parse_import_path(Some(&path.idents))?;
                     path.group_paths.push(group_path);
 
                     while self.match_token(Token::Comma)?.is_some() {
-                        let mut group_path = self.parse_import_path()?;
-
-                        group_path.concat_back(&path.idents);
+                        let group_path = self.parse_import_path(Some(&path.idents))?;
                         path.group_paths.push(group_path);
                     }
 

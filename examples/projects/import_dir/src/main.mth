@@ -1,0 +1,9 @@
+imp util::{geo::add};
+imp util::{geo::{mul, sub}};
+
+df main() i64 {
+    let a: i64 = add(1, 2);
+    let b: i64 = mul(3, 4);
+    let c: i64 = sub(10, 3);
+    return a + b + c;
+}
