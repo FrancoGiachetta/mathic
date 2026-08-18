@@ -13,7 +13,7 @@ use crate::{
 /// Adds an external function declaration to the IR.
 pub fn add_extern_function(
     ir_builder: &mut IrBuilder,
-    module_path: &Path,
+    module_path: &str,
     func: &FuncDecl,
     span: Span,
 ) -> Result<(), LoweringError> {
@@ -21,8 +21,7 @@ pub fn add_extern_function(
         Some(ty) => lower_top_level_ast_type(ir_builder, ty, span)?,
         None => ir_builder.get_or_insert_type_idx(MathicType::Void),
     };
-    let module_path = module_path.idents[..module_path.idents.len() - 1].join("::");
-    let mangled_function_name = ir_builder.get_mangled_name(&module_path, &func.name);
+    let mangled_function_name = ir_builder.get_mangled_name(module_path, &func.name);
     let extern_func = FunctionBuilder::new(
         mangled_function_name,
         &func.params,
@@ -85,7 +84,7 @@ pub fn resolve_external_func(
                 .is_some_and(|(_, module)| *module == Some(module_idx));
 
             if !(declared_by_path || declared_by_import) {
-                add_extern_function(ir_builder, path, &func, path.span)?;
+                add_extern_function(ir_builder, &module_path, &func, path.span)?;
             }
 
             Ok((func, module_idx))

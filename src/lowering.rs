@@ -79,24 +79,30 @@ fn lower_import(ir_builder: &mut IrBuilder, import_path: &Path) -> Result<(), Lo
     }
 
     if group_paths.is_empty() || *import_all {
-        let (items, module_idx) = if *import_all {
+        let (items, module_idx, module) = if *import_all {
             let path = import_path.join("::");
-            let module_idx = ir_builder
-                .decl_table
-                .get_module_idx(&import_path.join("::"))
-                .ok_or(LoweringError::UnResolvedPath {
+            let module_idx = ir_builder.decl_table.get_module_idx(&path).ok_or(
+                LoweringError::UnResolvedPath {
                     path,
                     span: import_path.span,
-                })?;
+                },
+            )?;
             let module = ir_builder
                 .decl_table
                 .get_module(module_idx)
+                .cloned()
                 .expect("module idx should be valid");
 
-            (module.items.clone(), module_idx)
+            (module.items.clone(), module_idx, module)
         } else {
             let (item, module_idx) = utils::resolve_path(ir_builder, import_path)?;
-            (vec![item; 1], module_idx)
+            let module = ir_builder
+                .decl_table
+                .get_module(module_idx)
+                .cloned()
+                .unwrap_or_else(|| panic!("module index {} should be valid", module_idx));
+
+            (vec![item], module_idx, module)
         };
 
         for item in items {
@@ -105,7 +111,12 @@ fn lower_import(ir_builder: &mut IrBuilder, import_path: &Path) -> Result<(), Lo
                     ir_builder
                         .decl_table
                         .add_func_decl(func.clone(), Some(module_idx))?;
-                    utils::add_extern_function(ir_builder, import_path, &func, import_path.span)?;
+                    utils::add_extern_function(
+                        ir_builder,
+                        &module.module_name,
+                        &func,
+                        import_path.span,
+                    )?;
                 }
                 TopLevelItem::Struct(strct) => ir_builder
                     .decl_table
