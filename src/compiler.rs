@@ -1,9 +1,4 @@
-use std::{
-    collections::{HashMap, HashSet},
-    io::Write,
-    path::PathBuf,
-    sync::Arc,
-};
+use std::{io::Write, path::PathBuf};
 
 use melior::{
     Context,
@@ -21,21 +16,16 @@ use std::{fs, path::Path};
 use crate::{
     MathicError, MathicResult,
     codegen::{MathicCodeGen, compiler_helper::CompilerHelper, module::MathicModule},
-    diagnostics::{CodegenError, CompilationError, DiagnosticsManager, LoweringError},
+    diagnostics::{CodegenError, CompilationError, DiagnosticsManager},
     ffi::{
         self,
         dialect_integration::symbolic_dialect::{
             create_symbolic_extract_eval, create_symbolic_to_arith,
         },
     },
+    loader::ModuleLoader,
     lowering::{self, ir::Ir, lower_program},
-    parser::{
-        MathicParser,
-        ast::{
-            IrModule,
-            declaration::{Path as MathicPath, TopLevelItem},
-        },
-    },
+    parser::MathicParser,
 };
 
 #[derive(Debug, Clone, Copy, Default)]
@@ -120,12 +110,8 @@ impl MathicCompiler {
     ) -> MathicResult<Vec<MathicModule<'_>>> {
         self.diagnostics.clear()?;
 
-        let main_file_path = PathBuf::from("main.mth");
-
-        let compilation_unit = {
-            let mut parsed_files = HashSet::new();
-            self.parse_file(src_root, main_file_path, &mut parsed_files)?
-        };
+        let mut loader = ModuleLoader::new(&self.diagnostics);
+        let compilation_unit = loader.load(src_root, PathBuf::from("main.mth"))?;
 
         if self.diagnostics.has_errors()? {
             return Err(MathicError::CompilationFailed);
@@ -367,115 +353,6 @@ impl MathicCompiler {
         }
 
         Ok(module)
-    }
-
-    /// Parses a file.
-    ///
-    /// There may be recursive calls to this function for cases with the module
-    /// imports another.
-    ///
-    /// Returns HashMap with the mapping the paths parsed to their AST.
-    fn parse_file(
-        &self,
-        src_root: &Path,
-        path: PathBuf,
-        parsed_files: &mut HashSet<String>,
-    ) -> MathicResult<HashMap<PathBuf, Arc<IrModule>>> {
-        let abs_path = src_root.join(&path);
-        let base_path = abs_path.parent().unwrap();
-
-        let source = fs::read_to_string(&abs_path)?;
-
-        if !parsed_files.insert(abs_path.to_string_lossy().into_owned()) {
-            return Ok(HashMap::with_capacity(0));
-        }
-
-        let mut compilation_unit = HashMap::new();
-
-        let mut program = {
-            let parser = MathicParser::new(&source);
-            let module_name = path
-                .with_extension("")
-                .to_string_lossy()
-                .replace("/", "::")
-                .to_string();
-
-            match parser.parse(module_name) {
-                Err(e) => {
-                    self.diagnostics
-                        .report(abs_path.clone(), CompilationError::Parse(e))?;
-                    return Ok(compilation_unit);
-                }
-                Ok(module) => module,
-            }
-        };
-
-        for item in &program.items {
-            if let TopLevelItem::Import(MathicPath { idents, span }) = item {
-                let full_path = base_path.join(idents.join("/")).with_added_extension("mth");
-
-                // * if the full path of the import is a file, then we
-                // parse that file as normal.
-                //
-                // * if the full is not a file, it could only be
-                // that the import references a top level item, so we
-                // try to parse the path formed by all them idents but
-                // the last one (top leve item).
-                let import_path = if full_path.is_file() {
-                    full_path
-                } else {
-                    let Some(idents_without_last) = idents.get(..idents.len() - 1) else {
-                        let path = full_path
-                            .strip_prefix(src_root)
-                            .unwrap()
-                            .to_string_lossy()
-                            .replace("/", "::");
-
-                        self.diagnostics.report(
-                            abs_path.clone(),
-                            CompilationError::Lowering(LoweringError::UnResolvedPath {
-                                path,
-                                span: *span,
-                            }),
-                        )?;
-                        continue;
-                    };
-
-                    base_path
-                        .join(idents_without_last.join("/"))
-                        .with_added_extension("mth")
-                };
-
-                if !import_path.exists() {
-                    let path = import_path
-                        .strip_prefix(src_root)
-                        .unwrap()
-                        .to_string_lossy()
-                        .replace("/", "::");
-
-                    self.diagnostics.report(
-                        abs_path.clone(),
-                        CompilationError::Lowering(LoweringError::UnResolvedPath {
-                            path,
-                            span: *span,
-                        }),
-                    )?;
-                    continue;
-                }
-
-                compilation_unit.extend(self.parse_file(
-                    src_root,
-                    import_path.strip_prefix(src_root).unwrap().to_owned(),
-                    parsed_files,
-                )?);
-            }
-        }
-
-        program.modules = compilation_unit.values().cloned().collect();
-
-        compilation_unit.insert(src_root.join(&path), Arc::new(program));
-
-        Ok(compilation_unit)
     }
 
     fn run_passes(ctx: &Context, module: &mut Module) -> Result<(), CodegenError> {

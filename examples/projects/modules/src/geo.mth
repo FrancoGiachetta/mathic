@@ -1,3 +1,7 @@
-df distance(a: i64, b: i64) i64 {
-    return a + b;
+imp types::Point;
+
+df distance(p1: Point, p2: Point) i64 {
+    let dx: i64 = p2.x - p1.x;
+    let dy: i64 = p2.y - p1.y;
+    return dx * dx + dy * dy;
 }

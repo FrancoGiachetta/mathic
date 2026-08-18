@@ -50,9 +50,13 @@ pub fn compile_and_execute_project(project_dir: &Path) -> i64 {
     let opts = CompilerOpts::default();
     let compiler = MathicCompiler::new().expect("Failed to create the compiler");
 
-    let modules = compiler
-        .compile_project(&src_root, opts)
-        .expect("compilation failed");
+    let modules = match compiler.compile_project(&src_root, opts) {
+        Ok(m) => m,
+        Err(e) => {
+            compiler.diagnostics().print_all().unwrap();
+            panic!("compilation failed: {:?}", e);
+        }
+    };
 
     let executor = MathicJITExecutor::new(modules, opts).expect("Failed to create the executor");
 

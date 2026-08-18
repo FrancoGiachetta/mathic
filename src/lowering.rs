@@ -67,24 +67,67 @@ pub fn lower_program(program: &IrModule) -> Result<Ir, LoweringError> {
 /// It only cares about import that references items (like functions) and adds
 /// them to the declaration table of the current ir being built.
 fn lower_import(ir_builder: &mut IrBuilder, import_path: &Path) -> Result<(), LoweringError> {
-    // Only lower imports which do referen items.
-    if import_path.idents.len() == 1 {
+    let Path {
+        idents,
+        group_paths,
+        import_all,
+        ..
+    } = import_path;
+
+    if idents.len() == 1 && group_paths.is_empty() && !*import_all {
         return Ok(());
     }
 
-    let (item, module_idx) = utils::resolve_path(ir_builder, import_path)?;
-
-    match item {
-        TopLevelItem::Func(func) => {
-            ir_builder
+    if group_paths.is_empty() || *import_all {
+        let (items, module_idx, module) = if *import_all {
+            let path = import_path.join("::");
+            let module_idx = ir_builder.decl_table.get_module_idx(&path).ok_or(
+                LoweringError::UnResolvedPath {
+                    path,
+                    span: import_path.span,
+                },
+            )?;
+            let module = ir_builder
                 .decl_table
-                .add_func_decl(func.clone(), Some(module_idx))?;
-            utils::add_extern_function(ir_builder, import_path, &func, import_path.span)?;
+                .get_module(module_idx)
+                .cloned()
+                .expect("module idx should be valid");
+
+            (module.items.clone(), module_idx, module)
+        } else {
+            let (item, module_idx) = utils::resolve_path(ir_builder, import_path)?;
+            let module = ir_builder
+                .decl_table
+                .get_module(module_idx)
+                .cloned()
+                .unwrap_or_else(|| panic!("module index {} should be valid", module_idx));
+
+            (vec![item], module_idx, module)
+        };
+
+        for item in items {
+            match item {
+                TopLevelItem::Func(func) => {
+                    ir_builder
+                        .decl_table
+                        .add_func_decl(func.clone(), Some(module_idx))?;
+                    utils::add_extern_function(
+                        ir_builder,
+                        &module.module_name,
+                        &func,
+                        import_path.span,
+                    )?;
+                }
+                TopLevelItem::Struct(strct) => ir_builder
+                    .decl_table
+                    .add_struct_decl(strct.clone(), Some(module_idx))?,
+                _ => {}
+            }
         }
-        TopLevelItem::Struct(strct) => ir_builder
-            .decl_table
-            .add_struct_decl(strct.clone(), Some(module_idx))?,
-        _ => {}
+    } else {
+        for path in group_paths {
+            lower_import(ir_builder, path)?;
+        }
     }
 
     Ok(())

@@ -3,6 +3,7 @@ pub mod compiler;
 pub mod diagnostics;
 pub mod executor;
 mod ffi;
+mod loader;
 mod lowering;
 mod parser;
 

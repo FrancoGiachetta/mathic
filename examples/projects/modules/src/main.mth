@@ -1,16 +1,12 @@
 imp util;
 imp util::mul;
+imp types::Point;
 imp geo::distance;
 
-df add(a: i64) i64 {
-    return a * 100;
-}
-
 df main() i64 {
-    let a: i64 = util::add(1, 2);
-    let b: i64 = mul(3, 4);
-    let c: i64 = geo::distance(3, 4);
-    let d: i64 = util::mul(5, 6);
-    let e: i64 = add(2);
-    return a + b + c + d + e;
+    let p1: Point = types::Point { x: 3, y: 4 };
+    let p2: Point = types::Point { x: 6, y: 8 };
+    let d: i64 = geo::distance(p1, p2);
+    let area: i64 = mul(p1.x, p1.y);
+    return util::add(d, area);
 }

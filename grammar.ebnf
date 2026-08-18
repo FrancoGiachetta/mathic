@@ -16,10 +16,12 @@
 (* Program                                                          *)
 (* ================================================================ *)
 
-program = top_decl { top_decl } ;
-
-top_decl      = func_decl | struct_decl | imports_decls ;
-imports_decls = 'imp' path ';' ;
+program       = top_decl { top_decl } ;
+top_decl      = func_decl
+                | struct_decl
+                | imports_decls
+                ;
+imports_decls = 'imp' import_path ';' ;
 func_decl     = 'df' IDENT '(' [ param_list ] ')' [ type ] block ;
 struct_decl   = 'struct' IDENT '{' [ struct_fields ] '}' ;
 
@@ -28,36 +30,36 @@ struct_decl   = 'struct' IDENT '{' [ struct_fields ] '}' ;
 (* Declarations                                                     *)
 (* ================================================================ *)
 
-declaration = func_decl
-            | struct_decl
-            | var_decl
-            | sym_decl
-            ;
-
-var_decl = 'let' IDENT ':' type '=' expr ';' ;
-sym_decl = 'sym' IDENT ':' type ';' ;
+declaration   = func_decl
+                | struct_decl
+                | var_decl
+                | sym_decl
+                ;
+var_decl      = 'let' IDENT ':' type '=' expr ';' ;
+sym_decl      = 'sym' IDENT ':' type ';' ;
 
 
 (* ================================================================ *)
 (* Statements                                                       *)
 (* ================================================================ *)
 
-stmt = declaration
-     | for_stmt
-     | while_stmt
-     | if_stmt
-     | return_stmt
-     | expr_stmt
-     | block
-     ;
-
-for_stmt    = 'for' IDENT 'in' expr_no_init '..' expr_no_init block
-            | 'for' IDENT 'in' expr_no_init block ;
-while_stmt  = 'while' expr_no_init block ;
-if_stmt     = 'if' expr_no_init block [ 'else' block ] ;
-return_stmt = 'return' expr ';' ;
-expr_stmt   = expr ';' ;
-block       = '{' { stmt } '}' ;
+stmt          = declaration
+                | for_stmt
+                | while_stmt
+                | if_stmt
+                | return_stmt
+                | expr_stmt
+                | block
+                ;
+for_stmt      = 'for' IDENT 'in' expr_no_init
+                ( '..' expr_no_init block
+                | block
+                ) ;
+while_stmt    = 'while' expr_no_init block ;
+if_stmt       = 'if' expr_no_init block [ 'else' block ] ;
+return_stmt   = 'return' expr ';' ;
+expr_stmt     = expr ';' ;
+block         = '{' { stmt } '}' ;
 
 
 (* ================================================================ *)
@@ -73,25 +75,24 @@ block       = '{' { stmt } '}' ;
 (*   7. unary (! -)                                                 *)
 (*   8. call (() [] .)                                              *)
 
-expr         = assignment ;
-assignment   = IDENT { '.' IDENT } '=' expr
-             | initializer
-             ;
-initializer  = expr_no_init [ struct_init ] ;
-expr_no_init = logical_or ;
-
-logical_or  = logical_and { 'or' logical_and } ;
-logical_and = equality { 'and' equality } ;
-equality    = comparison { ( '==' | '!=' ) comparison } ;
-comparison  = term { ( '>' | '>=' | '<' | '<=' ) term } ;
-term        = factor { ( '+' | '-' ) factor } ;
-factor      = unary { ( '*' | '/' ) unary } ;
-unary       = ( '!' | '-' ) unary
-            | call
-            ;
-call        = primary { '(' [ arg_list ] ')' | '[' expr ']' | '.' IDENT } ;
-struct_init = '{' IDENT ':' expr { ',' IDENT ':' expr } '}' ;
-primary     = 'true' | 'false' | IDENT | path | INT | FLOAT | STRING | '(' expr ')' ;
+expr          = assignment ;
+assignment    = IDENT { '.' IDENT } '=' expr
+                | initializer
+                ;
+initializer   = expr_no_init [ struct_init ] ;
+expr_no_init  = logical_or ;
+logical_or    = logical_and { 'or' logical_and } ;
+logical_and   = equality { 'and' equality } ;
+equality      = comparison { ( '==' | '!=' ) comparison } ;
+comparison    = term { ( '>' | '>=' | '<' | '<=' ) term } ;
+term          = factor { ( '+' | '-' ) factor } ;
+factor        = unary { ( '*' | '/' ) unary } ;
+unary         = ( '!' | '-' ) unary
+                | call
+                ;
+call          = primary { '(' [ arg_list ] ')' | '[' expr ']' | '.' IDENT } ;
+struct_init   = '{' IDENT ':' expr { ',' IDENT ':' expr } '}' ;
+primary       = 'true' | 'false' | path | INT | FLOAT | STRING | '(' expr ')' ;
 
 
 (* ================================================================ *)
@@ -101,6 +102,11 @@ primary     = 'true' | 'false' | IDENT | path | INT | FLOAT | STRING | '(' expr 
 param_list    = ( IDENT ':' type ) { ',' ( IDENT ':' type ) } ;
 struct_fields = [ 'pub' ] IDENT ':' type { ',' [ 'pub' ] IDENT ':' type } ;
 arg_list      = expr { ',' expr } ;
+import_path   = IDENT
+                [ '::' ( import_path
+                | '*'
+                | '{' import_path { ',' import_path } '}'
+                ) ] ;
 path          = IDENT { '::' IDENT } ;
 type          = path { '<' IDENT '>' } ;
 

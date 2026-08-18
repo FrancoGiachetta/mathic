@@ -62,6 +62,8 @@ pub struct Param {
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Path {
     pub idents: Vec<String>,
+    pub group_paths: Vec<Path>,
+    pub import_all: bool,
     pub span: Span,
 }
 
@@ -87,5 +89,14 @@ impl TopLevelItem {
 impl Path {
     pub fn join(&self, sep: &str) -> String {
         self.idents.join(sep)
+    }
+
+    #[allow(dead_code)]
+    pub fn concat(&mut self, idents: &[String]) {
+        self.idents = [&self.idents, idents].concat()
+    }
+
+    pub fn concat_back(&mut self, idents: &[String]) {
+        self.idents = [idents, &self.idents].concat()
     }
 }
