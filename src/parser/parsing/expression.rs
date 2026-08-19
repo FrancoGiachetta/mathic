@@ -291,7 +291,7 @@ impl<'a> MathicParser<'a> {
         let mut expr = self.parse_primary_expr()?;
 
         while matches!(lookahead.token, Token::Ident)
-            && (self.check_next(Token::LParen)? || self.check_next(Token::Dot)?)
+            && self.check_next_any(&[Token::LParen, Token::Dot, Token::LSquareBracket])?
         {
             let t = self.next()?; // consume Dot.
             match t.token {
@@ -306,6 +306,17 @@ impl<'a> MathicParser<'a> {
                         kind: ExprStmtKind::StructGet {
                             expr: Box::new(expr),
                             field_name,
+                        },
+                        span: self.current_span(),
+                    };
+                }
+                Token::LSquareBracket => {
+                    let args = self.parse_substitution_args()?;
+
+                    expr = ExprStmt {
+                        kind: ExprStmtKind::Substitution {
+                            callee: Box::new(expr),
+                            args,
                         },
                         span: self.current_span(),
                     };
@@ -401,6 +412,28 @@ impl<'a> MathicParser<'a> {
         }
 
         Ok(fields)
+    }
+
+    fn parse_substitution_args(&self) -> ParserResult<Vec<(String, ExprStmt)>> {
+        let ident = self.consume_token(Token::Ident)?.lexeme.to_string();
+
+        self.consume_token(Token::Eq)?;
+
+        let expr = self.parse_expr_no_init()?;
+
+        let mut args = vec![(ident, expr)];
+
+        while self.match_token(Token::Comma)?.is_some() {
+            let ident = self.consume_token(Token::Ident)?.lexeme.to_string();
+
+            self.consume_token(Token::Eq)?;
+
+            let expr = self.parse_expr_no_init()?;
+
+            args.push((ident, expr));
+        }
+
+        Ok(args)
     }
 
     fn parse_call_args(&self) -> ParserResult<Vec<ExprStmt>> {
