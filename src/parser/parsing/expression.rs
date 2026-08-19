@@ -313,6 +313,8 @@ impl<'a> MathicParser<'a> {
                 Token::LSquareBracket => {
                     let args = self.parse_substitution_args()?;
 
+                    self.consume_token(Token::RSquareBracket)?;
+
                     expr = ExprStmt {
                         kind: ExprStmtKind::Substitution {
                             callee: Box::new(expr),

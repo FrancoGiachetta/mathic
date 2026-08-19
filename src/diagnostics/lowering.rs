@@ -55,6 +55,12 @@ pub enum LoweringError {
 
     #[error("Cannot resolve path: {path}")]
     UnResolvedPath { path: String, span: Span },
+
+    #[error("Symbol '{name}' does not appear in the expression")]
+    SymbolNotInExpression { name: String, span: Span },
+
+    #[error("The substitution is missing some symbols")]
+    MissingSymbols { missing: String, span: Span },
 }
 
 pub fn format_lowering_error<'err>(
@@ -123,6 +129,16 @@ pub fn format_lowering_error<'err>(
             span,
         ),
         LoweringError::UnResolvedPath { span, .. } => ("S012", "".to_string(), span),
+        LoweringError::SymbolNotInExpression { name, span } => (
+            "S013",
+            format!("'{name}' is not a symbol of the expression being substituted"),
+            span,
+        ),
+        LoweringError::MissingSymbols { missing, span } => (
+            "S014",
+            format!("provide a value for the missing symbols: {missing}"),
+            span,
+        ),
     };
 
     let report_span = ReportSpan { path, span: *span };

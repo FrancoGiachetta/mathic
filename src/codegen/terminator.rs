@@ -1,7 +1,10 @@
 use melior::{
     dialect::{cf, func, llvm},
     helpers::{BuiltinBlockExt, LlvmBlockExt},
-    ir::{Block, BlockLike, BlockRef, Location, attribute::FlatSymbolRefAttribute},
+    ir::{
+        Block, BlockLike, BlockRef, Identifier, Location,
+        attribute::{FlatSymbolRefAttribute, StringAttribute},
+    },
 };
 
 use crate::{
@@ -126,8 +129,8 @@ impl MathicCodeGen<'_> {
             }
             Terminator::Eval {
                 expr,
-                sym_name,
-                value,
+                syms,
+                exprs,
                 span,
                 return_dest: _,
                 return_ty_idx,
@@ -140,13 +143,24 @@ impl MathicCodeGen<'_> {
                 let return_ty = self.get_type(fn_ctx.get_ir_func(), *return_ty_idx)?;
 
                 let expr = self.compile_rvalue(fn_ctx, block, expr, helper)?;
-                let value = self.compile_rvalue(fn_ctx, block, value, helper)?;
+                let syms = syms
+                    .iter()
+                    .map(|s| {
+                        (
+                            Identifier::new(self.ctx, "sym"),
+                            StringAttribute::new(self.ctx, s).into(),
+                        )
+                    })
+                    .collect::<Vec<_>>();
+                let values = exprs
+                    .iter()
+                    .map(|expr| self.compile_rvalue(fn_ctx, block, expr, helper))
+                    .collect::<Result<Vec<_>, _>>()?;
                 let return_value = block.append_op_result(symbolic::operation::eval(
-                    self.ctx,
                     unknown_location,
                     expr,
-                    sym_name,
-                    value,
+                    &syms,
+                    &values,
                 ))?;
 
                 let return_ptr = block.alloca1(

@@ -1,4 +1,4 @@
-use std::collections::HashMap;
+use std::collections::{HashMap, HashSet};
 
 use crate::{
     diagnostics::LoweringError,
@@ -42,7 +42,7 @@ pub fn lower_expr(
         ExprStmtKind::Logical { lhs, op, rhs } => lower_logical_op(func, lhs, *op, rhs, expr.span)?,
         ExprStmtKind::Index { .. } => todo!(),
         ExprStmtKind::Substitution { callee, args } => {
-            return lower_substitution_builtin(func, callee, args, expr.span);
+            return lower_substitution(func, callee, args, expr.span);
         }
         ExprStmtKind::StructInit { expr, fields } => lower_adt_init(func, expr, fields, expr.span)?,
         ExprStmtKind::StructGet {
@@ -190,7 +190,7 @@ fn lower_call(
     })
 }
 
-fn lower_substitution_builtin(
+fn lower_substitution(
     func: &mut FunctionBuilder,
     callee: &ExprStmt,
     args: &[(String, ExprStmt)],
@@ -200,7 +200,7 @@ fn lower_substitution_builtin(
     let sym_expr_ty = func.get_type(sym_expr_ty_idx, callee.span)?;
 
     let inner_ty = match sym_expr_ty {
-        MathicType::SymbolicExpr(num_ty) => num_ty,
+        MathicType::SymbolicExpr(num_ty) => MathicType::Numeric(num_ty),
         _ => {
             return Err(LoweringError::MismatchedType {
                 expected: MathicType::SymbolicExpr(NumericTy::Sint(SintTy::Isize)),
@@ -209,23 +209,63 @@ fn lower_substitution_builtin(
             });
         }
     };
-    let inner_ty_idx = func.get_or_insert_global_type_idx(MathicType::Numeric(inner_ty));
-    let args = args
+    let inner_ty_idx = func.get_or_insert_global_type_idx(inner_ty);
+
+    let symbols = match &sym_expr.kind {
+        RValueKind::Use {
+            value: Value::Symbol { local_idx },
+            ..
+        } => HashSet::from([*local_idx]),
+        RValueKind::SymbolicBinary { symbols, .. } => symbols.clone(),
+        _ => unreachable!(),
+    };
+
+    let mut provided = HashSet::new();
+
+    for (name, expr) in args {
+        let local = func.sym_table.get_local_from_name(name, expr.span)?;
+
+        if !symbols.contains(&local.local_idx) {
+            return Err(LoweringError::SymbolNotInExpression {
+                name: name.clone(),
+                span: expr.span,
+            });
+        }
+
+        provided.insert(local.local_idx);
+    }
+
+    if provided != symbols {
+        let missing = symbols
+            .iter()
+            .filter(|idx| !provided.contains(idx))
+            .map(|idx| {
+                func.sym_table.locals[*idx]
+                    .debug_name
+                    .clone()
+                    .unwrap_or_default()
+            })
+            .collect::<Vec<_>>()
+            .join(", ");
+
+        return Err(LoweringError::MissingSymbols { missing, span });
+    }
+
+    let (syms, exprs) = args
         .iter()
         .map(|(name, expr)| {
             let (lowered_expr, lowered_expr_ty_idx) = lower_expr(func, expr, Some(inner_ty_idx))?;
 
-            let lowered_expr_ty = func.get_type(lowered_expr_ty_idx, expr.span)?;
-            if !lowered_expr_ty.is_symbolic() {
+            if lowered_expr_ty_idx != inner_ty_idx {
                 return Err(LoweringError::MismatchedType {
-                    expected: MathicType::Numeric(inner_ty),
-                    found: lowered_expr_ty,
+                    expected: inner_ty,
+                    found: func.get_type(lowered_expr_ty_idx, expr.span)?,
                     span: expr.span,
                 });
             }
             Ok((name.to_owned(), lowered_expr))
         })
-        .collect::<Result<Vec<_>, _>>()?;
+        .collect::<Result<_, _>>()?;
 
     let local_idx = func
         .sym_table
@@ -234,7 +274,8 @@ fn lower_substitution_builtin(
 
     func.get_basic_block_mut(func.last_block_idx()).terminator = Terminator::Eval {
         expr: sym_expr,
-        args,
+        syms,
+        exprs,
         return_dest: Value::InMemory {
             local_idx,
             modifier: vec![],
@@ -295,10 +336,29 @@ fn lower_binary_op(
                 });
             }
 
+            let mut symbols = HashSet::new();
+
+            // We need to track the symbols used in the symbolic expression.
+            let retrieve_opr_symbols = |syms: &mut HashSet<usize>, opr: &RValueKind| match opr {
+                RValueKind::Use {
+                    value: Value::Symbol { local_idx },
+                    ..
+                } => _ = syms.insert(*local_idx),
+                RValueKind::SymbolicBinary {
+                    symbols: lhs_symbols,
+                    ..
+                } => syms.extend(lhs_symbols),
+                _ => {}
+            };
+
+            retrieve_opr_symbols(&mut symbols, &lhs.kind);
+            retrieve_opr_symbols(&mut symbols, &rhs.kind);
+
             let kind = RValueKind::SymbolicBinary {
                 op: arith,
                 lhs: Box::new(lhs),
                 rhs: Box::new(rhs),
+                symbols,
                 span,
             };
 
@@ -755,7 +815,19 @@ fn lower_expression_type(
             lower_expression_type(func, &expr.kind, None, span)?
         }
         ExprStmtKind::Substitution { callee, .. } => {
-            lower_expression_type(func, &callee.kind, None, span)?
+            let sym_expr_ty_idx = lower_expression_type(func, &callee.kind, None, span)?;
+
+            let sym_expr_ty = func.get_type(sym_expr_ty_idx, callee.span)?;
+
+            if let MathicType::SymbolicExpr(inner_ty) = sym_expr_ty {
+                func.get_or_insert_global_type_idx(MathicType::Numeric(inner_ty))
+            } else {
+                return Err(LoweringError::MismatchedType {
+                    expected: MathicType::SymbolicExpr(NumericTy::Sint(SintTy::Isize)),
+                    found: sym_expr_ty,
+                    span,
+                });
+            }
         }
         ExprStmtKind::StructInit { expr, .. } => match &expr.kind {
             ExprStmtKind::Primary(PrimaryExpr::Ident(name)) => {

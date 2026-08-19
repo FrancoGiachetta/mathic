@@ -25,7 +25,7 @@ pub mod symbolic {
         use melior::{
             Context,
             ir::{
-                Identifier, Location, Operation, Type, Value, ValueLike,
+                Attribute, Identifier, Location, Operation, Type, Value, ValueLike,
                 attribute::StringAttribute, operation::OperationBuilder,
             },
         };
@@ -99,19 +99,19 @@ pub mod symbolic {
         }
 
         pub fn eval<'ctx>(
-            ctx: &'ctx Context,
             location: Location<'ctx>,
             expr: Value<'ctx, '_>,
-            sym_name: &str,
-            value: Value<'ctx, '_>,
+            sym_names: &'ctx [(Identifier, Attribute)],
+            values: &[Value<'ctx, '_>],
         ) -> Operation<'ctx> {
-            let result_type = value.r#type();
+            let result_type = values[0].r#type();
             OperationBuilder::new("symbolic.eval", location)
-                .add_operands(&[expr, value])
-                .add_attributes(&[(
-                    Identifier::new(ctx, "sym"),
-                    StringAttribute::new(ctx, sym_name).into(),
-                )])
+                .add_operands(&[&[expr], values].concat())
+                .add_attributes(sym_names)
+                // .add_attributes(&[(
+                //     Identifier::new(ctx, "sym"),
+                //     StringAttribute::new(ctx, sym_name).into(),
+                // )])
                 .add_results(&[result_type])
                 .build()
                 .expect("valid operation")

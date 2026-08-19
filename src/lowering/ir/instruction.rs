@@ -1,3 +1,5 @@
+use std::collections::HashSet;
+
 use super::value::Value;
 use crate::{
     lowering::ir::{symbols::TypeIndex, value::ValueModifier},
@@ -53,6 +55,7 @@ pub enum RValueKind {
         op: ArithOp,
         lhs: Box<RValInstruct>,
         rhs: Box<RValInstruct>,
+        symbols: HashSet<usize>,
         span: Span,
     },
     Unary {
