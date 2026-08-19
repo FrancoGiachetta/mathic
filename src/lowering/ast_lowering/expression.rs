@@ -79,6 +79,15 @@ fn lower_assignment(
         });
     }
 
+    let symbols = match &value.kind {
+        RValueKind::SymbolicBinary { symbols, .. } => symbols.clone(),
+        RValueKind::Use {
+            value: Value::Symbol { local_idx },
+            ..
+        } => func.sym_table.locals[*local_idx].symbols.clone(),
+        _ => HashSet::with_capacity(0),
+    };
+
     func.get_basic_block_mut(func.last_block_idx())
         .instructions
         .push(LValInstruct::Assign {
@@ -88,13 +97,18 @@ fn lower_assignment(
             span: Some(span),
         });
 
-    Ok(RValInstruct {
-        kind: RValueKind::Use {
+    // Track symbols used in the symbolic expression.
+    if func.get_type(local.ty, span)?.is_symbolic() {
+        func.sym_table.locals[local.local_idx].symbols = symbols;
+    }
+
+    Ok(RValInstruct::new(
+        RValueKind::Use {
             value: Value::Const(ConstExpr::Void),
             span: None,
         },
-        ty: func.get_or_insert_global_type_idx(MathicType::Void),
-    })
+        func.get_or_insert_global_type_idx(MathicType::Void),
+    ))
 }
 
 fn lower_call(
@@ -178,16 +192,16 @@ fn lower_call(
 
     func.add_block(Terminator::Return(None, None), None);
 
-    Ok(RValInstruct {
-        kind: RValueKind::Use {
+    Ok(RValInstruct::new(
+        RValueKind::Use {
             value: Value::InMemory {
                 local_idx,
                 modifier: vec![],
             },
             span: None,
         },
-        ty: return_ty_idx,
-    })
+        return_ty_idx,
+    ))
 }
 
 fn lower_substitution(
@@ -215,8 +229,7 @@ fn lower_substitution(
         RValueKind::Use {
             value: Value::Symbol { local_idx },
             ..
-        } => HashSet::from([*local_idx]),
-        RValueKind::SymbolicBinary { symbols, .. } => symbols.clone(),
+        } => func.sym_table.locals[*local_idx].symbols.clone(),
         _ => unreachable!(),
     };
 
@@ -237,8 +250,7 @@ fn lower_substitution(
 
     if provided != symbols {
         let missing = symbols
-            .iter()
-            .filter(|idx| !provided.contains(idx))
+            .difference(&provided)
             .map(|idx| {
                 func.sym_table.locals[*idx]
                     .debug_name
@@ -287,16 +299,16 @@ fn lower_substitution(
     func.add_block(Terminator::Return(None, None), None);
 
     Ok((
-        RValInstruct {
-            kind: RValueKind::Use {
+        RValInstruct::new(
+            RValueKind::Use {
                 value: Value::InMemory {
                     local_idx,
                     modifier: vec![],
                 },
                 span: None,
             },
-            ty: inner_ty_idx,
-        },
+            inner_ty_idx,
+        ),
         inner_ty_idx,
     ))
 }
@@ -338,16 +350,17 @@ fn lower_binary_op(
 
             let mut symbols = HashSet::new();
 
-            // We need to track the symbols used in the symbolic expression.
+            // Track symbols used in the symbolic expression.
             let retrieve_opr_symbols = |syms: &mut HashSet<usize>, opr: &RValueKind| match opr {
                 RValueKind::Use {
                     value: Value::Symbol { local_idx },
                     ..
-                } => _ = syms.insert(*local_idx),
+                } => {
+                    syms.extend(func.sym_table.locals[*local_idx].symbols.iter().copied());
+                }
                 RValueKind::SymbolicBinary {
-                    symbols: lhs_symbols,
-                    ..
-                } => syms.extend(lhs_symbols),
+                    symbols: bin_syms, ..
+                } => syms.extend(bin_syms),
                 _ => {}
             };
 
@@ -362,14 +375,14 @@ fn lower_binary_op(
                 span,
             };
 
-            RValInstruct {
+            RValInstruct::new(
                 kind,
-                ty: if lhs_ty.is_symbolic() {
+                if lhs_ty.is_symbolic() {
                     lhs_ty_idx
                 } else {
                     rhs_ty_idx
                 },
-            }
+            )
         }
         _ => {
             let inst_ty_idx = match op {
@@ -393,10 +406,7 @@ fn lower_binary_op(
                 span,
             };
 
-            RValInstruct {
-                kind,
-                ty: inst_ty_idx,
-            }
+            RValInstruct::new(kind, inst_ty_idx)
         }
     })
 }
@@ -430,15 +440,15 @@ fn lower_logical_op(
         });
     }
 
-    Ok(RValInstruct {
-        kind: RValueKind::Logical {
+    Ok(RValInstruct::new(
+        RValueKind::Logical {
             op,
             lhs: Box::new(lhs),
             rhs: Box::new(rhs),
             span,
         },
-        ty: func.get_or_insert_global_type_idx(MathicType::Bool),
-    })
+        func.get_or_insert_global_type_idx(MathicType::Bool),
+    ))
 }
 
 fn lower_unary_op(
@@ -450,14 +460,14 @@ fn lower_unary_op(
 ) -> Result<RValInstruct, LoweringError> {
     let (rhs, rhs_ty) = lower_expr(func, rhs, ty_hint)?;
 
-    Ok(RValInstruct {
-        kind: RValueKind::Unary {
+    Ok(RValInstruct::new(
+        RValueKind::Unary {
             op,
             rhs: Box::new(rhs),
             span,
         },
-        ty: rhs_ty,
-    })
+        rhs_ty,
+    ))
 }
 
 fn lower_adt_init(
@@ -516,15 +526,15 @@ fn lower_adt_init(
         init_fields[field_idx] = Some(rvalue);
     }
 
-    Ok(RValInstruct {
-        kind: RValueKind::Init {
+    Ok(RValInstruct::new(
+        RValueKind::Init {
             init_inst: InitInstruct::StructInit {
                 fields: init_fields.into_iter().map(Option::unwrap).collect(),
             },
             span,
         },
-        ty: adt_ty,
-    })
+        adt_ty,
+    ))
 }
 
 fn lower_struct_get(
@@ -565,16 +575,16 @@ fn lower_struct_get(
 
     modifier.push(ValueModifier::Field(field_index));
 
-    Ok(RValInstruct {
-        kind: RValueKind::Use {
+    Ok(RValInstruct::new(
+        RValueKind::Use {
             value: Value::InMemory {
                 local_idx,
                 modifier,
             },
             span: Some(span),
         },
-        ty: field_ty,
-    })
+        field_ty,
+    ))
 }
 
 fn lower_struct_set(
@@ -618,13 +628,13 @@ fn lower_struct_set(
             span: Some(span),
         });
 
-    Ok(RValInstruct {
-        kind: RValueKind::Use {
+    Ok(RValInstruct::new(
+        RValueKind::Use {
             value: Value::Const(ConstExpr::Void),
             span: None,
         },
-        ty: func.get_or_insert_global_type_idx(MathicType::Void),
-    })
+        func.get_or_insert_global_type_idx(MathicType::Void),
+    ))
 }
 
 fn lower_primary_value(
@@ -736,13 +746,13 @@ fn lower_primary_value(
         ),
     };
 
-    Ok(RValInstruct {
-        kind: RValueKind::Use {
+    Ok(RValInstruct::new(
+        RValueKind::Use {
             value,
             span: Some(span),
         },
         ty,
-    })
+    ))
 }
 
 /// Tries to infer the type of an expression.

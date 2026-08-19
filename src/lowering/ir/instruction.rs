@@ -85,3 +85,9 @@ pub struct RValInstruct {
     pub kind: RValueKind,
     pub ty: TypeIndex,
 }
+
+impl RValInstruct {
+    pub fn new(kind: RValueKind, ty: TypeIndex) -> Self {
+        RValInstruct { kind, ty }
+    }
+}

@@ -1,3 +1,5 @@
+use std::collections::HashSet;
+
 use crate::{
     diagnostics::LoweringError,
     lowering::{
@@ -5,8 +7,9 @@ use crate::{
         ir::{
             adts::{Adt, StructAdt, StructField},
             function::{FunctionBuilder, LocalKind},
-            instruction::LValInstruct,
+            instruction::{LValInstruct, RValueKind},
             types::{MathicType, lower_inner_ast_type},
+            value::Value,
         },
     },
     parser::{
@@ -46,6 +49,20 @@ pub fn lower_var_declaration(
         func.sym_table
             .add_local(Some(name.clone()), var_ty_idx, Some(span), LocalKind::Temp)?;
 
+    // We need to track the symbols used in the symbolic expression.
+    if func.get_type(var_ty_idx, span)?.is_symbolic() {
+        let symbols = match &init.kind {
+            RValueKind::SymbolicBinary { symbols, .. } => symbols.clone(),
+            RValueKind::Use {
+                value: Value::Symbol { local_idx },
+                ..
+            } => func.sym_table.locals[*local_idx].symbols.clone(),
+            _ => HashSet::with_capacity(0),
+        };
+
+        func.sym_table.locals[local_idx].symbols = symbols;
+    }
+
     func.push_instruction(LValInstruct::Let {
         local_idx,
         init,
@@ -66,6 +83,8 @@ pub fn lower_sym_decl(
     let local_idx =
         func.sym_table
             .add_local(Some(name.clone()), sym_ty_idx, Some(span), LocalKind::Sym)?;
+
+    func.sym_table.locals[local_idx].symbols = HashSet::from([local_idx]);
 
     func.push_instruction(LValInstruct::Sym {
         local_idx,

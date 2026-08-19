@@ -1,4 +1,7 @@
-use std::{collections::HashMap, sync::Arc};
+use std::{
+    collections::{HashMap, HashSet},
+    sync::Arc,
+};
 
 use crate::{
     diagnostics::LoweringError,
@@ -233,6 +236,7 @@ impl SymbolTableBuilder {
             kind,
             ty,
             debug_name: debug_name.clone(),
+            symbols: HashSet::new(),
         });
 
         if let Some(name) = debug_name {
