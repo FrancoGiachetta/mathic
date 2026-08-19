@@ -51,12 +51,12 @@ stmt          = declaration
                 | expr_stmt
                 | block
                 ;
-for_stmt      = 'for' IDENT 'in' expr_no_init
-                ( '..' expr_no_init block
+for_stmt      = 'for' IDENT 'in' expr_no_asig
+                ( '..' expr_no_asig block
                 | block
                 ) ;
-while_stmt    = 'while' expr_no_init block ;
-if_stmt       = 'if' expr_no_init block [ 'else' block ] ;
+while_stmt    = 'while' expr_no_asig block ;
+if_stmt       = 'if' expr_no_asig block [ 'else' block ] ;
 return_stmt   = 'return' expr ';' ;
 expr_stmt     = expr ';' ;
 block         = '{' { stmt } '}' ;
@@ -73,14 +73,13 @@ block         = '{' { stmt } '}' ;
 (*   5. + -                                                         *)
 (*   6. * /                                                         *)
 (*   7. unary (! -)                                                 *)
-(*   8. call (() [] .)                                              *)
+(*   8. call (() [] . {})                                           *)
 
 expr          = assignment ;
 assignment    = IDENT { '.' IDENT } '=' expr
-                | initializer
+                | expr_no_asig
                 ;
-initializer   = expr_no_init [ struct_init ] ;
-expr_no_init  = logical_or ;
+expr_no_asig  = logical_or ;
 logical_or    = logical_and { 'or' logical_and } ;
 logical_and   = equality { 'and' equality } ;
 equality      = comparison { ( '==' | '!=' ) comparison } ;
@@ -90,8 +89,15 @@ factor        = unary { ( '*' | '/' ) unary } ;
 unary         = ( '!' | '-' ) unary
                 | call
                 ;
-call          = primary { '(' [ arg_list ] ')' | '[' expr ']' | '.' IDENT } ;
-struct_init   = '{' IDENT ':' expr { ',' IDENT ':' expr } '}' ;
+call          = primary {
+                '(' [ arg_list ] ')'
+                | '[' expr ']'
+                | '.' IDENT
+                | '{' brace_body '}'
+                } ;
+brace_body    = IDENT ( ':' struct_init | '=' substitution ) ;
+struct_init   = expr { ',' IDENT ':' expr } ;
+substitution  = expr { ',' IDENT '=' expr } ;
 primary       = 'true' | 'false' | path | INT | FLOAT | STRING | '(' expr ')' ;
 
 
