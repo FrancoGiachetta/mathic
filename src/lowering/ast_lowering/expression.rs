@@ -34,24 +34,16 @@ pub fn lower_expr(
         ExprStmtKind::Group(expr) => {
             return lower_expr(func, expr, ty_hint);
         }
-        ExprStmtKind::Call { callee, args } => {
-            let callee_name = match &callee.kind {
-                ExprStmtKind::Primary(PrimaryExpr::Ident(ident)) => ident,
-                ExprStmtKind::Primary(PrimaryExpr::Path(path)) => &path.join("::"),
-                _ => unreachable!(),
-            };
-
-            if callee_name == "eval" {
-                return lower_eval_builtin(func, args, expr.span);
-            }
-            lower_call(func, callee, args, expr.span)?
-        }
+        ExprStmtKind::Call { callee, args } => lower_call(func, callee, args, expr.span)?,
         ExprStmtKind::Assign {
             name,
             expr: assign_expr,
         } => lower_assignment(func, name, assign_expr, expr.span)?,
         ExprStmtKind::Logical { lhs, op, rhs } => lower_logical_op(func, lhs, *op, rhs, expr.span)?,
         ExprStmtKind::Index { .. } => todo!(),
+        ExprStmtKind::Substitution { callee, args } => {
+            return lower_substitution_builtin(func, callee, args, expr.span);
+        }
         ExprStmtKind::StructInit { expr, fields } => lower_adt_init(func, expr, fields, expr.span)?,
         ExprStmtKind::StructGet {
             expr: struct_expr,
@@ -198,66 +190,42 @@ fn lower_call(
     })
 }
 
-fn lower_eval_builtin(
+fn lower_substitution_builtin(
     func: &mut FunctionBuilder,
-    func_args: &[ExprStmt],
+    callee: &ExprStmt,
+    args: &[(String, ExprStmt)],
     span: Span,
 ) -> Result<(RValInstruct, TypeIndex), LoweringError> {
-    if func_args.len() != 3 {
-        return Err(LoweringError::WrongArgumentCount {
-            name: "eval".into(),
-            expected: 3,
-            got: func_args.len(),
-            span,
-        });
-    }
+    let (sym_expr, sym_expr_ty_idx) = lower_expr(func, callee, None)?;
+    let sym_expr_ty = func.get_type(sym_expr_ty_idx, callee.span)?;
 
-    let (expr_rv, expr_ty_idx) = lower_expr(func, &func_args[0], None)?;
-    let expr_mty = func.get_type(expr_ty_idx, func_args[0].span)?;
-    let inner_ty = match expr_mty {
+    let inner_ty = match sym_expr_ty {
         MathicType::SymbolicExpr(num_ty) => num_ty,
         _ => {
             return Err(LoweringError::MismatchedType {
-                expected: expr_mty,
-                found: expr_mty,
-                span: func_args[0].span,
+                expected: MathicType::SymbolicExpr(NumericTy::Sint(SintTy::Isize)),
+                found: sym_expr_ty,
+                span: callee.span,
             });
         }
     };
+    let inner_ty_idx = func.get_or_insert_global_type_idx(MathicType::Numeric(inner_ty));
+    let args = args
+        .iter()
+        .map(|(name, expr)| {
+            let (lowered_expr, lowered_expr_ty_idx) = lower_expr(func, expr, Some(inner_ty_idx))?;
 
-    let sym_name = match &func_args[1].kind {
-        ExprStmtKind::Primary(PrimaryExpr::Ident(name)) => {
-            let local = func
-                .sym_table
-                .get_local_from_name(name, func_args[1].span)?;
-            let local_ty = func.get_type(local.ty, func_args[1].span)?;
-            if !local_ty.is_symbolic() {
+            let lowered_expr_ty = func.get_type(lowered_expr_ty_idx, expr.span)?;
+            if !lowered_expr_ty.is_symbolic() {
                 return Err(LoweringError::MismatchedType {
-                    expected: expr_mty,
-                    found: local_ty,
-                    span: func_args[1].span,
+                    expected: MathicType::Numeric(inner_ty),
+                    found: lowered_expr_ty,
+                    span: expr.span,
                 });
             }
-            name.clone()
-        }
-        _ => {
-            return Err(LoweringError::MismatchedType {
-                expected: expr_mty,
-                found: expr_mty,
-                span: func_args[1].span,
-            });
-        }
-    };
-
-    let inner_ty_idx = func.get_or_insert_global_type_idx(MathicType::Numeric(inner_ty));
-    let (value_rv, val_ty_idx) = lower_expr(func, &func_args[2], Some(inner_ty_idx))?;
-    if val_ty_idx != inner_ty_idx {
-        return Err(LoweringError::MismatchedType {
-            expected: func.get_type(inner_ty_idx, func_args[2].span)?,
-            found: func.get_type(val_ty_idx, func_args[2].span)?,
-            span: func_args[2].span,
-        });
-    }
+            Ok((name.to_owned(), lowered_expr))
+        })
+        .collect::<Result<Vec<_>, _>>()?;
 
     let local_idx = func
         .sym_table
@@ -265,9 +233,8 @@ fn lower_eval_builtin(
     let dest_block_idx = func.last_block_idx() + 1;
 
     func.get_basic_block_mut(func.last_block_idx()).terminator = Terminator::Eval {
-        expr: expr_rv,
-        sym_name,
-        value: value_rv,
+        expr: sym_expr,
+        args,
         return_dest: Value::InMemory {
             local_idx,
             modifier: vec![],
@@ -786,6 +753,9 @@ fn lower_expression_type(
         ExprStmtKind::Unary { rhs, .. } => lower_expression_type(func, &rhs.kind, None, span)?,
         ExprStmtKind::Assign { expr, .. } | ExprStmtKind::StructSet { rhs: expr, .. } => {
             lower_expression_type(func, &expr.kind, None, span)?
+        }
+        ExprStmtKind::Substitution { callee, .. } => {
+            lower_expression_type(func, &callee.kind, None, span)?
         }
         ExprStmtKind::StructInit { expr, .. } => match &expr.kind {
             ExprStmtKind::Primary(PrimaryExpr::Ident(name)) => {
