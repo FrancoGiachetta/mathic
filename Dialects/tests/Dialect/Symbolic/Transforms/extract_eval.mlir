@@ -1,12 +1,11 @@
 // RUN: dialect-driver --symbolic-extract-eval %s | FileCheck %s
 
 module {
-  // CHECK:      func private @__eval_op_
+  // CHECK:      func.func private @__eval_op_
   // CHECK-SAME: (%arg0: i32) -> !symbolic.expr<i32, isSigned = true> {
-  // CHECK-NEXT:   %0 = symbolic.sym "x" : !symbolic.expr<i32, isSigned = true>
-  // CHECK-NEXT:   %1 = symbolic.mul %0, %0 : (!symbolic.expr<i32, isSigned = true>, !symbolic.expr<i32, isSigned = true>) -> !symbolic.expr<i32, isSigned = true>
-  // CHECK-NEXT:   %2 = symbolic.mul %1, %0 : (!symbolic.expr<i32, isSigned = true>, !symbolic.expr<i32, isSigned = true>) -> !symbolic.expr<i32, isSigned = true>
-  // CHECK-NEXT:   return %2 : !symbolic.expr<i32, isSigned = true>
+  // CHECK-NEXT:   %0 = symbolic.mul %arg0, %arg0 : (i32, i32) -> !symbolic.expr<i32, isSigned = true>
+  // CHECK-NEXT:   %1 = symbolic.mul %0, %arg0 : (!symbolic.expr<i32, isSigned = true>, i32) -> !symbolic.expr<i32, isSigned = true>
+  // CHECK-NEXT:   return %1 : !symbolic.expr<i32, isSigned = true>
   // CHECK-NEXT: }
 
   // CHECK-LABEL: func @test_basic_extract
@@ -15,7 +14,7 @@ module {
     %xx = symbolic.mul %x, %x : (!symbolic.expr<i32, isSigned = true>, !symbolic.expr<i32, isSigned = true>) -> !symbolic.expr<i32, isSigned = true>
     %r = symbolic.mul %xx, %x : (!symbolic.expr<i32, isSigned = true>, !symbolic.expr<i32, isSigned = true>) -> !symbolic.expr<i32, isSigned = true>
     // CHECK: call @__eval_op_
-    %res = symbolic.eval %r, "x", %x_val : (!symbolic.expr<i32, isSigned = true>, i32) -> i32
+    %res = symbolic.eval %r, ["x"], %x_val : (!symbolic.expr<i32, isSigned = true>, i32) -> i32
     return %res : i32
   }
 
@@ -24,11 +23,11 @@ module {
     %x = symbolic.sym "x" : !symbolic.expr<i32, isSigned = true>
     %xx = symbolic.mul %x, %x : (!symbolic.expr<i32, isSigned = true>, !symbolic.expr<i32, isSigned = true>) -> !symbolic.expr<i32, isSigned = true>
     // CHECK: call @__eval_op_
-    %r1 = symbolic.eval %xx, "x", %a : (!symbolic.expr<i32, isSigned = true>, i32) -> i32
+    %r1 = symbolic.eval %xx, ["x"], %a : (!symbolic.expr<i32, isSigned = true>, i32) -> i32
     // CHECK: call @__eval_op_
-    %r2 = symbolic.eval %xx, "x", %b : (!symbolic.expr<i32, isSigned = true>, i32) -> i32
+    %r2 = symbolic.eval %xx, ["x"], %b : (!symbolic.expr<i32, isSigned = true>, i32) -> i32
     // CHECK: call @__eval_op_
-    %r3 = symbolic.eval %xx, "x", %c : (!symbolic.expr<i32, isSigned = true>, i32) -> i32
+    %r3 = symbolic.eval %xx, ["x"], %c : (!symbolic.expr<i32, isSigned = true>, i32) -> i32
     return %r3 : i32
   }
 }

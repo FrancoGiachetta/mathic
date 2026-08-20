@@ -70,8 +70,8 @@ pub enum Terminator {
     },
     Eval {
         expr: RValInstruct,
-        sym_name: String,
-        value: RValInstruct,
+        syms: Vec<String>,
+        exprs: Vec<RValInstruct>,
         span: Option<Span>,
         return_dest: Value,
         return_ty_idx: TypeIndex,

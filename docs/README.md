@@ -4,8 +4,8 @@
 |---------|-------------|
 | [Project Structure](#project-structure) | Tree view of the source code organization |
 | [Compilation Process](#mathics-compilation-process) | The process to compile Mathic |
-| [Symbolic Dialect](dialects/Symbolic.md) | The `symbolic` MLIR dialect: types, operations, and project structure |
-| [Symbolic Passes](dialects/SymbolicPasses.md) | Lowering passes: `symbolic-extract-eval` and `symbolic-to-arith` |
+| [Symbolic Dialect](compilation_process/dialects/Symbolic.md) | The `symbolic` MLIR dialect: types, operations, and project structure |
+| [Symbolic Passes](compilation_process/dialects/SymbolicPasses.md) | Lowering passes: `symbolic-extract-eval` and `symbolic-to-arith` |
 
 ## Project Structure
 
@@ -69,7 +69,7 @@ src/
 │   └── token.rs
 └── parser.rs                      # Module re-export
 Dialects/                          # Custom MLIR dialect (C++)
-└── Symbolic/                      # The `symbolic` dialect (see dialects/Symbolic.md)
+└── Symbolic/                      # The `symbolic` dialect (see compilation_process/dialects/Symbolic.md)
 tests/                             # Integration tests
 ```
 
@@ -115,7 +115,7 @@ flowchart TD
 - **Frontend**: Lexes and parses `.mth` source files into an AST.
 - **Lowering**: Transforms the AST into MATHIR (Mathic IR).
 - **Codegen**: Lowers MATHIR to MLIR with the custom `symbolic` dialect.
-- **Passes**: Canonicalization, symbolic lowering, and conversion to LLVM IR. See [Symbolic Passes](dialects/SymbolicPasses.md).
+- **Passes**: Canonicalization, symbolic lowering, and conversion to LLVM IR. See [Symbolic Passes](compilation_process/dialects/SymbolicPasses.md).
 - **Execution**: JIT-compiles LLVM IR and runs the program.
 
 ### In-Depth Sections

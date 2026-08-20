@@ -295,15 +295,22 @@ pub mod basic_block {
                 }
                 Self::Eval {
                     expr,
-                    sym_name,
-                    value,
+                    syms,
+                    exprs,
                     return_dest,
                     dest_block,
                     ..
                 } => {
+                    let args = syms
+                        .iter()
+                        .zip(exprs)
+                        .map(|(s, e)| format!("{s}={e}"))
+                        .collect::<Vec<_>>()
+                        .join(",");
+
                     write!(
                         f,
-                        "{} = call eval({expr}, {sym_name}, {value}) block{}",
+                        "{} = eval {expr}[{args}] block{}",
                         return_dest, dest_block
                     )
                 }

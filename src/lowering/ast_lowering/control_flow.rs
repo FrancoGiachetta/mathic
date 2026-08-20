@@ -136,51 +136,51 @@ pub fn lower_for(
         Some(span),
         LocalKind::Temp,
     )?;
-    let loop_breaker_condition = RValInstruct {
-        kind: RValueKind::Binary {
+    let loop_breaker_condition = RValInstruct::new(
+        RValueKind::Binary {
             op: BinaryOp::Compare(CmpOp::Lt),
-            lhs: Box::new(RValInstruct {
-                kind: RValueKind::Use {
+            lhs: Box::new(RValInstruct::new(
+                RValueKind::Use {
                     value: Value::InMemory {
                         local_idx: loop_tracker_idx,
                         modifier: vec![],
                     },
                     span: None,
                 },
-                ty: start_ty,
-            }),
+                start_ty,
+            )),
             rhs: Box::new(end_val),
             span: Span::from(start.span.start..end.span.end),
         },
-        ty: func.get_or_insert_global_type_idx(MathicType::Bool),
-    };
+        func.get_or_insert_global_type_idx(MathicType::Bool),
+    );
 
     let extra_instructions = vec![LValInstruct::Assign {
         local_idx: loop_tracker_idx,
-        value: RValInstruct {
-            kind: RValueKind::Binary {
+        value: RValInstruct::new(
+            RValueKind::Binary {
                 op: BinaryOp::Arithmetic(ArithOp::Add),
-                lhs: Box::new(RValInstruct {
-                    kind: RValueKind::Use {
+                lhs: Box::new(RValInstruct::new(
+                    RValueKind::Use {
                         value: Value::InMemory {
                             local_idx: loop_tracker_idx,
                             modifier: vec![],
                         },
                         span: None,
                     },
-                    ty: start_ty,
-                }),
-                rhs: Box::new(RValInstruct {
-                    kind: RValueKind::Use {
+                    start_ty,
+                )),
+                rhs: Box::new(RValInstruct::new(
+                    RValueKind::Use {
                         value: 1i32.into(),
                         span: None,
                     },
-                    ty: start_ty,
-                }),
+                    start_ty,
+                )),
                 span: Span::from(start.span.start..end.span.end),
             },
-            ty: start_ty,
-        },
+            start_ty,
+        ),
         modifier: vec![],
         span: None,
     }];

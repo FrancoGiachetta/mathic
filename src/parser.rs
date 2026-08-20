@@ -193,4 +193,13 @@ impl<'a> MathicParser<'a> {
             false
         })
     }
+
+    /// Checks if the next token matches any of the expected tokens.
+    fn check_next_any(&self, expected: &[Token]) -> ParserResult<bool> {
+        Ok(if let Ok(Some(res)) = self.peek() {
+            expected.contains(&res.token)
+        } else {
+            false
+        })
+    }
 }

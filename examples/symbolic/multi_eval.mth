@@ -3,8 +3,8 @@ df main() i32 {
 
     let e: expr<i32> = x * 2;
 
-    let r1: i32 = eval(e, x, 5);
-    let r2: i32 = eval(e, x, 10);
+    let r1: i32 = e[x=5];
+    let r2: i32 = e[x=10];
 
     return r1 + r2;
 }

@@ -90,8 +90,11 @@ factor        = unary { ( '*' | '/' ) unary } ;
 unary         = ( '!' | '-' ) unary
                 | call
                 ;
-call          = primary { '(' [ arg_list ] ')' | '[' expr ']' | '.' IDENT } ;
+call          = primary { '(' [ arg_list ] ')' | '.' IDENT
+                | '[' bracket_args ']' } ;
+bracket_args  = substitution ;
 struct_init   = '{' IDENT ':' expr { ',' IDENT ':' expr } '}' ;
+substitution  = IDENT '=' expr { ',' IDENT '=' expr } ;
 primary       = 'true' | 'false' | path | INT | FLOAT | STRING | '(' expr ')' ;
 
 

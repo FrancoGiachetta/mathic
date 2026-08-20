@@ -16,17 +16,14 @@
 ```rust
 df main() i32 {
     sym x: expr<i32>;
+    sym y: expr<i32>;
+    sym z: expr<i32>;
 
     let a: expr<i32> = x + 5;
-    let r1: i32 = eval(a, x, 10);
+    let b: expr<i32> = 3 * y;
+    let c: expr<i32> = 2 * z + 1;
 
-    let b: expr<i32> = 3 * x;
-    let r2: i32 = eval(b, x, 10);
-
-    let c: expr<i32> = 2 * x + 1;
-    let r3: i32 = eval(c, x, 10);
-
-    return r1 + r2 + r3;
+    return c[x=10] + b[y=10] + a[z=10];
 }
 ```
 

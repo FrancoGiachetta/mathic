@@ -26,7 +26,8 @@ pub mod symbolic {
             Context,
             ir::{
                 Identifier, Location, Operation, Type, Value, ValueLike,
-                attribute::StringAttribute, operation::OperationBuilder,
+                attribute::{ArrayAttribute, StringAttribute},
+                operation::OperationBuilder,
             },
         };
 
@@ -102,16 +103,13 @@ pub mod symbolic {
             ctx: &'ctx Context,
             location: Location<'ctx>,
             expr: Value<'ctx, '_>,
-            sym_name: &str,
-            value: Value<'ctx, '_>,
+            sym_names: ArrayAttribute<'ctx>,
+            values: &[Value<'ctx, '_>],
         ) -> Operation<'ctx> {
-            let result_type = value.r#type();
+            let result_type = values[0].r#type();
             OperationBuilder::new("symbolic.eval", location)
-                .add_operands(&[expr, value])
-                .add_attributes(&[(
-                    Identifier::new(ctx, "sym"),
-                    StringAttribute::new(ctx, sym_name).into(),
-                )])
+                .add_operands(&[&[expr], values].concat())
+                .add_attributes(&[(Identifier::new(ctx, "syms"), sym_names.into())])
                 .add_results(&[result_type])
                 .build()
                 .expect("valid operation")

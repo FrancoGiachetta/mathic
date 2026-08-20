@@ -43,6 +43,10 @@ pub enum ExprStmtKind {
         name: String,
         expr: Box<ExprStmt>,
     },
+    Substitution {
+        callee: Box<ExprStmt>,
+        args: Vec<(String, ExprStmt)>,
+    },
     StructGet {
         expr: Box<ExprStmt>,
         field_name: String,

@@ -16,13 +16,12 @@
 #include <mlir/IR/Value.h>
 #include <mlir/Support/LLVM.h>
 #include <mlir/Transforms/GreedyPatternRewriteDriver.h>
-#include <optional>
-#include <string>
 #include <utility>
 
 #include "Dialect/Symbolic/IR/SymbolicOps.h"
 #include "Dialect/Symbolic/IR/SymbolicTypes.h"
 #include "Dialect/Symbolic/Transforms/SymbolicExtractEval.h"
+#include "llvm/ADT/STLExtras.h"
 
 namespace
 {
@@ -75,7 +74,8 @@ static void collectFreeVars(Value val, DenseSet<Value> &freeVars)
 /// Recursively clones the expression tree into the current builder insertion
 /// point, using `mapper` to deduplicate already-cloned values.
 /// Free variables must already be mapped to function arguments before calling.
-static Value cloneExpression(Value val, OpBuilder &builder, IRMapping &mapper)
+static Value cloneExpression(Value val, OpBuilder &builder, IRMapping &mapper,
+                             DenseMap<StringRef, BlockArgument> &symArgs)
 {
     if (Value mapped = mapper.lookupOrNull(val))
         return mapped;
@@ -84,9 +84,15 @@ static Value cloneExpression(Value val, OpBuilder &builder, IRMapping &mapper)
 
     if (!op)
         return Value();
+    else if (auto symOp = llvm::dyn_cast<symbolic::SymOp>(op))
+    {
+        BlockArgument arg = symArgs[symOp.getName()];
+        mapper.map(val, arg);
+        return arg;
+    }
 
     for (Value operand : op->getOperands())
-        cloneExpression(operand, builder, mapper);
+        cloneExpression(operand, builder, mapper, symArgs);
 
     Operation *cloned = builder.clone(*op, mapper);
     Value result = cloned->getResult(0);
@@ -116,13 +122,14 @@ static void createEvalFunction(PatternRewriter &rewriter, EvalOp op, SymbolRefAt
 
     rewriter.setInsertionPointToStart(module.getBody());
 
+    size_t symsSize = op.getSyms().size();
+    size_t inputSize = symsSize + freeVars.size();
     SmallVector<Type> inputTypes;
 
-    inputTypes.reserve(1 + freeVars.size());
-    inputTypes.push_back(innerTy);
-
-    for (Value fv : freeVars)
-        inputTypes.push_back(fv.getType());
+    // Symbolic values and free vars all should have the same type. So we
+    // simple use innerTy.
+    inputTypes.reserve(inputSize);
+    inputTypes.append(inputSize, innerTy);
 
     FunctionType fnType = rewriter.getFunctionType(inputTypes, op.getExpr().getType());
     func::FuncOp fnOp = func::FuncOp::create(rewriter, op.getLoc(), fnName.getLeafReference(), fnType);
@@ -135,11 +142,19 @@ static void createEvalFunction(PatternRewriter &rewriter, EvalOp op, SymbolRefAt
 
     IRMapping mapper;
 
-    size_t i = 1;
-    for (Value fv : freeVars)
-        mapper.map(fv, fnEntryBLock->getArgument(i++));
+    // The evaluation recieves two arrays: syms and values. They represent the
+    // relation between a symbol (e.g 'x') and its evaluation value. This
+    // DenseMap is used to keep track of these related values during the eval
+    // function creation.
+    DenseMap<StringRef, BlockArgument> symArgs;
 
-    Value result = cloneExpression(op.getExpr(), rewriter, mapper);
+    for (auto [i, sym] : llvm::enumerate(op.getSyms()))
+        symArgs[mlir::cast<StringAttr>(sym)] = fnEntryBLock->getArgument(i);
+
+    for (auto [i, fv] : llvm::enumerate(freeVars))
+        mapper.map(fv, fnEntryBLock->getArgument(symsSize + i));
+
+    Value result = cloneExpression(op.getExpr(), rewriter, mapper, symArgs);
 
     func::ReturnOp::create(rewriter, op.getLoc(), result);
     rewriter.setInsertionPoint(op);
@@ -163,7 +178,9 @@ struct EvalOpToFuncPattern : public OpRewritePattern<EvalOp>
 
         SymExprType exprTy = llvm::cast<SymExprType>(op.getExpr().getType());
         Type innerTy = exprTy.getInnerType();
+        // Represent non-symbolic variables used in the expression.
         DenseSet<Value> freeVars;
+        auto values = op.getValues();
 
         collectFreeVars(op.getExpr(), freeVars);
 
@@ -184,8 +201,9 @@ struct EvalOpToFuncPattern : public OpRewritePattern<EvalOp>
 
         SmallVector<Value> callArgs;
 
-        callArgs.reserve(1 + freeVars.size());
-        callArgs.push_back(op.getValue());
+        callArgs.reserve(op.getSyms().size() + freeVars.size());
+
+        callArgs.append(values.begin(), values.end());
         callArgs.append(freeVars.begin(), freeVars.end());
 
         func::CallOp call = func::CallOp::create(rewriter, op.getLoc(), fnName, op.getExpr().getType(), callArgs);

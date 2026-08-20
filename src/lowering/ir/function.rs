@@ -14,6 +14,7 @@ use crate::{
         ast::declaration::{FuncDecl, Param},
     },
 };
+use std::collections::HashSet;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum LocalKind {
@@ -30,6 +31,8 @@ pub struct Local {
     pub kind: LocalKind,
     pub ty: TypeIndex,
     pub debug_name: Option<String>,
+    /// Free symbolic variables used in the local's value.
+    pub symbols: HashSet<usize>,
 }
 
 /// MATHIR's representation of a function.

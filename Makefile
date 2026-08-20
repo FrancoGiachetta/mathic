@@ -1,6 +1,6 @@
 .PHONY: build
 build: 
-	cargo build --release
+	cargo build --release --workspace
 
 .PHONY: check
 check: 

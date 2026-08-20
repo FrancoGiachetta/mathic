@@ -10,7 +10,7 @@ const EXPRS: &[(&str, &str, i64)] = &[(
     "df main() i32 {
         sym x:expr<i32>;
         let expr: expr<i32> = x * (x + x + x + x);
-        return eval(expr,x,10);
+        return expr[x=10];
     }",
     400,
 )];
