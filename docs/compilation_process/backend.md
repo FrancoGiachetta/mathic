@@ -111,7 +111,7 @@ Once the MLIR module is generated, it needs to go through a pipeline of passes t
 
 1. **Canonicalizer**: MLIR's built-in pass that simplifies the IR by folding constants and removing dead code.
 2. **scf-to-cf**: converts structured control flow operations like `scf.for` and `scf.if` into unstructured branches (`cf.br`, `cf.cond_br`).
-3. **symbolic-extract-eval** and **symbolic-to-arith**: Mathic-specific passes that lower the `symbolic` dialect to `arith` and `func`. See [Symbolic Passes](../dialects/SymbolicPasses.md) for a detailed explanation.
+3. **symbolic-extract-eval** and **symbolic-to-arith**: Mathic-specific passes that lower the `symbolic` dialect to `arith` and `func`. See [Symbolic Passes](dialects/SymbolicPasses.md) for a detailed explanation.
 4. **convert-to-llvm**: lowers all remaining dialects to the LLVM dialect, which maps directly to LLVM IR.
 
 After these passes the module contains only LLVM dialect operations, ready to be executed.
