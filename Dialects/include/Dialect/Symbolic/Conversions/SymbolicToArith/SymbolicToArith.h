@@ -18,6 +18,25 @@
         }                                                                                                              \
     };
 
+#define SIGNEDNESS_BINARY_OP_CONVERTER(SYM_OP, SIGNED_ARITH_OP, UNSIGNED_ARITH_OP)                                     \
+    struct Convert##SYM_OP : public OpConversionPattern<symbolic::SYM_OP##Op>                                          \
+    {                                                                                                                  \
+        using OpConversionPattern::OpConversionPattern;                                                                \
+                                                                                                                       \
+        llvm::LogicalResult matchAndRewrite(symbolic::SYM_OP##Op op, OpAdaptor adaptor,                                \
+                                            ConversionPatternRewriter &rewriter) const override                        \
+        {                                                                                                              \
+            SymExprType exprTy = llvm::cast<SymExprType>(op.getType());                                                \
+            if (exprTy.getIsSigned())                                                                                  \
+                rewriter.replaceOp(op.getOperation(), arith::SIGNED_ARITH_OP::create(                                  \
+                                                          rewriter, op.getLoc(), adaptor.getLhs(), adaptor.getRhs())); \
+            else                                                                                                       \
+                rewriter.replaceOp(op.getOperation(), arith::UNSIGNED_ARITH_OP::create(                                \
+                                                          rewriter, op.getLoc(), adaptor.getLhs(), adaptor.getRhs())); \
+            return llvm::success();                                                                                    \
+        }                                                                                                              \
+    };
+
 namespace mlir
 {
 namespace symbolic

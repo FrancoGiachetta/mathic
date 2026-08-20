@@ -92,7 +92,7 @@ fn create_project(project_name: String) -> Result<(), EulerError> {
     sym x:expr<i32> ;
     let y: i32 = 5;
 
-    return eval(x+y, x, 10);
+    return (x+y)[x=10];
 }"#;
 
     std::fs::write(mathic_toml_path, toml::to_string(&config_toml)?)?;

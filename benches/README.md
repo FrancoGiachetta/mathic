@@ -2,7 +2,7 @@
 
 Compares symbolic expression evaluation time between:
 
-- **Mathic** — JIT-compiles `eval(expr, sym, value)` to native code via MLIR/LLVM. Benchmarked at four optimization levels: `None`, `O1`, `O2`, `O3`.
+- **Mathic** — JIT-compiles `expr[x=value]` to native code via MLIR/LLVM. Benchmarked at four optimization levels: `None`, `O1`, `O2`, `O3`.
 - **SymPy** — `lambdify(expr, 'numpy')` evaluated with the same input.
 
 ## Expression

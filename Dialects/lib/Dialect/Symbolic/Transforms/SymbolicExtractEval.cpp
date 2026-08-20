@@ -16,8 +16,6 @@
 #include <mlir/IR/Value.h>
 #include <mlir/Support/LLVM.h>
 #include <mlir/Transforms/GreedyPatternRewriteDriver.h>
-#include <optional>
-#include <string>
 #include <utility>
 
 #include "Dialect/Symbolic/IR/SymbolicOps.h"

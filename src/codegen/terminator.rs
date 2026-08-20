@@ -143,6 +143,7 @@ impl MathicCodeGen<'_> {
                 let return_ty = self.get_type(fn_ctx.get_ir_func(), *return_ty_idx)?;
 
                 let expr = self.compile_rvalue(fn_ctx, block, expr, helper)?;
+
                 let syms = syms
                     .iter()
                     .map(|s| StringAttribute::new(self.ctx, s).into())
