@@ -12,7 +12,7 @@ env.sh
 **/*.mathir
 **/*.o
 # only at root level.
-*.mlir
+./*.mlir
 
 # Samply
 profile.json.gz

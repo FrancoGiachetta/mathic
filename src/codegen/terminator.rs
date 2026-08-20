@@ -2,8 +2,8 @@ use melior::{
     dialect::{cf, func, llvm},
     helpers::{BuiltinBlockExt, LlvmBlockExt},
     ir::{
-        Block, BlockLike, BlockRef, Identifier, Location,
-        attribute::{FlatSymbolRefAttribute, StringAttribute},
+        Block, BlockLike, BlockRef, Location,
+        attribute::{ArrayAttribute, FlatSymbolRefAttribute, StringAttribute},
     },
 };
 
@@ -145,21 +145,17 @@ impl MathicCodeGen<'_> {
                 let expr = self.compile_rvalue(fn_ctx, block, expr, helper)?;
                 let syms = syms
                     .iter()
-                    .map(|s| {
-                        (
-                            Identifier::new(self.ctx, "sym"),
-                            StringAttribute::new(self.ctx, s).into(),
-                        )
-                    })
+                    .map(|s| StringAttribute::new(self.ctx, s).into())
                     .collect::<Vec<_>>();
                 let values = exprs
                     .iter()
                     .map(|expr| self.compile_rvalue(fn_ctx, block, expr, helper))
                     .collect::<Result<Vec<_>, _>>()?;
                 let return_value = block.append_op_result(symbolic::operation::eval(
+                    self.ctx,
                     unknown_location,
                     expr,
-                    &syms,
+                    ArrayAttribute::new(self.ctx, &syms),
                     &values,
                 ))?;
 

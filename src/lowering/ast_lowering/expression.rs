@@ -263,7 +263,7 @@ fn lower_substitution(
         return Err(LoweringError::MissingSymbols { missing, span });
     }
 
-    let (syms, exprs) = args
+    let mut args = args
         .iter()
         .map(|(name, expr)| {
             let (lowered_expr, lowered_expr_ty_idx) = lower_expr(func, expr, Some(inner_ty_idx))?;
@@ -277,7 +277,11 @@ fn lower_substitution(
             }
             Ok((name.to_owned(), lowered_expr))
         })
-        .collect::<Result<_, _>>()?;
+        .collect::<Result<Vec<_>, _>>()?;
+
+    args.sort_by(|(a, _), (b, _)| a.cmp(b));
+
+    let (syms, exprs) = args.into_iter().unzip();
 
     let local_idx = func
         .sym_table
