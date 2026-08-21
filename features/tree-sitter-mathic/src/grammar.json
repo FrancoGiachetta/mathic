@@ -239,70 +239,8 @@
           "type": "FIELD",
           "name": "type",
           "content": {
-            "type": "ALIAS",
-            "content": {
-              "type": "CHOICE",
-              "members": [
-                {
-                  "type": "STRING",
-                  "value": "u8"
-                },
-                {
-                  "type": "STRING",
-                  "value": "i8"
-                },
-                {
-                  "type": "STRING",
-                  "value": "u16"
-                },
-                {
-                  "type": "STRING",
-                  "value": "i16"
-                },
-                {
-                  "type": "STRING",
-                  "value": "u32"
-                },
-                {
-                  "type": "STRING",
-                  "value": "i32"
-                },
-                {
-                  "type": "STRING",
-                  "value": "u64"
-                },
-                {
-                  "type": "STRING",
-                  "value": "i64"
-                },
-                {
-                  "type": "STRING",
-                  "value": "u128"
-                },
-                {
-                  "type": "STRING",
-                  "value": "i128"
-                },
-                {
-                  "type": "STRING",
-                  "value": "isz"
-                },
-                {
-                  "type": "STRING",
-                  "value": "usz"
-                },
-                {
-                  "type": "STRING",
-                  "value": "f32"
-                },
-                {
-                  "type": "STRING",
-                  "value": "f64"
-                }
-              ]
-            },
-            "named": true,
-            "value": "numeric_type"
+            "type": "SYMBOL",
+            "name": "native_type"
           }
         },
         {

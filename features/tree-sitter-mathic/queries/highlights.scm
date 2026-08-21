@@ -4,18 +4,19 @@
 (field_identifier) @property
 (type_identifier) @type
 (native_type) @type.builtin
-(numeric_type) @type.builtin
 
 ; Functions
 
 (func_decl
-  name: (IDENT) @function)
+  name: (IDENT) @function
+  params: (param_list
+    (IDENT) @variable.parameter))
 
 (call_expression
   callee: (primary) @function)
 (call_expression
-  callee: [(primary) (field_access
-    field: (field_identifier) @function.method)])
+  (field_access
+    field: (field_identifier) @function.method))
 
 ; Keywords
 
@@ -57,9 +58,10 @@
   "!"
   "!="
   ">"
+  "<"
   ">="
   "<="
-]
+] @operator
 
 (comment) @comment
 

@@ -742,7 +742,7 @@
         "required": true,
         "types": [
           {
-            "type": "numeric_type",
+            "type": "native_type",
             "named": true
           }
         ]
@@ -1049,10 +1049,6 @@
   {
     "type": "let",
     "named": false
-  },
-  {
-    "type": "numeric_type",
-    "named": true
   },
   {
     "type": "or",

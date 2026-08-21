@@ -120,7 +120,7 @@ export default grammar({
         "sym",
         field("name", $.IDENT),
         ":",
-        field("type", alias(choice(...numericTypes), $.numeric_type)),
+        field("type", $.native_type),
         ";",
       ),
 
