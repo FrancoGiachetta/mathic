@@ -19,17 +19,41 @@ const PREC = {
   CALL: 7,
 };
 
+const numericTypes = [
+  "u8",
+  "i8",
+  "u16",
+  "i16",
+  "u32",
+  "i32",
+  "u64",
+  "i64",
+  "u128",
+  "i128",
+  "isz",
+  "usz",
+  "f32",
+  "f64",
+];
+
+const nativeTypes = numericTypes.concat(["bool", "str", "char", "expr"]);
+
 export default grammar({
   name: "mathic",
 
   conflicts: ($) => [
-    [$.assignment, $.path],
+    [$.assignment, $.primary],
     [$.expression, $.expression_no_assign],
   ],
 
   extras: ($) => [/\s|\\\r?\n/, $.comment],
 
-  inline: ($) => [],
+  inline: ($) => [
+    $._field_identifier,
+    $.bracket_type,
+    $.path,
+    $._type_identifier,
+  ],
 
   supertypes: ($) => [
     $.top_decl,
@@ -60,7 +84,7 @@ export default grammar({
         "(",
         field("params", optional($.param_list)),
         ")",
-        field("return_type", optional($.type)),
+        field("return_type", optional($._type)),
         field("body", $.block),
       ),
 
@@ -85,14 +109,20 @@ export default grammar({
         "let",
         field("name", $.IDENT),
         ":",
-        field("type", $.type),
+        field("type", $._type),
         "=",
         field("value", $.expression),
         ";",
       ),
 
     sym_decl: ($) =>
-      seq("sym", field("name", $.IDENT), ":", field("type", $.type), ";"),
+      seq(
+        "sym",
+        field("name", $.IDENT),
+        ":",
+        field("type", alias(choice(...numericTypes), $.numeric_type)),
+        ";",
+      ),
 
     /// ================================================================
     ///  Statements
@@ -254,15 +284,15 @@ export default grammar({
     /// ================================================================
 
     param_list: ($) =>
-      seq($.IDENT, ":", $.type, repeat(seq(",", $.IDENT, ":", $.type))),
+      seq($.IDENT, ":", $._type, repeat(seq(",", $.IDENT, ":", $._type))),
 
     struct_fields: ($) =>
       seq(
         optional("pub"),
         $.IDENT,
         ":",
-        $.type,
-        repeat(seq(",", optional("pub"), $.IDENT, ":", $.type)),
+        $._type,
+        repeat(seq(",", optional("pub"), $.IDENT, ":", $._type)),
       ),
 
     args_list: ($) => seq($.expression, repeat(seq(",", $.expression))),
@@ -288,9 +318,19 @@ export default grammar({
 
     path: ($) => seq($.IDENT, repeat(seq("::", $.IDENT))),
 
-    type: ($) => seq($.path, optional(seq("<", $.IDENT, ">"))),
+    field_access: ($) => seq(".", field("field", $._field_identifier)),
 
-    field_access: ($) => seq(".", $.IDENT),
+    /// ================================================================
+    ///   Types
+    /// ================================================================
+
+    _type: ($) => choice($.bracket_type, $.native_type, $._type_identifier),
+
+    native_type: ($) => choice(...nativeTypes),
+
+    bracket_type: ($) => seq($.path, seq("<", $.IDENT, ">")),
+
+    _type_identifier: ($) => alias($.path, $.type_identifier),
 
     /// ================================================================
     ///   Terminal token classes
@@ -304,5 +344,7 @@ export default grammar({
       token(
         choice(seq("//", /.*/), seq("/*", /[^*]*\*+([^/*][^*]*\*+)*/, "/")),
       ),
+
+    _field_identifier: ($) => alias($.IDENT, $.field_identifier),
   },
 });

@@ -9,6 +9,7 @@
       "file-types": [
         "mth"
       ],
+      "highlights": ["queries/highlights.scm"],
       "injection-regex": "^mathic$",
       "class-name": "TreeSitterMathic"
     }
