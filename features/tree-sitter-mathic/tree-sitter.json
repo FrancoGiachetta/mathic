@@ -1,0 +1,42 @@
+{
+  "$schema": "https://tree-sitter.github.io/tree-sitter/assets/schemas/config.schema.json",
+  "grammars": [
+    {
+      "name": "mathic",
+      "camelcase": "Mathic",
+      "title": "Mathic",
+      "scope": "source.mth",
+      "file-types": [
+        "mth"
+      ],
+      "injection-regex": "^mathic$",
+      "class-name": "TreeSitterMathic"
+    }
+  ],
+  "metadata": {
+    "version": "0.1.0",
+    "license": "Apache",
+    "description": "tree-sitter for Mathic's grammar",
+    "authors": [
+      {
+        "name": "Franco Giachetta",
+        "email": "francogiachetta27@gmail.com",
+        "url": ""
+      }
+    ],
+    "links": {
+      "repository": "https://github.com/FrancoGiachetta/mathic",
+      "funding": ""
+    }
+  },
+  "bindings": {
+    "c": true,
+    "go": true,
+    "java": false,
+    "node": true,
+    "python": true,
+    "rust": true,
+    "swift": true,
+    "zig": false
+  }
+}
