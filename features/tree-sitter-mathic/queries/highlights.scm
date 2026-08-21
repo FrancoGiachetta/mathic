@@ -11,12 +11,17 @@
   name: (IDENT) @function
   params: (param_list
     (IDENT) @variable.parameter))
+(func_decl
+  name: (IDENT) @function)
 
 (call_expression
   callee: (primary) @function)
 (call_expression
   (field_access
     field: (field_identifier) @function.method))
+
+(substitution_args
+  sym: (IDENT) @function)
 
 ; Keywords
 
@@ -39,7 +44,7 @@
 ; Literals
 
 (STRING) @string
-(NUM) @number
+(NUM) @constant.numeric
 
 [
   "true"

@@ -240,7 +240,7 @@
           "name": "type",
           "content": {
             "type": "SYMBOL",
-            "name": "native_type"
+            "name": "_type"
           }
         },
         {
@@ -1157,8 +1157,12 @@
       "type": "SEQ",
       "members": [
         {
-          "type": "SYMBOL",
-          "name": "IDENT"
+          "type": "FIELD",
+          "name": "sym",
+          "content": {
+            "type": "SYMBOL",
+            "name": "IDENT"
+          }
         },
         {
           "type": "STRING",
@@ -1178,8 +1182,12 @@
                 "value": ","
               },
               {
-                "type": "SYMBOL",
-                "name": "IDENT"
+                "type": "FIELD",
+                "name": "sym",
+                "content": {
+                  "type": "SYMBOL",
+                  "name": "IDENT"
+                }
               },
               {
                 "type": "STRING",
@@ -1596,7 +1604,7 @@
             },
             {
               "type": "SYMBOL",
-              "name": "IDENT"
+              "name": "_type"
             },
             {
               "type": "STRING",
@@ -1620,8 +1628,11 @@
       "value": "[\\p{XID_Start}_]\\p{XID_Continue}*"
     },
     "NUM": {
-      "type": "PATTERN",
-      "value": "0|[1-9]\\d*(\\.\\d+)?"
+      "type": "TOKEN",
+      "content": {
+        "type": "PATTERN",
+        "value": "0|[1-9]\\d*(\\.\\d+)?"
+      }
     },
     "STRING": {
       "type": "PATTERN",

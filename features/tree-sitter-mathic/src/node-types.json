@@ -707,15 +707,22 @@
   {
     "type": "substitution_args",
     "named": true,
-    "fields": {},
+    "fields": {
+      "sym": {
+        "multiple": true,
+        "required": true,
+        "types": [
+          {
+            "type": "IDENT",
+            "named": true
+          }
+        ]
+      }
+    },
     "children": {
       "multiple": true,
       "required": true,
       "types": [
-        {
-          "type": "IDENT",
-          "named": true
-        },
         {
           "type": "expression",
           "named": true
@@ -738,11 +745,31 @@
         ]
       },
       "type": {
-        "multiple": false,
+        "multiple": true,
         "required": true,
         "types": [
           {
+            "type": "::",
+            "named": false
+          },
+          {
+            "type": "<",
+            "named": false
+          },
+          {
+            "type": ">",
+            "named": false
+          },
+          {
+            "type": "IDENT",
+            "named": true
+          },
+          {
             "type": "native_type",
+            "named": true
+          },
+          {
+            "type": "type_identifier",
             "named": true
           }
         ]

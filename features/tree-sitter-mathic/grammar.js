@@ -116,13 +116,7 @@ export default grammar({
       ),
 
     sym_decl: ($) =>
-      seq(
-        "sym",
-        field("name", $.IDENT),
-        ":",
-        field("type", $.native_type),
-        ";",
-      ),
+      seq("sym", field("name", $.IDENT), ":", field("type", $._type), ";"),
 
     /// ================================================================
     ///  Statements
@@ -263,10 +257,10 @@ export default grammar({
 
     substitution_args: ($) =>
       seq(
-        $.IDENT,
+        field("sym", $.IDENT),
         "=",
         $.expression,
-        repeat(seq(",", $.IDENT, "=", $.expression)),
+        repeat(seq(",", field("sym", $.IDENT), "=", $.expression)),
       ),
 
     primary: ($) =>
@@ -328,7 +322,7 @@ export default grammar({
 
     native_type: ($) => choice(...nativeTypes),
 
-    bracket_type: ($) => seq($.path, seq("<", $.IDENT, ">")),
+    bracket_type: ($) => seq($.path, seq("<", $._type, ">")),
 
     _type_identifier: ($) => alias($.path, $.type_identifier),
 
@@ -337,7 +331,7 @@ export default grammar({
     /// ================================================================
 
     IDENT: ($) => /[\p{XID_Start}_]\p{XID_Continue}*/,
-    NUM: ($) => /0|[1-9]\d*(\.\d+)?/,
+    NUM: ($) => token(/0|[1-9]\d*(\.\d+)?/),
     STRING: ($) => /"[^"]*"/,
 
     comment: ($) =>
