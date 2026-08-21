@@ -51,12 +51,12 @@ stmt          = declaration
                 | expr_stmt
                 | block
                 ;
-for_stmt      = 'for' IDENT 'in' expr_no_init
-                ( '..' expr_no_init block
+for_stmt      = 'for' IDENT 'in' expr_no_assign
+                ( '..' expr_no_assign block
                 | block
                 ) ;
-while_stmt    = 'while' expr_no_init block ;
-if_stmt       = 'if' expr_no_init block [ 'else' block ] ;
+while_stmt    = 'while' expr_no_assign block ;
+if_stmt       = 'if' expr_no_assign block [ 'else' block ] ;
 return_stmt   = 'return' expr ';' ;
 expr_stmt     = expr ';' ;
 block         = '{' { stmt } '}' ;
@@ -79,8 +79,8 @@ expr          = assignment ;
 assignment    = IDENT { '.' IDENT } '=' expr
                 | initializer
                 ;
-initializer   = expr_no_init [ struct_init ] ;
-expr_no_init  = logical_or ;
+initializer   = expr_no_assign [ struct_init ] ;
+expr_no_assign  = logical_or ;
 logical_or    = logical_and { 'or' logical_and } ;
 logical_and   = equality { 'and' equality } ;
 equality      = comparison { ( '==' | '!=' ) comparison } ;
@@ -90,12 +90,12 @@ factor        = unary { ( '*' | '/' ) unary } ;
 unary         = ( '!' | '-' ) unary
                 | call
                 ;
-call          = primary { '(' [ arg_list ] ')' | '.' IDENT
+call          = primary { '(' [ args_list ] ')' | '.' IDENT
                 | '[' bracket_args ']' } ;
-bracket_args  = substitution ;
+bracket_args  = substitution_args ;
 struct_init   = '{' IDENT ':' expr { ',' IDENT ':' expr } '}' ;
-substitution  = IDENT '=' expr { ',' IDENT '=' expr } ;
-primary       = 'true' | 'false' | path | INT | FLOAT | STRING | '(' expr ')' ;
+substitution_args  = IDENT '=' expr { ',' IDENT '=' expr } ;
+primary       = 'true' | 'false' | path | NUM | STRING | '(' expr ')' ;
 
 
 (* ================================================================ *)
@@ -104,17 +104,16 @@ primary       = 'true' | 'false' | path | INT | FLOAT | STRING | '(' expr ')' ;
 
 param_list    = ( IDENT ':' type ) { ',' ( IDENT ':' type ) } ;
 struct_fields = [ 'pub' ] IDENT ':' type { ',' [ 'pub' ] IDENT ':' type } ;
-arg_list      = expr { ',' expr } ;
+args_list      = expr { ',' expr } ;
 import_path   = IDENT
                 [ '::' ( import_path
                 | '*'
                 | '{' import_path { ',' import_path } '}'
                 ) ] ;
 path          = IDENT { '::' IDENT } ;
-type          = path { '<' IDENT '>' } ;
+type          = path [ '<' IDENT '>' ] ;
 
 (* ---- Terminal token classes ---- *)
 (* IDENT    : [a-zA-Z_][a-zA-Z0-9_]*                                *)
-(* INT      : '0' | [1-9] [0-9]*                                    *)
-(* FLOAT    : [0-9]+ '.' [0-9]+                                     *)
+(* NUM      : 0 | [1-9]\d*(\.\d+)?                                  *)
 (* STRING   : '"' [^"]* '"'                                         *)
