@@ -581,30 +581,34 @@
     "type": "path",
     "named": true,
     "fields": {
+      "head": {
+        "multiple": true,
+        "required": false,
+        "types": [
+          {
+            "type": "::",
+            "named": false
+          },
+          {
+            "type": "path",
+            "named": true
+          },
+          {
+            "type": "path_identifier",
+            "named": true
+          }
+        ]
+      },
       "tail": {
         "multiple": false,
         "required": false,
         "types": [
           {
-            "type": "IDENT",
+            "type": "path_identifier",
             "named": true
           }
         ]
       }
-    },
-    "children": {
-      "multiple": true,
-      "required": false,
-      "types": [
-        {
-          "type": "IDENT",
-          "named": true
-        },
-        {
-          "type": "path",
-          "named": true
-        }
-      ]
     }
   },
   {
@@ -1106,6 +1110,10 @@
   {
     "type": "or",
     "named": false
+  },
+  {
+    "type": "path_identifier",
+    "named": true
   },
   {
     "type": "pub",

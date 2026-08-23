@@ -1456,28 +1456,32 @@
       "type": "CHOICE",
       "members": [
         {
-          "type": "SEQ",
-          "members": [
-            {
-              "type": "SYMBOL",
-              "name": "IDENT"
-            },
-            {
-              "type": "STRING",
-              "value": "::"
-            },
-            {
-              "type": "SYMBOL",
-              "name": "path"
-            }
-          ]
+          "type": "FIELD",
+          "name": "head",
+          "content": {
+            "type": "SEQ",
+            "members": [
+              {
+                "type": "SYMBOL",
+                "name": "_path_identifier"
+              },
+              {
+                "type": "STRING",
+                "value": "::"
+              },
+              {
+                "type": "SYMBOL",
+                "name": "path"
+              }
+            ]
+          }
         },
         {
           "type": "FIELD",
           "name": "tail",
           "content": {
             "type": "SYMBOL",
-            "name": "IDENT"
+            "name": "_path_identifier"
           }
         }
       ]
@@ -1619,15 +1623,6 @@
         }
       ]
     },
-    "_type_identifier": {
-      "type": "ALIAS",
-      "content": {
-        "type": "SYMBOL",
-        "name": "IDENT"
-      },
-      "named": true,
-      "value": "type_identifier"
-    },
     "IDENT": {
       "type": "PATTERN",
       "value": "[\\p{XID_Start}_]\\p{XID_Continue}*"
@@ -1689,6 +1684,24 @@
       },
       "named": true,
       "value": "field_identifier"
+    },
+    "_type_identifier": {
+      "type": "ALIAS",
+      "content": {
+        "type": "SYMBOL",
+        "name": "IDENT"
+      },
+      "named": true,
+      "value": "type_identifier"
+    },
+    "_path_identifier": {
+      "type": "ALIAS",
+      "content": {
+        "type": "SYMBOL",
+        "name": "IDENT"
+      },
+      "named": true,
+      "value": "path_identifier"
     }
   },
   "extras": [
@@ -1704,7 +1717,7 @@
   "conflicts": [
     [
       "assignment",
-      "path"
+      "_path_identifier"
     ],
     [
       "expression",

@@ -1,25 +1,21 @@
 ; Identifier
 
 (IDENT) @variable
-(field_identifier) @property
+(path_identifier) @variable
 (type_identifier) @type
 (native_type) @type.builtin
 
-; Assume that all names in an import path are types
-(import_path
-  (IDENT) @type)
+; Assume that uppercase identifiers are types
+((IDENT) @type
+  (#match? @type "^[A-Z]"))
+((path_identifier) @type
+  (#match? @type "^[A-Z]"))
 
-; Assume that all names of the head of a path are types and the name of the
-; tail a function
-(path (IDENT) @type)
+; Assume that path tails are functions
 (path
-  (IDENT)+
+  (path_identifier)*
   (path
-  tail: (IDENT) @function))
-
-; Assume that the name of the tail of a path that is upparcase is a constructor
-(((IDENT) @type
-  (#match? @type "^[A-Z]")))
+    tail: (path_identifier) @function))
 
 ; Functions
 
@@ -32,10 +28,18 @@
 (call_expression
   (primary
     (path
-      tail: (IDENT) @function)))
+      tail: (path_identifier) @function))
+  "(")
 
 (substitution_args
   sym: (IDENT) @function)
+
+; Struct
+
+(struct_init
+  (IDENT) @variable.parameter)
+(struct_fields
+  (IDENT) @variable.parameter)
 
 ; Keywords
 
@@ -86,9 +90,9 @@
 
 [
   ","
-  "."
   ";"
   ":"
+  "::"
 ] @punctuation.delimiter
 
 [
