@@ -5,20 +5,34 @@
 (type_identifier) @type
 (native_type) @type.builtin
 
+; Assume that all names in an import path are types
+(import_path
+  (IDENT) @type)
+
+; Assume that all names of the head of a path are types and the name of the
+; tail a function
+(path (IDENT) @type)
+(path
+  (IDENT)+
+  (path
+  tail: (IDENT) @function))
+
+; Assume that the name of the tail of a path that is upparcase is a constructor
+(((IDENT) @type
+  (#match? @type "^[A-Z]")))
+
 ; Functions
 
 (func_decl
-  name: (IDENT) @function
+  name: (IDENT) @function)
+(func_decl
   params: (param_list
     (IDENT) @variable.parameter))
-(func_decl
-  name: (IDENT) @function)
 
 (call_expression
-  callee: (primary) @function)
-(call_expression
-  (field_access
-    field: (field_identifier) @function.method))
+  (primary
+    (path
+      tail: (IDENT) @function)))
 
 (substitution_args
   sym: (IDENT) @function)

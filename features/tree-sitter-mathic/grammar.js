@@ -42,18 +42,13 @@ export default grammar({
   name: "mathic",
 
   conflicts: ($) => [
-    [$.assignment, $.primary],
+    [$.assignment, $.path],
     [$.expression, $.expression_no_assign],
   ],
 
   extras: ($) => [/\s|\\\r?\n/, $.comment],
 
-  inline: ($) => [
-    $._field_identifier,
-    $.bracket_type,
-    $.path,
-    $._type_identifier,
-  ],
+  inline: ($) => [$._field_identifier, $.bracket_type, $._type_identifier],
 
   supertypes: ($) => [
     $.top_decl,
@@ -310,7 +305,8 @@ export default grammar({
         ),
       ),
 
-    path: ($) => seq($.IDENT, repeat(seq("::", $.IDENT))),
+    path: ($) => choice(seq($.IDENT, "::", $.path), field("tail", $.IDENT)),
+    // path: ($) => seq($.IDENT, repeat(seq("::", $.IDENT))),
 
     field_access: ($) => seq(".", field("field", $._field_identifier)),
 
@@ -324,7 +320,7 @@ export default grammar({
 
     bracket_type: ($) => seq($.path, seq("<", $._type, ">")),
 
-    _type_identifier: ($) => alias($.path, $.type_identifier),
+    _type_identifier: ($) => alias($.IDENT, $.type_identifier),
 
     /// ================================================================
     ///   Terminal token classes

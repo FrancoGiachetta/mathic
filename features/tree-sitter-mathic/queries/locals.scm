@@ -30,4 +30,4 @@
   lhs: (IDENT) @local.reference)
 
 (primary
-  (IDENT) @local.reference)
+  (path) @local.reference)

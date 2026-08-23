@@ -1453,26 +1453,31 @@
       ]
     },
     "path": {
-      "type": "SEQ",
+      "type": "CHOICE",
       "members": [
         {
-          "type": "SYMBOL",
-          "name": "IDENT"
+          "type": "SEQ",
+          "members": [
+            {
+              "type": "SYMBOL",
+              "name": "IDENT"
+            },
+            {
+              "type": "STRING",
+              "value": "::"
+            },
+            {
+              "type": "SYMBOL",
+              "name": "path"
+            }
+          ]
         },
         {
-          "type": "REPEAT",
+          "type": "FIELD",
+          "name": "tail",
           "content": {
-            "type": "SEQ",
-            "members": [
-              {
-                "type": "STRING",
-                "value": "::"
-              },
-              {
-                "type": "SYMBOL",
-                "name": "IDENT"
-              }
-            ]
+            "type": "SYMBOL",
+            "name": "IDENT"
           }
         }
       ]
@@ -1618,7 +1623,7 @@
       "type": "ALIAS",
       "content": {
         "type": "SYMBOL",
-        "name": "path"
+        "name": "IDENT"
       },
       "named": true,
       "value": "type_identifier"
@@ -1699,7 +1704,7 @@
   "conflicts": [
     [
       "assignment",
-      "primary"
+      "path"
     ],
     [
       "expression",
@@ -1711,7 +1716,6 @@
   "inline": [
     "_field_identifier",
     "bracket_type",
-    "path",
     "_type_identifier"
   ],
   "supertypes": [

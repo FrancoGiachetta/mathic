@@ -433,10 +433,6 @@
         "required": false,
         "types": [
           {
-            "type": "::",
-            "named": false
-          },
-          {
             "type": "<",
             "named": false
           },
@@ -445,11 +441,11 @@
             "named": false
           },
           {
-            "type": "IDENT",
+            "type": "native_type",
             "named": true
           },
           {
-            "type": "native_type",
+            "type": "path",
             "named": true
           },
           {
@@ -571,7 +567,41 @@
           "named": true
         },
         {
+          "type": "path",
+          "named": true
+        },
+        {
           "type": "type_identifier",
+          "named": true
+        }
+      ]
+    }
+  },
+  {
+    "type": "path",
+    "named": true,
+    "fields": {
+      "tail": {
+        "multiple": false,
+        "required": false,
+        "types": [
+          {
+            "type": "IDENT",
+            "named": true
+          }
+        ]
+      }
+    },
+    "children": {
+      "multiple": true,
+      "required": false,
+      "types": [
+        {
+          "type": "IDENT",
+          "named": true
+        },
+        {
+          "type": "path",
           "named": true
         }
       ]
@@ -582,13 +612,9 @@
     "named": true,
     "fields": {},
     "children": {
-      "multiple": true,
+      "multiple": false,
       "required": false,
       "types": [
-        {
-          "type": "IDENT",
-          "named": true
-        },
         {
           "type": "NUM",
           "named": true
@@ -599,6 +625,10 @@
         },
         {
           "type": "expression",
+          "named": true
+        },
+        {
+          "type": "path",
           "named": true
         }
       ]
@@ -679,6 +709,10 @@
           "named": true
         },
         {
+          "type": "path",
+          "named": true
+        },
+        {
           "type": "type_identifier",
           "named": true
         }
@@ -749,10 +783,6 @@
         "required": true,
         "types": [
           {
-            "type": "::",
-            "named": false
-          },
-          {
             "type": "<",
             "named": false
           },
@@ -761,11 +791,11 @@
             "named": false
           },
           {
-            "type": "IDENT",
+            "type": "native_type",
             "named": true
           },
           {
-            "type": "native_type",
+            "type": "path",
             "named": true
           },
           {
@@ -825,10 +855,6 @@
         "required": true,
         "types": [
           {
-            "type": "::",
-            "named": false
-          },
-          {
             "type": "<",
             "named": false
           },
@@ -837,11 +863,11 @@
             "named": false
           },
           {
-            "type": "IDENT",
+            "type": "native_type",
             "named": true
           },
           {
-            "type": "native_type",
+            "type": "path",
             "named": true
           },
           {
@@ -1104,6 +1130,10 @@
   {
     "type": "true",
     "named": false
+  },
+  {
+    "type": "type_identifier",
+    "named": true
   },
   {
     "type": "u128",
