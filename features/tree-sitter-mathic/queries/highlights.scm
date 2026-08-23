@@ -1,6 +1,7 @@
 ; Identifier
 
 (IDENT) @variable
+(field_identifier) @variable.parameter
 (path_identifier) @variable
 (type_identifier) @type
 (native_type) @type.builtin
