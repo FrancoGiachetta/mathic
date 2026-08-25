@@ -29,6 +29,10 @@ jobs:
             - name: Install LLVM Dependencies
               uses: ./.github/actions/install-llvm-deps
 
+            - name: Install GiNaC
+              shell: bash
+              run: sudo apt install libginac-dev
+
             - name: Install Rust
               uses: dtolnay/rust-toolchain@1.94.0
 
@@ -50,9 +54,14 @@ jobs:
           LIBRARY_PATH: /opt/homebrew/lib
         steps:
             - uses: actions/checkout@v6
+            - uses: Homebrew/actions/setup-homebrew@master
 
             - name: Install LLVM Dependencies
               run: brew install llvm@22
+
+            - name: Install GiNaC
+              shell: bash
+              run: brew install cln ginac
 
             - name: Set LLVM environment
               run: |
@@ -71,7 +80,6 @@ jobs:
               with:
                   tool: cargo-nextest
 
-            - uses: Homebrew/actions/setup-homebrew@master
             - name: Run tests
               run: make test
 
@@ -87,6 +95,10 @@ jobs:
 
             - name: Install LLVM Dependencies
               uses: ./.github/actions/install-llvm-deps
+
+            - name: Install GiNaC
+              shell: bash
+              run: sudo apt install libginac-dev
 
             - name: Install Rust
               uses: dtolnay/rust-toolchain@1.94.0
@@ -137,6 +149,10 @@ jobs:
 
             - name: Install LLVM Dependencies
               uses: ./.github/actions/install-llvm-deps
+
+            - name: Install GiNaC
+              shell: bash
+              run: sudo apt install libginac-dev
 
             - name: Install Rust
               uses: dtolnay/rust-toolchain@1.94.0

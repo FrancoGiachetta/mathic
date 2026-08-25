@@ -14,10 +14,6 @@ runs:
       shell: bash
       run: sudo apt-get update && sudo apt-get upgrade -y
 
-    - name: Install GiNaC
-      shell: bash
-      run: sudo apt install libginac-dev
-
     - name: Install LLVM
       shell: bash
       run: sudo apt-get install llvm-22 llvm-22-dev llvm-22-runtime clang-22 clang-tools-22 lld-22 libpolly-22-dev libmlir-22-dev mlir-22-tools
