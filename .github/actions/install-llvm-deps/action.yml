@@ -15,6 +15,7 @@ runs:
       run: sudo apt-get update && sudo apt-get upgrade -y
 
     - name: Install GiNaC
+      shell: bash
       run: brew install libginac-dev
 
     - name: Install LLVM
