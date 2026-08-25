@@ -6,7 +6,7 @@ fn main() {
     let root = PathBuf::from(env::var("CARGO_MANIFEST_DIR").unwrap());
     let dialects_root = root.join("Dialects");
     let build_dir = PathBuf::from(env::var("OUT_DIR").unwrap()).join("DialectBuild/");
-    let llvm_prefix = env::var("LLVM_SYS_211_PREFIX").unwrap();
+    let llvm_prefix = env::var("LLVM_SYS_221_PREFIX").unwrap();
 
     std::fs::create_dir_all(&build_dir).unwrap();
 

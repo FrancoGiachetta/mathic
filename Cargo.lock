@@ -247,9 +247,9 @@ checksum = "1d07550c9036bf2ae0c684c4297d503f838287c83c53686d05370d0e139ae570"
 
 [[package]]
 name = "comrak"
-version = "0.51.0"
+version = "0.54.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "9f07383e7799d964bf7ffa6fc4457d177c54a44614661c7458bb0bd91b108e32"
+checksum = "0d5910408554659ed848ff469e67ec83b30f179e72cec286cfdae64d1616f466"
 dependencies = [
  "caseless",
  "entities",
@@ -571,9 +571,9 @@ dependencies = [
 
 [[package]]
 name = "llvm-sys"
-version = "211.0.1"
+version = "221.0.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "44007a7a44b73bdd877fa9c9ccef256036511220e90f65b4d50e7a15773c0ee3"
+checksum = "2abcc34a3b190f03c2a61b555f218f529589ff13657bdd2ff8ac3e85f2abe6bb"
 dependencies = [
  "anyhow",
  "cc",
@@ -662,9 +662,9 @@ dependencies = [
 
 [[package]]
 name = "melior"
-version = "0.26.9"
+version = "0.27.4"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "f5c38e8ea1f1bb22ebc7fe311b3adac0e9d3591e7c4d02a3b3b9c89d3e66899c"
+checksum = "34ac56508a6696fbcac22b0d95aa0f7b1420bffda949069ca7c6a46630abe556"
 dependencies = [
  "melior-macro",
  "mlir-sys",
@@ -672,16 +672,16 @@ dependencies = [
 
 [[package]]
 name = "melior-macro"
-version = "0.19.5"
+version = "0.20.4"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "0e156c0973fdaaf2930149766775d85ff451e229739562cf50b0453f08024d2a"
+checksum = "b246ecd9c1bc570fe9e91209407ee2e306b637490dfbb0501d1cceaefd66e95f"
 dependencies = [
  "comrak",
  "convert_case",
  "proc-macro2",
  "quote",
  "regex",
- "syn 2.0.119",
+ "syn 3.0.3",
  "tblgen",
  "unindent",
 ]
@@ -709,9 +709,9 @@ checksum = "68354c5c6bd36d73ff3feceb05efa59b6acb7626617f4962be322a825e61f79a"
 
 [[package]]
 name = "mlir-sys"
-version = "210.0.4"
+version = "220.0.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "f376ddc92bf2bad0eba47e20f75923f76306e429273379cedb70eb7e664aab90"
+checksum = "55f8c5781dc23ebe7456f9e9aaecab9eee9e542f7e9051b95b0a31b1d5d4b61f"
 dependencies = [
  "bindgen",
 ]
@@ -1200,9 +1200,9 @@ checksum = "61c41af27dd6d1e27b1b16b489db798443478cef1f06a660c96db617ba5de3b1"
 
 [[package]]
 name = "tblgen"
-version = "0.8.1"
+version = "0.9.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "0c4e3abe8582a0bb8708d11142c45e8c622f013bc4936d918da42c2aade60e98"
+checksum = "15a6768dc51535aeaecbe812e2a792a77cbef10b1c4529e29bea5864a738dc6a"
 dependencies = [
  "bindgen",
  "cc",
