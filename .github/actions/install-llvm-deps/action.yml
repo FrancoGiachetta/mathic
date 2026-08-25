@@ -16,7 +16,7 @@ runs:
 
     - name: Install GiNaC
       shell: bash
-      run: brew install libginac-dev
+      run: sudo apt install libginac-dev
 
     - name: Install LLVM
       shell: bash
