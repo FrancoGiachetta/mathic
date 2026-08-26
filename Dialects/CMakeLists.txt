@@ -14,6 +14,11 @@ if (DEV)
   )
 endif()
 
+
+# ── Find the pkg-config module ──────────────────────────────────────────────────────────────
+
+find_package(PkgConfig REQUIRED)
+
 # ── MLIR / LLVM ──────────────────────────────────────────────────────────────
 
 find_package(MLIR REQUIRED CONFIG)

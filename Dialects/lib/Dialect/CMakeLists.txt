@@ -7,11 +7,11 @@ target_include_directories(dialect_bindings
 )
 target_link_libraries(dialect_bindings
   PUBLIC
-    MLIRIR
-    MLIRPass
     MLIRSymbolicDialect
     MLIRSymbolicTransforms
     MLIRSymbolicToArith
   PRIVATE
+    MLIRIR
+    MLIRPass
     MLIRSupport
 )

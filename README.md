@@ -29,12 +29,12 @@ df main() i32 {
 
 ## Prerequisites
 
-**LLVM/MLIR 21** is required. After installing, set:
+**LLVM/MLIR 22** is required. After installing, set:
 
 ```sh
-export LLVM_SYS_211_PREFIX=/path/to/llvm-21
-export MLIR_SYS_210_PREFIX=/path/to/llvm-21
-export TABLEGEN_210_PREFIX=/path/to/llvm-21
+export LLVM_SYS_221_PREFIX=/path/to/llvm-22
+export MLIR_SYS_220_PREFIX=/path/to/llvm-22
+export TABLEGEN_220_PREFIX=/path/to/llvm-22
 ```
 
 <details>
@@ -43,10 +43,10 @@ export TABLEGEN_210_PREFIX=/path/to/llvm-21
 ### macOS (Homebrew)
 
 ```bash
-brew install llvm@21
-export LLVM_SYS_211_PREFIX=$(brew --prefix llvm@21)
-export MLIR_SYS_210_PREFIX=$(brew --prefix llvm@21)
-export TABLEGEN_210_PREFIX=$(brew --prefix llvm@21)
+brew install llvm@22
+export LLVM_SYS_221_PREFIX=$(brew --prefix llvm@22)
+export MLIR_SYS_220_PREFIX=$(brew --prefix llvm@22)
+export TABLEGEN_220_PREFIX=$(brew --prefix llvm@22)
 ```
 
 You may also need:
@@ -62,7 +62,7 @@ export LIBRARY_PATH=/opt/homebrew/lib
 ```bash
 git clone https://github.com/llvm/llvm-project.git
 cd llvm-project
-git checkout llvmorg-21.1.7
+git checkout llvmorg-22.1.8
 cmake -G Ninja ../llvm \
     -DLLVM_ENABLE_PROJECTS="mlir" \
     -DCMAKE_BUILD_TYPE=RelWithDebInfo \
@@ -71,7 +71,7 @@ cmake -G Ninja ../llvm \
     -DLLVM_LINK_LLVM_DYLIB=On \
     -DMLIR_BUILD_MLIR_C_DYLIB=On \
     -DLLVM_TARGETS_TO_BUILD=host \
-    -DCMAKE_INSTALL_PREFIX=/opt/llvm-21 \
+    -DCMAKE_INSTALL_PREFIX=/opt/llvm-22 \
     -DLLVM_USE_LINKER=mold   # optional, faster with mold
 ninja install
 ```

@@ -6,12 +6,12 @@ Thanks for your interest in contributing! This guide covers how to set up the pr
 
 ### Prerequisites
 
-**LLVM/MLIR 21** is required. See [README.md](/README.md) for install instructions. After installing, export the toolchain prefixes:
+**LLVM/MLIR 22** is required. See [README.md](/README.md) for install instructions. After installing, export the toolchain prefixes:
 
 ```sh
-export LLVM_SYS_211_PREFIX=/path/to/llvm-21
-export MLIR_SYS_210_PREFIX=/path/to/llvm-21
-export TABLEGEN_210_PREFIX=/path/to/llvm-21
+export LLVM_SYS_221_PREFIX=/path/to/llvm-22
+export MLIR_SYS_220_PREFIX=/path/to/llvm-22
+export TABLEGEN_220_PREFIX=/path/to/llvm-22
 ```
 
 On macOS with Homebrew, `env.sh` exports these for you (run `source env.sh`).
