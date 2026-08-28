@@ -9,6 +9,7 @@ cmake_install.cmake
 
 # Clangd
 compile_commands.json
+tablegen_compile_commands.yml
 
 # Output
 *.so
