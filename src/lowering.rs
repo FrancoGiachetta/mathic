@@ -41,6 +41,7 @@ pub fn lower_program(program: &IrModule) -> Result<Ir, LoweringError> {
     // of a not yet declared function.
     for item in program.items.iter() {
         match item {
+            TopLevelItem::ExpandBlock(_) => todo!(),
             TopLevelItem::Func(f) => ir_builder.decl_table.add_func_decl(f.clone(), None)?,
             TopLevelItem::Import(imp) => lower_import(&mut ir_builder, imp)?,
             TopLevelItem::Struct(s) => ir_builder.decl_table.add_struct_decl(s.clone(), None)?,

@@ -1,0 +1,13 @@
+struct S {
+    x: u32,
+    y: u32
+}
+
+expand S {
+    df new() S {
+        return S {
+            x: 5,
+            y: 5
+        };
+    }
+}

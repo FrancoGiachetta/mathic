@@ -20,10 +20,12 @@ program       = top_decl { top_decl } ;
 top_decl      = func_decl
                 | struct_decl
                 | imports_decls
+                | exand_decl
                 ;
 imports_decls = 'imp' import_path ';' ;
 func_decl     = 'df' IDENT '(' [ param_list ] ')' [ type ] block ;
 struct_decl   = 'struct' IDENT '{' [ struct_fields ] '}' ;
+expand_decl   = 'expand' path '{' [ func_decl ] '}' ;
 
 
 (* ================================================================ *)

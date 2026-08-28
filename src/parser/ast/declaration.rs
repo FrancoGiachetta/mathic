@@ -5,6 +5,14 @@ pub enum TopLevelItem {
     Func(FuncDecl),
     Import(Path),
     Struct(StructDecl),
+    ExpandBlock(ExpandDecl),
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct ExpandDecl {
+    pub adt_name: Path,
+    pub methods: Vec<FuncDecl>,
+    pub span: Span,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -82,6 +90,7 @@ impl TopLevelItem {
             TopLevelItem::Func(item) => item.name.clone(),
             TopLevelItem::Struct(item) => item.name.clone(),
             TopLevelItem::Import(item) => item.join("_"),
+            _ => panic!(),
         }
     }
 }

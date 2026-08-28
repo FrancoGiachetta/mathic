@@ -77,6 +77,7 @@ impl<'a> MathicParser<'a> {
         {
             match token {
                 Token::Df => items.push(TopLevelItem::Func(self.parse_func()?)),
+                Token::Expand => items.push(TopLevelItem::ExpandBlock(self.parse_expand_block()?)),
                 Token::Import => items.push(TopLevelItem::Import(self.parse_import()?)),
                 Token::Struct => items.push(TopLevelItem::Struct(self.parse_struct()?)),
                 _ => {

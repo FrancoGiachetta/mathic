@@ -1,7 +1,9 @@
 use crate::parser::{
     MathicParser, ParserResult, Span,
     ast::{
-        declaration::{AstType, FuncDecl, Param, Path, StructDecl, StructField, SymDecl, VarDecl},
+        declaration::{
+            AstType, ExpandDecl, FuncDecl, Param, Path, StructDecl, StructField, SymDecl, VarDecl,
+        },
         statement::BlockStmt,
     },
     token::Token,
@@ -25,6 +27,31 @@ impl<'a> MathicParser<'a> {
         };
 
         Ok(ty)
+    }
+
+    pub fn parse_expand_block(&self) -> ParserResult<ExpandDecl> {
+        let start_span = self.next()?.span;
+        let mut methods = Vec::new();
+
+        let adt_name = self.parse_path()?;
+
+        self.consume_token(Token::LBrace)?;
+
+        while let Some(tk) = self.peek()?
+            && tk.token == Token::Df
+        {
+            methods.push(self.parse_func()?);
+        }
+
+        self.consume_token(Token::RBrace)?;
+
+        let span = Span::from_merged_spans(start_span, self.current_span());
+
+        Ok(ExpandDecl {
+            adt_name,
+            methods,
+            span,
+        })
     }
 
     pub fn parse_func(&self) -> ParserResult<FuncDecl> {
