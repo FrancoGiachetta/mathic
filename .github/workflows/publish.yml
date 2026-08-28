@@ -29,6 +29,11 @@ jobs:
 
       - name: Install LLVM Dependencies
         uses: ./.github/actions/install-llvm-deps
+      
+      - name: Install GiNaC
+        shell: bash
+        run: sudo apt install libginac-dev
+         
 
       - name: Publish Mathic
         run: |
