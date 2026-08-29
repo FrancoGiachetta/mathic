@@ -1,12 +1,9 @@
 use crate::parser::{
-    MathicParser, ParserResult, Span,
-    ast::{
+    MathicParser, ParserResult, Span, ast::{
         declaration::{
-            AstType, ExpandDecl, FuncDecl, Param, Path, StructDecl, StructField, SymDecl, VarDecl,
-        },
-        statement::BlockStmt,
-    },
-    token::Token,
+            AstType, ExpandDecl, FuncDecl, Param, ParamKind, Path, StructDecl, StructField, SymDecl, VarDecl,
+        }, statement::BlockStmt,
+    }, token::Token,
 };
 
 impl<'a> MathicParser<'a> {
@@ -163,9 +160,11 @@ impl<'a> MathicParser<'a> {
         let ty = self.parse_type()?;
 
         let mut params = vec![Param {
-            name: identifier.lexeme.to_string(),
+            inner: ParamKind::Param  {
+                name: identifier.lexeme.to_string(),
+                ty,
+            },
             span: identifier.span,
-            ty,
         }];
 
         while self.match_token(Token::Comma)?.is_some() {
@@ -174,10 +173,12 @@ impl<'a> MathicParser<'a> {
             let ty = self.parse_type()?;
 
             params.push(Param {
+            inner: ParamKind::Param  {
                 name: identifier.lexeme.to_string(),
-                span: identifier.span,
                 ty,
-            });
+            },
+            span: identifier.span,
+        });
         }
 
         Ok(params)

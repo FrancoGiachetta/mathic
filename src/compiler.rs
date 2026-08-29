@@ -162,6 +162,7 @@ impl MathicCompiler {
         Ok(compiled_modules)
     }
 
+
     /// Handles the code generation of a Mathir.
     fn compile_module<'func>(
         &'func self,

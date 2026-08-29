@@ -104,7 +104,8 @@ primary       = 'true' | 'false' | path | INT | FLOAT | STRING | '(' expr ')' ;
 (* Utilities                                                        *)
 (* ================================================================ *)
 
-param_list    = ( IDENT ':' type ) { ',' ( IDENT ':' type ) } ;
+param_list    = [ 'self' ',' ] param_list
+                | ( IDENT ':' type ) { ',' ( IDENT ':' type ) } ;
 struct_fields = [ 'pub' ] IDENT ':' type { ',' [ 'pub' ] IDENT ':' type } ;
 arg_list      = expr { ',' expr } ;
 import_path   = IDENT

@@ -1,4 +1,4 @@
-struct S {
+struct Point {
     x: u32,
     y: u32
 }
@@ -8,6 +8,13 @@ expand S {
         return S {
             x: 5,
             y: 5
+        };
+    }
+
+    df add(self: Point, rhs: Point) Point {
+        return Point {
+            x: self.x + rhs.x,
+            y: self.y + rhs.y
         };
     }
 }

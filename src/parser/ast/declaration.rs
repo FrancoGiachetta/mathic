@@ -62,9 +62,17 @@ pub struct FuncDecl {
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Param {
-    pub name: String,
+    pub inner: ParamKind,
     pub span: Span,
-    pub ty: AstType,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum ParamKind {
+    SelfParam,
+    Param {
+        name: String,
+        ty: AstType,
+    }
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
