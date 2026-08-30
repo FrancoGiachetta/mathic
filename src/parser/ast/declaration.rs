@@ -62,17 +62,9 @@ pub struct FuncDecl {
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Param {
-    pub inner: ParamKind,
+    pub name: String,
+    pub ty: AstType,
     pub span: Span,
-}
-
-#[derive(Debug, Clone, PartialEq, Eq)]
-pub enum ParamKind {
-    SelfParam,
-    Param {
-        name: String,
-        ty: AstType,
-    }
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -85,6 +77,7 @@ pub struct Path {
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum AstType {
+    SelfType,
     Type {
         ty: String,
         inner: Option<Box<AstType>>,

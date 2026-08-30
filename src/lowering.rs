@@ -278,5 +278,6 @@ pub fn lower_top_level_ast_type(
                 }
             }
         }
+        AstType::SelfType => todo!(),
     })
 }

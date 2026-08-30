@@ -1,9 +1,12 @@
 use crate::parser::{
-    MathicParser, ParserResult, Span, ast::{
+    MathicParser, ParserResult, Span,
+    ast::{
         declaration::{
-            AstType, ExpandDecl, FuncDecl, Param, ParamKind, Path, StructDecl, StructField, SymDecl, VarDecl,
-        }, statement::BlockStmt,
-    }, token::Token,
+            AstType, ExpandDecl, FuncDecl, Param, Path, StructDecl, StructField, SymDecl, VarDecl,
+        },
+        statement::BlockStmt,
+    },
+    token::Token,
 };
 
 impl<'a> MathicParser<'a> {
@@ -155,17 +158,29 @@ impl<'a> MathicParser<'a> {
     }
 
     fn parse_params(&self) -> ParserResult<Vec<Param>> {
-        let identifier = self.consume_token(Token::Ident)?;
-        self.consume_token(Token::Colon)?;
-        let ty = self.parse_type()?;
+        let first_param = {
+            let lookahead = self.consume_token(Token::Ident)?;
 
-        let mut params = vec![Param {
-            inner: ParamKind::Param  {
-                name: identifier.lexeme.to_string(),
-                ty,
-            },
-            span: identifier.span,
-        }];
+            match lookahead.lexeme {
+                "self" => Param {
+                    name: lookahead.lexeme.to_string(),
+                    ty: AstType::SelfType,
+                    span: lookahead.span,
+                },
+                _ => {
+                    self.consume_token(Token::Colon)?;
+                    let ty = self.parse_type()?;
+
+                    Param {
+                        name: lookahead.lexeme.to_string(),
+                        ty,
+                        span: lookahead.span,
+                    }
+                }
+            }
+        };
+
+        let mut params = vec![first_param];
 
         while self.match_token(Token::Comma)?.is_some() {
             let identifier = self.consume_token(Token::Ident)?;
@@ -173,12 +188,10 @@ impl<'a> MathicParser<'a> {
             let ty = self.parse_type()?;
 
             params.push(Param {
-            inner: ParamKind::Param  {
                 name: identifier.lexeme.to_string(),
                 ty,
-            },
-            span: identifier.span,
-        });
+                span: identifier.span,
+            });
         }
 
         Ok(params)

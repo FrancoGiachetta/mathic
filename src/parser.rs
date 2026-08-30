@@ -142,7 +142,7 @@ impl<'a> MathicParser<'a> {
         self.current_span.get()
     }
 
-    /// Consumes the next token.
+    /// Consumes the expected token.
     ///
     /// Returns a parser error if the token does not match the expected one.
     fn consume_token(&self, expected: Token) -> ParserResult<LexerOutput<'a>> {
@@ -150,9 +150,9 @@ impl<'a> MathicParser<'a> {
             if res.token == expected {
                 Ok(res)
             } else {
-                Err(ParseError::Syntax(SyntaxError::MissingToken {
-                    expected,
-                    span: res.span,
+                Err(ParseError::Syntax(SyntaxError::UnexpectedToken {
+                    found: res.into(),
+                    expected: expected.into(),
                 }))
             }
         } else {
