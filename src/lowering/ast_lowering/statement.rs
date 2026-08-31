@@ -79,6 +79,7 @@ fn lower_declaration(
         DeclStmt::Struct(struct_decl) => {
             let _ = lower_inner_struct(func, struct_decl)?;
         }
+        DeclStmt::ExpandDecl(expand_block_) => unimplemented!(),
         DeclStmt::Sym(sym_decl) => lower_sym_decl(func, sym_decl, *span)?,
         DeclStmt::Func(func_decl) => lower_inner_function(func, func_decl, *span)?,
     }

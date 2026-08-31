@@ -20,7 +20,7 @@ program       = top_decl { top_decl } ;
 top_decl      = func_decl
                 | struct_decl
                 | imports_decls
-                | exand_decl
+                | expand_decl
                 ;
 imports_decls = 'imp' import_path ';' ;
 func_decl     = 'df' IDENT '(' [ param_list ] ')' [ type ] block ;
@@ -34,6 +34,7 @@ expand_decl   = 'expand' path '{' [ func_decl ] '}' ;
 
 declaration   = func_decl
                 | struct_decl
+                | expand_decl
                 | var_decl
                 | sym_decl
                 ;
@@ -92,7 +93,8 @@ factor        = unary { ( '*' | '/' ) unary } ;
 unary         = ( '!' | '-' ) unary
                 | call
                 ;
-call          = primary { '(' [ arg_list ] ')' | '.' IDENT
+call          = primary { '(' [ arg_list ] ')'
+                | '.' IDENT [ (' [ arg_list ] ')' ] 
                 | '[' bracket_args ']' } ;
 bracket_args  = substitution ;
 struct_init   = '{' IDENT ':' expr { ',' IDENT ':' expr } '}' ;

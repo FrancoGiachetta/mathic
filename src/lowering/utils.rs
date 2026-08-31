@@ -1,7 +1,12 @@
 use crate::{
     diagnostics::LoweringError,
     lowering::{
-        ir::{IrBuilder, function::FunctionBuilder, symbols::TypeIndex, types::MathicType},
+        ir::{
+            IrBuilder,
+            function::{FuncId, FunctionBuilder},
+            symbols::TypeIndex,
+            types::MathicType,
+        },
         lower_top_level_ast_type, lower_top_level_struct,
     },
     parser::{
@@ -32,7 +37,7 @@ pub fn add_extern_function(
     )?
     .build();
 
-    ir_builder.add_function(extern_func);
+    ir_builder.add_function(extern_func, None);
 
     Ok(())
 }
@@ -77,10 +82,13 @@ pub fn resolve_external_func(
 
             // The function may already be declared by a path call (mangled
             // name) or by an import (non-mangled name).
-            let declared_by_path = ir_builder.sym_table.functions.contains_key(&mangled_name);
+            let declared_by_path = ir_builder.sym_table.functions.contains_key(&FuncId {
+                name: mangled_name,
+                method_of: None,
+            });
             let declared_by_import = ir_builder
                 .decl_table
-                .get_function_decl(&func.name)
+                .get_function_decl(&func.name, None)
                 .is_some_and(|(_, module)| *module == Some(module_idx));
 
             if !(declared_by_path || declared_by_import) {

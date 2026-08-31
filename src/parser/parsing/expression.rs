@@ -289,6 +289,7 @@ impl<'a> MathicParser<'a> {
     fn parse_call(&self) -> ParserResult<ExprStmt> {
         let lookahead = self.peek_not_none()?;
         let mut expr = self.parse_primary_expr()?;
+        let old_span = expr.span;
 
         while matches!(lookahead.token, Token::Ident)
             && self.check_next_any(&[Token::LParen, Token::Dot, Token::LSquareBracket])?
@@ -301,13 +302,27 @@ impl<'a> MathicParser<'a> {
                 }
                 Token::Dot => {
                     let field_name = self.consume_token(Token::Ident)?.lexeme.to_string();
+                    let old_span = expr.span;
 
-                    expr = ExprStmt {
-                        kind: ExprStmtKind::StructGet {
-                            expr: Box::new(expr),
-                            field_name,
-                        },
-                        span: self.current_span(),
+                    expr = if self.match_token(Token::LParen)?.is_some() {
+                        let args = self.parse_call_args()?;
+                        self.consume_token(Token::RParen)?;
+
+                        ExprStmt {
+                            kind: ExprStmtKind::MethodCall {
+                                callee: Box::new(expr),
+                                args,
+                            },
+                            span: Span::from_merged_spans(old_span, self.current_span()),
+                        }
+                    } else {
+                        ExprStmt {
+                            kind: ExprStmtKind::StructGet {
+                                expr: Box::new(expr),
+                                field_name,
+                            },
+                            span: Span::from_merged_spans(old_span, self.current_span()),
+                        }
                     };
                 }
                 Token::LSquareBracket => {
@@ -320,7 +335,7 @@ impl<'a> MathicParser<'a> {
                             callee: Box::new(expr),
                             args,
                         },
-                        span: self.current_span(),
+                        span: Span::from_merged_spans(old_span, self.current_span()),
                     };
                 }
                 _ => {}

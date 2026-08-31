@@ -54,6 +54,7 @@ pub fn lower_expr(
             field_name,
             rhs,
         } => lower_struct_set(func, lhs, field_name, rhs, expr.span)?,
+        ExprStmtKind::MethodCall { callee: _, args: _ } => unimplemented!(),
     };
 
     Ok((
@@ -821,6 +822,7 @@ fn lower_expression_type(
                 None => func.get_or_insert_global_type_idx(MathicType::Void),
             }
         }
+        ExprStmtKind::MethodCall { callee: _, args: _ } => unimplemented!(),
         ExprStmtKind::Group(expr_stmt) => lower_expression_type(func, &expr_stmt.kind, None, span)?,
         ExprStmtKind::Index { .. } => todo!(),
         ExprStmtKind::Logical { .. } => func.get_or_insert_global_type_idx(MathicType::Bool),

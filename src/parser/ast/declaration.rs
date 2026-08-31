@@ -20,6 +20,7 @@ pub enum DeclStmt {
     Var(VarDecl),
     Sym(SymDecl),
     Struct(StructDecl),
+    ExpandDecl(ExpandDecl),
     Func(FuncDecl),
 }
 

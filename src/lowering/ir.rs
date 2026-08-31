@@ -4,7 +4,7 @@ use crate::{
     diagnostics::LoweringError,
     lowering::ir::{
         adts::Adt,
-        function::Function,
+        function::{FuncId, Function},
         symbols::{DeclTable, SymbolTableBuilder, TypeIndex},
         types::MathicType,
     },
@@ -67,8 +67,12 @@ impl IrBuilder {
         }
     }
 
-    pub fn add_function(&mut self, func: Function) {
-        self.sym_table.functions.insert(func.name.clone(), func);
+    pub fn add_function(&mut self, func: Function, method_of: Option<TypeIndex>) {
+        let func_id = FuncId {
+            name: func.name.clone(),
+            method_of,
+        };
+        self.sym_table.functions.insert(func_id, func);
     }
 
     pub fn get_type(&self, idx: TypeIndex, span: Span) -> Result<MathicType, LoweringError> {

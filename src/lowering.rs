@@ -42,7 +42,7 @@ pub fn lower_program(program: &IrModule) -> Result<Ir, LoweringError> {
     for item in program.items.iter() {
         match item {
             TopLevelItem::ExpandBlock(_) => todo!(),
-            TopLevelItem::Func(f) => ir_builder.decl_table.add_func_decl(f.clone(), None)?,
+            TopLevelItem::Func(f) => ir_builder.decl_table.add_func_decl(f.clone(), None, None)?,
             TopLevelItem::Import(imp) => lower_import(&mut ir_builder, imp)?,
             TopLevelItem::Struct(s) => ir_builder.decl_table.add_struct_decl(s.clone(), None)?,
         }
@@ -111,7 +111,7 @@ fn lower_import(ir_builder: &mut IrBuilder, import_path: &Path) -> Result<(), Lo
                 TopLevelItem::Func(func) => {
                     ir_builder
                         .decl_table
-                        .add_func_decl(func.clone(), Some(module_idx))?;
+                        .add_func_decl(func.clone(), None, Some(module_idx))?;
                     utils::add_extern_function(
                         ir_builder,
                         &module.module_name,
@@ -169,7 +169,9 @@ fn lower_top_level_function(
     // of a not yet declared function.
     for stmt in body.iter() {
         if let StmtKind::Decl(DeclStmt::Func(f)) = &stmt.kind {
-            func_builder.decl_table.add_func_decl(f.clone(), None)?;
+            func_builder
+                .decl_table
+                .add_func_decl(f.clone(), None, None)?;
         }
     }
 
@@ -179,7 +181,7 @@ fn lower_top_level_function(
 
     let func = func_builder.build();
 
-    ir_builder.add_function(func);
+    ir_builder.add_function(func, None);
 
     Ok(())
 }

@@ -155,7 +155,7 @@ pub fn lower_inner_function(
     for stmt in body.iter() {
         match &stmt.kind {
             StmtKind::Decl(DeclStmt::Func(f)) => {
-                inner_func.decl_table.add_func_decl(f.clone(), None)?
+                inner_func.decl_table.add_func_decl(f.clone(), None, None)?
             }
             StmtKind::Decl(DeclStmt::Struct(s)) => {
                 inner_func.decl_table.add_struct_decl(s.clone(), None)?
@@ -170,7 +170,7 @@ pub fn lower_inner_function(
 
     let inner_func = inner_func.build();
 
-    func.sym_table.add_function(inner_func);
+    func.sym_table.add_function(inner_func, None);
 
     Ok(())
 }

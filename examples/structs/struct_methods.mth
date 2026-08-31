@@ -3,11 +3,11 @@ struct Point {
     y: u32
 }
 
-expand S {
-    df new() S {
-        return S {
-            x: 5,
-            y: 5
+expand Point {
+    df new(x: u32, y: u32) Point {
+        return Point {
+            x: x,
+            y: y
         };
     }
 
@@ -17,4 +17,18 @@ expand S {
             y: self.y + rhs.y
         };
     }
+}
+
+df main() {
+    let point_1: Point = Point {
+        x: 5,
+        y: 5
+    };
+
+    let point_2: Point = Point {
+        x: 10,
+        y: 10
+    };
+
+    return point_1.add(point_2);
 }

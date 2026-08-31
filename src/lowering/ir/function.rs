@@ -25,7 +25,6 @@ pub enum LocalKind {
 
 /// MATHIR's representation of local variables.
 #[derive(Debug, Clone)]
-#[allow(dead_code)]
 pub struct Local {
     pub local_idx: usize,
     pub kind: LocalKind,
@@ -35,9 +34,14 @@ pub struct Local {
     pub symbols: HashSet<usize>,
 }
 
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+pub struct FuncId {
+    pub name: String,
+    pub method_of: Option<TypeIndex>,
+}
+
 /// MATHIR's representation of a function.
 #[derive(Debug, Clone)]
-#[allow(dead_code)]
 pub struct Function {
     pub name: String,
     sym_table: SymbolTable,
@@ -147,9 +151,14 @@ impl<'ir> FunctionBuilder<'ir> {
         name: &str,
         span: Span,
     ) -> Result<(FuncDecl, Option<usize>), LoweringError> {
-        match self.decl_table.get_function_decl(name).cloned() {
+        match self.decl_table.get_function_decl(name, None).cloned() {
             Some(f) => Ok(f),
-            None => match self.ir_builder.decl_table.get_function_decl(name).cloned() {
+            None => match self
+                .ir_builder
+                .decl_table
+                .get_function_decl(name, None)
+                .cloned()
+            {
                 Some(f) => Ok(f),
                 None => Err(LoweringError::UndeclaredFunction {
                     name: name.to_string(),
