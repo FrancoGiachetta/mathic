@@ -2,7 +2,7 @@ use super::basic_block::{BasicBlock, BlockId};
 use crate::{
     diagnostics::LoweringError,
     lowering::ir::{
-        DeclTable, IrBuilder,
+        IrBuilder,
         adts::Adt,
         basic_block::Terminator,
         instruction::LValInstruct,
@@ -77,7 +77,6 @@ impl Function {
 /// Helper struct to build a Function.
 pub struct FunctionBuilder<'glb> {
     pub name: String,
-    pub decl_table: DeclTable,
     pub sym_table: SymbolTableBuilder,
     pub params_tys: Vec<TypeIndex>,
     pub basic_blocks: Vec<BasicBlock>,
@@ -99,8 +98,7 @@ impl<'ir> FunctionBuilder<'ir> {
     ) -> Result<Self, LoweringError> {
         let mut func_builder = Self {
             name,
-            decl_table: DeclTable::default(),
-            sym_table: SymbolTableBuilder::default(),
+            sym_table: SymbolTableBuilder::new(None),
             basic_blocks: vec![BasicBlock::new(0, Terminator::Return(None, None), None)],
             params_tys: Vec::new(),
             return_ty,
@@ -147,9 +145,9 @@ impl<'ir> FunctionBuilder<'ir> {
         name: &str,
         span: Span,
     ) -> Result<(FuncDecl, Option<usize>), LoweringError> {
-        match self.decl_table.get_function_decl(name).cloned() {
+        match self.sym_table.get_function_decl(name).cloned() {
             Some(f) => Ok(f),
-            None => match self.ir_builder.decl_table.get_function_decl(name).cloned() {
+            None => match self.ir_builder.sym_table.get_function_decl(name).cloned() {
                 Some(f) => Ok(f),
                 None => Err(LoweringError::UndeclaredFunction {
                     name: name.to_string(),

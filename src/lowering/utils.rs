@@ -79,7 +79,7 @@ pub fn resolve_external_func(
             // name) or by an import (non-mangled name).
             let declared_by_path = ir_builder.sym_table.functions.contains_key(&mangled_name);
             let declared_by_import = ir_builder
-                .decl_table
+                .sym_table
                 .get_function_decl(&func.name)
                 .is_some_and(|(_, module)| *module == Some(module_idx));
 
@@ -138,10 +138,7 @@ pub fn get_or_insert_struct_type(
     let key = match module_idx {
         None => strct_decl.name.clone(),
         Some(idx) => {
-            let module = ir_builder
-                .decl_table
-                .get_module(idx)
-                .unwrap_or_else(|| panic!("module index {} should be valid", idx));
+            let module = ir_builder.sym_table.get_module(idx);
 
             ir_builder.get_mangled_name(&module.module_name, &strct_decl.name)
         }
@@ -167,17 +164,14 @@ fn find_module_item(
     item_name: &str,
     span: Span,
 ) -> Result<(TopLevelItem, usize), LoweringError> {
-    let Some(module_idx) = ir_builder.decl_table.get_module_idx(module_path) else {
+    let Some(module_idx) = ir_builder.sym_table.get_module_idx(module_path) else {
         return Err(LoweringError::UnResolvedPath {
             path: module_path.to_string(),
             span,
         });
     };
 
-    let module = ir_builder
-        .decl_table
-        .get_module(module_idx)
-        .unwrap_or_else(|| panic!("module index {} should be valid", module_idx));
+    let module = ir_builder.sym_table.get_module(module_idx);
 
     let item = module
         .items

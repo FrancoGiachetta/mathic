@@ -41,9 +41,9 @@ pub fn lower_program(program: &IrModule) -> Result<Ir, LoweringError> {
     // of a not yet declared function.
     for item in program.items.iter() {
         match item {
-            TopLevelItem::Func(f) => ir_builder.decl_table.add_func_decl(f.clone(), None)?,
+            TopLevelItem::Func(f) => ir_builder.sym_table.add_func_decl(f.clone(), None)?,
             TopLevelItem::Import(imp) => lower_import(&mut ir_builder, imp)?,
-            TopLevelItem::Struct(s) => ir_builder.decl_table.add_struct_decl(s.clone(), None)?,
+            TopLevelItem::Struct(s) => ir_builder.sym_table.add_struct_decl(s.clone(), None)?,
         }
     }
 
@@ -81,26 +81,18 @@ fn lower_import(ir_builder: &mut IrBuilder, import_path: &Path) -> Result<(), Lo
     if group_paths.is_empty() || *import_all {
         let (items, module_idx, module) = if *import_all {
             let path = import_path.join("::");
-            let module_idx = ir_builder.decl_table.get_module_idx(&path).ok_or(
+            let module_idx = ir_builder.sym_table.get_module_idx(&path).ok_or(
                 LoweringError::UnResolvedPath {
                     path,
                     span: import_path.span,
                 },
             )?;
-            let module = ir_builder
-                .decl_table
-                .get_module(module_idx)
-                .cloned()
-                .expect("module idx should be valid");
+            let module = ir_builder.sym_table.get_module(module_idx);
 
             (module.items.clone(), module_idx, module)
         } else {
             let (item, module_idx) = utils::resolve_path(ir_builder, import_path)?;
-            let module = ir_builder
-                .decl_table
-                .get_module(module_idx)
-                .cloned()
-                .unwrap_or_else(|| panic!("module index {} should be valid", module_idx));
+            let module = ir_builder.sym_table.get_module(module_idx);
 
             (vec![item], module_idx, module)
         };
@@ -109,7 +101,7 @@ fn lower_import(ir_builder: &mut IrBuilder, import_path: &Path) -> Result<(), Lo
             match item {
                 TopLevelItem::Func(func) => {
                     ir_builder
-                        .decl_table
+                        .sym_table
                         .add_func_decl(func.clone(), Some(module_idx))?;
                     utils::add_extern_function(
                         ir_builder,
@@ -119,7 +111,7 @@ fn lower_import(ir_builder: &mut IrBuilder, import_path: &Path) -> Result<(), Lo
                     )?;
                 }
                 TopLevelItem::Struct(strct) => ir_builder
-                    .decl_table
+                    .sym_table
                     .add_struct_decl(strct.clone(), Some(module_idx))?,
                 _ => {}
             }
@@ -168,7 +160,7 @@ fn lower_top_level_function(
     // of a not yet declared function.
     for stmt in body.iter() {
         if let StmtKind::Decl(DeclStmt::Func(f)) = &stmt.kind {
-            func_builder.decl_table.add_func_decl(f.clone(), None)?;
+            func_builder.sym_table.add_func_decl(f.clone(), None)?;
         }
     }
 
@@ -266,7 +258,7 @@ pub fn lower_top_level_ast_type(
                         return Ok(ty);
                     }
 
-                    match ir_builder.decl_table.get_struct_decl(other).cloned() {
+                    match ir_builder.sym_table.get_struct_decl(other).cloned() {
                         Some((s, module_idx)) => {
                             utils::get_or_insert_struct_type(ir_builder, &s, module_idx, span)?
                         }

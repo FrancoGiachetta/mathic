@@ -5,7 +5,7 @@ use crate::{
     lowering::ir::{
         adts::Adt,
         function::Function,
-        symbols::{DeclTable, SymbolTableBuilder, TypeIndex},
+        symbols::{SymbolTableBuilder, TypeIndex},
         types::MathicType,
     },
     parser::{Span, ast::IrModule},
@@ -54,7 +54,6 @@ impl Ir {
 #[derive(Debug, Default)]
 pub struct IrBuilder {
     pub module_name: String,
-    pub decl_table: DeclTable,
     pub sym_table: SymbolTableBuilder,
 }
 
@@ -62,8 +61,7 @@ impl IrBuilder {
     pub fn new(module_name: String, modules: Vec<Arc<IrModule>>) -> Self {
         Self {
             module_name,
-            sym_table: SymbolTableBuilder::default(),
-            decl_table: DeclTable::new(modules),
+            sym_table: SymbolTableBuilder::new(Some(modules)),
         }
     }
 

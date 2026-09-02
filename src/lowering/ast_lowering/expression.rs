@@ -173,7 +173,7 @@ fn lower_call(
     let mangled_callee_name = {
         let module_name = match module_idx {
             None => &func.ir_builder.module_name,
-            Some(idx) => &func.ir_builder.decl_table.modules[idx].module_name,
+            Some(idx) => &func.ir_builder.sym_table.get_module(idx).module_name,
         };
         func.ir_builder.get_mangled_name(module_name, &callee_name)
     };

@@ -120,14 +120,14 @@ pub fn lower_inner_ast_type(
 
                 match func_builder
                     .ir_builder
-                    .decl_table
+                    .sym_table
                     .get_struct_decl(other)
                     .cloned()
                 {
                     Some((s, module_idx)) => {
                         get_or_insert_struct_type(func_builder.ir_builder, &s, module_idx, span)?
                     }
-                    None => match func_builder.decl_table.get_struct_decl(other).cloned() {
+                    None => match func_builder.sym_table.get_struct_decl(other).cloned() {
                         Some((s, _)) => {
                             let adt_index = lower_inner_struct(func_builder, &s)?;
                             func_builder.get_or_insert_type_idx(MathicType::Adt {
@@ -286,19 +286,14 @@ pub fn resolve_struct_type(
         return Ok(ty);
     }
 
-    let Some((strct, module_idx)) = func.ir_builder.decl_table.get_struct_decl(name).cloned()
-    else {
+    let Some((strct, module_idx)) = func.ir_builder.sym_table.get_struct_decl(name).cloned() else {
         return Err(LoweringError::UndeclaredType { span });
     };
 
     let key = match module_idx {
         None => strct.name.clone(),
         Some(idx) => {
-            let module = func
-                .ir_builder
-                .decl_table
-                .get_module(idx)
-                .unwrap_or_else(|| panic!("module index {} should be valid", idx));
+            let module = func.ir_builder.sym_table.get_module(idx);
 
             func.ir_builder
                 .get_mangled_name(&module.module_name, &strct.name)
