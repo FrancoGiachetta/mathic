@@ -1,0 +1,61 @@
+{
+  "name": "tree-sitter-mathic",
+  "version": "0.1.0",
+  "description": "tree-sitter for Mathic's grammar",
+  "type": "module",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/francogiachetta/mathic.git"
+  },
+  "funding": "",
+  "license": "Apache",
+  "author": {
+    "name": "Franco Giachetta",
+    "email": "francogiachetta27@gmail.com",
+    "url": ""
+  },
+  "main": "bindings/node",
+  "types": "bindings/node",
+  "keywords": [
+    "incremental",
+    "parsing",
+    "tree-sitter",
+    "mathic"
+  ],
+  "files": [
+    "grammar.js",
+    "tree-sitter.json",
+    "binding.gyp",
+    "prebuilds/**",
+    "bindings/node/*",
+    "queries/*",
+    "src/**",
+    "*.wasm"
+  ],
+  "dependencies": {
+    "node-addon-api": "^8.5.0",
+    "node-gyp-build": "^4.8.4"
+  },
+  "devDependencies": {
+    "eslint": "^10.8.1",
+    "globals": "^17.11.0",
+    "prebuildify": "^6.0.1",
+    "tree-sitter": "^0.25.0",
+    "tree-sitter-cli": "^0.26.7",
+    "typescript-eslint": "^8.67.0"
+  },
+  "peerDependencies": {
+    "tree-sitter": "^0.25.0"
+  },
+  "peerDependenciesMeta": {
+    "tree-sitter": {
+      "optional": true
+    }
+  },
+  "scripts": {
+    "install": "node-gyp-build",
+    "prestart": "tree-sitter build --wasm",
+    "start": "tree-sitter playground",
+    "test": "node --test bindings/node/*_test.js"
+  }
+}
