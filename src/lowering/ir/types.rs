@@ -1,16 +1,4 @@
-use crate::{
-    diagnostics::LoweringError,
-    lowering::{
-        ast_lowering::declaration::lower_inner_struct,
-        ir::{
-            Ir,
-            function::{Function, FunctionBuilder},
-            symbols::TypeIndex,
-        },
-        utils::get_or_insert_struct_type,
-    },
-    parser::{Span, ast::declaration::AstType},
-};
+use crate::lowering::ir::{Ir, function::Function};
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub enum UintTy {
@@ -54,95 +42,6 @@ pub enum MathicType {
     Str,
     SymbolicExpr(NumericTy),
     Void,
-}
-
-pub fn lower_inner_ast_type(
-    func_builder: &mut FunctionBuilder,
-    ty: &AstType,
-    span: Span,
-) -> Result<TypeIndex, LoweringError> {
-    Ok(match ty {
-        AstType::Type { ty, inner } => match ty.as_str() {
-            "isz" => func_builder
-                .get_or_insert_global_type_idx(MathicType::Numeric(NumericTy::Sint(SintTy::Isize))),
-            "i8" => func_builder
-                .get_or_insert_global_type_idx(MathicType::Numeric(NumericTy::Sint(SintTy::I8))),
-            "i16" => func_builder
-                .get_or_insert_global_type_idx(MathicType::Numeric(NumericTy::Sint(SintTy::I16))),
-            "i32" => func_builder
-                .get_or_insert_global_type_idx(MathicType::Numeric(NumericTy::Sint(SintTy::I32))),
-            "i64" => func_builder
-                .get_or_insert_global_type_idx(MathicType::Numeric(NumericTy::Sint(SintTy::I64))),
-            "i128" => func_builder
-                .get_or_insert_global_type_idx(MathicType::Numeric(NumericTy::Sint(SintTy::I128))),
-            "usz" => func_builder
-                .get_or_insert_global_type_idx(MathicType::Numeric(NumericTy::Uint(UintTy::Usize))),
-            "u8" => func_builder
-                .get_or_insert_global_type_idx(MathicType::Numeric(NumericTy::Uint(UintTy::U8))),
-            "u16" => func_builder
-                .get_or_insert_global_type_idx(MathicType::Numeric(NumericTy::Uint(UintTy::U16))),
-            "u32" => func_builder
-                .get_or_insert_global_type_idx(MathicType::Numeric(NumericTy::Uint(UintTy::U32))),
-            "u64" => func_builder
-                .get_or_insert_global_type_idx(MathicType::Numeric(NumericTy::Uint(UintTy::U64))),
-            "u128" => func_builder
-                .get_or_insert_global_type_idx(MathicType::Numeric(NumericTy::Uint(UintTy::U128))),
-            "str" => func_builder.get_or_insert_global_type_idx(MathicType::Str),
-            "char" => func_builder.get_or_insert_global_type_idx(MathicType::Char),
-            "bool" => func_builder.get_or_insert_global_type_idx(MathicType::Bool),
-            "expr" => {
-                let Some(inner_ty) = inner else {
-                    return Err(LoweringError::TypeRequiresTypeParameter {
-                        name: ty.clone(),
-                        span,
-                    });
-                };
-                let inner_ty_idx = lower_inner_ast_type(func_builder, inner_ty, span)?;
-                let inner_ty = func_builder.get_type(inner_ty_idx, span)?;
-
-                match inner_ty {
-                    MathicType::Numeric(num_ty) => {
-                        func_builder.get_or_insert_type_idx(MathicType::SymbolicExpr(num_ty))
-                    }
-                    other => {
-                        return Err(LoweringError::MismatchedType {
-                            expected: other,
-                            found: other,
-                            span,
-                        });
-                    }
-                }
-            }
-            other => {
-                if let Ok(ty) = func_builder.get_user_def_type(other, span) {
-                    return Ok(ty);
-                }
-
-                match func_builder
-                    .ir_builder
-                    .decl_table
-                    .get_struct_decl(other)
-                    .cloned()
-                {
-                    Some((s, module_idx)) => {
-                        get_or_insert_struct_type(func_builder.ir_builder, &s, module_idx, span)?
-                    }
-                    None => match func_builder.decl_table.get_struct_decl(other).cloned() {
-                        Some((s, _)) => {
-                            let adt_index = lower_inner_struct(func_builder, &s)?;
-                            func_builder.get_or_insert_type_idx(MathicType::Adt {
-                                index: adt_index,
-                                is_local: true,
-                            })
-                        }
-                        None => {
-                            return Err(LoweringError::UndeclaredType { span });
-                        }
-                    },
-                }
-            }
-        },
-    })
 }
 
 impl NumericTy {
@@ -268,48 +167,4 @@ impl MathicType {
     pub fn is_symbolic(&self) -> bool {
         matches!(self, Self::SymbolicExpr(_))
     }
-}
-
-/// Resolves a struct type.
-///
-/// Order of resolution:
-/// 1. Types already registered in the function's symbol table, i.e. function
-///    local ADTs and top-level structs previously seen in the same module.
-/// 2. External structs keyed by their mangled name (`module::Struct`).
-/// 3. Otherwise the struct is registered on demand.
-pub fn resolve_struct_type(
-    func: &mut FunctionBuilder,
-    name: &str,
-    span: Span,
-) -> Result<TypeIndex, LoweringError> {
-    if let Ok(ty) = func.get_user_def_type(name, span) {
-        return Ok(ty);
-    }
-
-    let Some((strct, module_idx)) = func.ir_builder.decl_table.get_struct_decl(name).cloned()
-    else {
-        return Err(LoweringError::UndeclaredType { span });
-    };
-
-    let key = match module_idx {
-        None => strct.name.clone(),
-        Some(idx) => {
-            let module = func
-                .ir_builder
-                .decl_table
-                .get_module(idx)
-                .unwrap_or_else(|| panic!("module index {} should be valid", idx));
-
-            func.ir_builder
-                .get_mangled_name(&module.module_name, &strct.name)
-        }
-    };
-
-    // The struct may already be resolved (e.g. by a prior struct init or a
-    // type annotation), keyed by its mangled name.
-    if let Some(ty) = func.ir_builder.get_user_def_type(&key) {
-        return Ok(ty);
-    }
-
-    get_or_insert_struct_type(func.ir_builder, &strct, module_idx, span)
 }

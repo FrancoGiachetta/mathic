@@ -1,17 +1,20 @@
 use super::basic_block::{BasicBlock, BlockId};
 use crate::{
     diagnostics::LoweringError,
-    lowering::ir::{
-        DeclTable, IrBuilder,
-        adts::Adt,
-        basic_block::Terminator,
-        instruction::LValInstruct,
-        symbols::{SymbolTable, SymbolTableBuilder, TypeIndex},
-        types::{MathicType, lower_inner_ast_type},
+    lowering::{
+        ast_lowering::lower_ast_type,
+        ir::{
+            Builder, DeclTable, IrBuilder,
+            adts::Adt,
+            basic_block::Terminator,
+            instruction::LValInstruct,
+            symbols::{SymbolTable, SymbolTableBuilder, TypeIndex},
+            types::MathicType,
+        },
     },
     parser::{
         Span,
-        ast::declaration::{FuncDecl, Param},
+        ast::declaration::{FuncDecl, Param, StructDecl},
     },
 };
 use std::collections::HashSet;
@@ -74,6 +77,75 @@ impl Function {
     }
 }
 
+impl Builder for FunctionBuilder<'_> {
+    fn get_module(&self, idx: usize) -> Option<&std::sync::Arc<crate::parser::ast::IrModule>> {
+        self.ir_builder.get_module(idx)
+    }
+
+    fn _get_function_decl(&self, name: &str) -> Option<&(FuncDecl, Option<usize>)> {
+        self.ir_builder
+            .decl_table
+            .get_function_decl(name)
+            .or_else(|| self.decl_table.get_function_decl(name))
+    }
+
+    fn get_struct_decl(&self, name: &str) -> Option<&(StructDecl, Option<usize>)> {
+        self.ir_builder
+            .decl_table
+            .get_struct_decl(name)
+            .or_else(|| self.decl_table.get_struct_decl(name))
+    }
+
+    fn add_function(&mut self, func: Function) {
+        self.sym_table.add_function(func);
+    }
+
+    fn get_type(&self, idx: TypeIndex, span: Span) -> Result<MathicType, LoweringError> {
+        if idx.is_local {
+            self.sym_table.get_type(idx.idx)
+        } else {
+            self.ir_builder.sym_table.get_type(idx.idx)
+        }
+        .ok_or(LoweringError::UndeclaredType { span })
+    }
+
+    fn add_adt(&mut self, name: String, adt: Adt) -> usize {
+        self.sym_table.add_adt(name, adt, true)
+    }
+
+    fn get_adt(&self, adt_type_idx: TypeIndex, span: Span) -> Result<&Adt, LoweringError> {
+        let adt_ty = self.get_type(adt_type_idx, span)?;
+
+        if adt_type_idx.is_local {
+            self.sym_table.get_adt(adt_ty)
+        } else {
+            self.ir_builder.sym_table.get_adt(adt_ty)
+        }
+        .ok_or(LoweringError::UndeclaredType { span })
+    }
+
+    fn get_or_insert_type_idx(&mut self, ty: MathicType) -> TypeIndex {
+        self.ir_builder
+            .sym_table
+            .get_type_idx(ty, false)
+            .unwrap_or_else(|| self.sym_table.get_or_insert_type_idx(ty, true))
+    }
+
+    fn get_user_def_type(&self, name: &str) -> Option<TypeIndex> {
+        self.sym_table
+            .get_user_def_type(name)
+            .or(self.ir_builder.sym_table.get_user_def_type(name))
+    }
+
+    fn get_mangled_name(&self, module: &str, name: &str) -> String {
+        format!("{}::{}", module, name)
+    }
+
+    fn get_ir_builder(&mut self) -> &mut IrBuilder {
+        self.ir_builder
+    }
+}
+
 /// Helper struct to build a Function.
 pub struct FunctionBuilder<'glb> {
     pub name: String,
@@ -110,7 +182,7 @@ impl<'ir> FunctionBuilder<'ir> {
         };
 
         for param in params.iter() {
-            let param_ty = lower_inner_ast_type(&mut func_builder, &param.ty, param.span)?;
+            let param_ty = lower_ast_type(&mut func_builder, &param.ty, param.span)?;
 
             func_builder.params_tys.push(param_ty);
 
@@ -156,51 +228,6 @@ impl<'ir> FunctionBuilder<'ir> {
                     span,
                 }),
             },
-        }
-    }
-
-    pub fn get_type(&self, idx: TypeIndex, span: Span) -> Result<MathicType, LoweringError> {
-        if idx.is_local {
-            self.sym_table
-                .get_type(idx.idx)
-                .ok_or(LoweringError::UndeclaredType { span })
-        } else {
-            self.ir_builder.get_type(idx, span)
-        }
-    }
-
-    pub fn get_or_insert_type_idx(&mut self, ty: MathicType) -> TypeIndex {
-        self.sym_table.get_or_insert_type(ty, true)
-    }
-
-    pub fn get_or_insert_global_type_idx(&mut self, ty: MathicType) -> TypeIndex {
-        self.ir_builder.sym_table.get_or_insert_type(ty, false)
-    }
-
-    pub fn get_user_def_type(&self, name: &str, span: Span) -> Result<TypeIndex, LoweringError> {
-        if let Some(ty) = self.sym_table.get_user_def_type(name) {
-            return Ok(ty);
-        }
-        if let Some(ty) = self.ir_builder.get_user_def_type(name) {
-            return Ok(ty);
-        }
-
-        Err(LoweringError::UndeclaredType { span })
-    }
-
-    pub fn add_adt(&mut self, name: String, adt: Adt) -> usize {
-        self.sym_table.add_adt(name, adt, true)
-    }
-
-    pub fn get_adt(&self, adt_ty_idx: TypeIndex, span: Span) -> Result<&Adt, LoweringError> {
-        if adt_ty_idx.is_local {
-            let adt_ty = self.get_type(adt_ty_idx, span)?;
-
-            self.sym_table
-                .get_adt(adt_ty)
-                .ok_or(LoweringError::UndeclaredType { span })
-        } else {
-            self.ir_builder.get_adt(adt_ty_idx, span)
         }
     }
 

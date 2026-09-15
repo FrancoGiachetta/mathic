@@ -3,19 +3,19 @@ use std::collections::HashSet;
 use crate::{
     diagnostics::LoweringError,
     lowering::{
-        ast_lowering::{expression, statement},
+        ast_lowering::{expression, lower_ast_type, statement},
         ir::{
-            adts::{Adt, StructAdt, StructField},
+            Builder,
             function::{FunctionBuilder, LocalKind},
             instruction::{LValInstruct, RValueKind},
-            types::{MathicType, lower_inner_ast_type},
+            types::MathicType,
             value::Value,
         },
     },
     parser::{
         Span,
         ast::{
-            declaration::{DeclStmt, FuncDecl, StructDecl, SymDecl, VarDecl},
+            declaration::{DeclStmt, FuncDecl, SymDecl, VarDecl},
             statement::StmtKind,
         },
     },
@@ -31,12 +31,15 @@ pub fn lower_var_declaration(
         expr,
         ty: var_ty,
     } = stmt;
-    let var_ty_idx = lower_inner_ast_type(func, var_ty, span)?;
+    let var_ty_idx = lower_ast_type(func, var_ty, span)?;
     let (init, expr_ty_idx) = expression::lower_expr(func, expr, Some(var_ty_idx))?;
 
     let var_ty = func.get_type(var_ty_idx, span)?;
     let expr_ty = func.get_type(expr_ty_idx, span)?;
-
+    println!(
+        "lower_var_declaration: var_ty = {:?}, expr_ty = {:?}",
+        var_ty, expr_ty
+    );
     if expr_ty_idx != var_ty_idx {
         return Err(LoweringError::MismatchedType {
             expected: var_ty,
@@ -79,7 +82,7 @@ pub fn lower_sym_decl(
 ) -> Result<(), LoweringError> {
     let SymDecl { name, ty } = sym_decl;
 
-    let sym_ty_idx = lower_inner_ast_type(func, ty, span)?;
+    let sym_ty_idx = lower_ast_type(func, ty, span)?;
     let local_idx =
         func.sym_table
             .add_local(Some(name.clone()), sym_ty_idx, Some(span), LocalKind::Sym)?;
@@ -96,36 +99,7 @@ pub fn lower_sym_decl(
     Ok(())
 }
 
-pub fn lower_inner_struct(
-    func: &mut FunctionBuilder,
-    struct_decl: &StructDecl,
-) -> Result<usize, LoweringError> {
-    let StructDecl { name, fields, span } = struct_decl;
-
-    let mut adt = StructAdt {
-        name: name.clone(),
-        fields: Vec::new(),
-        _span: *span,
-    };
-
-    for field in fields {
-        adt.fields.push(StructField {
-            name: field.name.clone(),
-            ty: lower_inner_ast_type(func, &field.ty, field.span)?,
-            _is_pub: field.is_pub,
-        });
-    }
-
-    let idx = func.add_adt(adt.name.clone(), Adt::Struct(adt));
-
-    Ok(idx)
-}
-
-pub fn lower_inner_function(
-    func: &mut FunctionBuilder,
-    stmt: &FuncDecl,
-    span: Span,
-) -> Result<(), LoweringError> {
+pub fn lower_function(builder: &mut impl Builder, stmt: &FuncDecl) -> Result<(), LoweringError> {
     let FuncDecl {
         name,
         params,
@@ -134,18 +108,18 @@ pub fn lower_inner_function(
         ..
     } = stmt;
 
-    let mangled_function_name = func
-        .ir_builder
-        .get_mangled_name(&func.ir_builder.module_name, name);
+    let func_name = builder.get_ir_builder().module_name.clone();
+    let mangled_function_name = builder.get_mangled_name(&func_name, name);
+
     let mut inner_func = FunctionBuilder::new(
         mangled_function_name,
         params,
         match return_ty {
-            Some(ty) => lower_inner_ast_type(func, ty, span)?,
-            None => func.get_or_insert_global_type_idx(MathicType::Void),
+            Some(ty) => lower_ast_type(builder, ty, stmt.span)?,
+            None => builder.get_or_insert_type_idx(MathicType::Void),
         },
-        func.ir_builder,
-        span,
+        builder.get_ir_builder(),
+        stmt.span,
         false,
     )?;
 
@@ -170,7 +144,7 @@ pub fn lower_inner_function(
 
     let inner_func = inner_func.build();
 
-    func.sym_table.add_function(inner_func);
+    builder.add_function(inner_func);
 
     Ok(())
 }

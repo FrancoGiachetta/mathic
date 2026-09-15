@@ -3,18 +3,17 @@ use std::collections::{HashMap, HashSet};
 use crate::{
     diagnostics::LoweringError,
     lowering::{
+        ast_lowering::lower_ast_type,
         ir::{
+            Builder,
             basic_block::Terminator,
             function::{FunctionBuilder, LocalKind},
             instruction::{InitInstruct, LValInstruct, RValInstruct, RValueKind},
             symbols::TypeIndex,
-            types::{
-                FloatTy, MathicType, NumericTy, SintTy, UintTy, lower_inner_ast_type,
-                resolve_struct_type,
-            },
+            types::{FloatTy, MathicType, NumericTy, SintTy, UintTy},
             value::{ConstExpr, NumericConst, Value, ValueModifier},
         },
-        utils::{resolve_external_func, resolve_external_struct},
+        utils::{resolve_external_func, resolve_external_struct, resolve_struct_type},
     },
     parser::{
         Span,
@@ -107,7 +106,7 @@ fn lower_assignment(
             value: Value::Const(ConstExpr::Void),
             span: None,
         },
-        func.get_or_insert_global_type_idx(MathicType::Void),
+        func.get_or_insert_type_idx(MathicType::Void),
     ))
 }
 
@@ -141,7 +140,7 @@ fn lower_call(
     }
 
     for (arg, param) in func_args.iter().zip(func_prototype.params.iter()) {
-        let param_ty_idx = lower_inner_ast_type(func, &param.ty, param.span)?;
+        let param_ty_idx = lower_ast_type(func, &param.ty, param.span)?;
         let (arg_val, arg_ty_idx) = lower_expr(func, arg, Some(param_ty_idx))?;
 
         if arg_ty_idx != param_ty_idx {
@@ -161,8 +160,8 @@ fn lower_call(
     // the return value and then create the RValue instruction pointing to that
     // new local.
     let return_ty_idx = match func_prototype.return_ty {
-        Some(ty) => lower_inner_ast_type(func, &ty, span)?,
-        None => func.get_or_insert_global_type_idx(MathicType::Void),
+        Some(ty) => lower_ast_type(func, &ty, span)?,
+        None => func.get_or_insert_type_idx(MathicType::Void),
     };
     let local_idx = func
         .sym_table
@@ -223,7 +222,7 @@ fn lower_substitution(
             });
         }
     };
-    let inner_ty_idx = func.get_or_insert_global_type_idx(inner_ty);
+    let inner_ty_idx = func.get_or_insert_type_idx(inner_ty);
 
     let symbols = match &sym_expr.kind {
         RValueKind::Use {
@@ -390,7 +389,7 @@ fn lower_binary_op(
         }
         _ => {
             let inst_ty_idx = match op {
-                BinaryOp::Compare(_) => func.get_or_insert_global_type_idx(MathicType::Bool),
+                BinaryOp::Compare(_) => func.get_or_insert_type_idx(MathicType::Bool),
                 BinaryOp::Arithmetic(_) => lhs_ty_idx,
             };
 
@@ -451,7 +450,7 @@ fn lower_logical_op(
             rhs: Box::new(rhs),
             span,
         },
-        func.get_or_insert_global_type_idx(MathicType::Bool),
+        func.get_or_insert_type_idx(MathicType::Bool),
     ))
 }
 
@@ -637,7 +636,7 @@ fn lower_struct_set(
             value: Value::Const(ConstExpr::Void),
             span: None,
         },
-        func.get_or_insert_global_type_idx(MathicType::Void),
+        func.get_or_insert_type_idx(MathicType::Void),
     ))
 }
 
@@ -731,22 +730,20 @@ fn lower_primary_value(
                 Value::Const(ConstExpr::Numeric(NumericConst::I32(
                     n.parse::<i32>().unwrap(),
                 ))),
-                func.get_or_insert_global_type_idx(MathicType::Numeric(NumericTy::Sint(
-                    SintTy::I32,
-                ))),
+                func.get_or_insert_type_idx(MathicType::Numeric(NumericTy::Sint(SintTy::I32))),
             ),
         },
         PrimaryExpr::Bool(b) => (
             Value::Const(ConstExpr::Bool(*b)),
-            func.get_or_insert_global_type_idx(MathicType::Bool),
+            func.get_or_insert_type_idx(MathicType::Bool),
         ),
         PrimaryExpr::Str(s) => (
             Value::Const(ConstExpr::Str(s.clone())),
-            func.get_or_insert_global_type_idx(MathicType::Str),
+            func.get_or_insert_type_idx(MathicType::Str),
         ),
         PrimaryExpr::Char(c) => (
             Value::Const(ConstExpr::Char(*c)),
-            func.get_or_insert_global_type_idx(MathicType::Char),
+            func.get_or_insert_type_idx(MathicType::Char),
         ),
     };
 
@@ -779,16 +776,16 @@ fn lower_expression_type(
             }
             PrimaryExpr::Num(_) => match ty_hint {
                 Some(ty) => ty,
-                None => func.get_or_insert_global_type_idx(MathicType::Numeric(NumericTy::Sint(
-                    SintTy::I32,
-                ))),
+                None => {
+                    func.get_or_insert_type_idx(MathicType::Numeric(NumericTy::Sint(SintTy::I32)))
+                }
             },
-            PrimaryExpr::Str(_) => func.get_or_insert_global_type_idx(MathicType::Str),
-            PrimaryExpr::Char(_) => func.get_or_insert_global_type_idx(MathicType::Char),
-            PrimaryExpr::Bool(_) => func.get_or_insert_global_type_idx(MathicType::Bool),
+            PrimaryExpr::Str(_) => func.get_or_insert_type_idx(MathicType::Str),
+            PrimaryExpr::Char(_) => func.get_or_insert_type_idx(MathicType::Char),
+            PrimaryExpr::Bool(_) => func.get_or_insert_type_idx(MathicType::Bool),
         },
         ExprStmtKind::Binary { lhs, op, rhs } => match op {
-            BinaryOp::Compare(_) => func.get_or_insert_global_type_idx(MathicType::Bool),
+            BinaryOp::Compare(_) => func.get_or_insert_type_idx(MathicType::Bool),
             BinaryOp::Arithmetic(_) => {
                 // We need to check if either of the operans is symbolic since
                 // the distinction is done through the type.
@@ -817,13 +814,13 @@ fn lower_expression_type(
                 _ => unreachable!(),
             };
             match func_decl.return_ty {
-                Some(ty) => lower_inner_ast_type(func, &ty, span)?,
-                None => func.get_or_insert_global_type_idx(MathicType::Void),
+                Some(ty) => lower_ast_type(func, &ty, span)?,
+                None => func.get_or_insert_type_idx(MathicType::Void),
             }
         }
         ExprStmtKind::Group(expr_stmt) => lower_expression_type(func, &expr_stmt.kind, None, span)?,
         ExprStmtKind::Index { .. } => todo!(),
-        ExprStmtKind::Logical { .. } => func.get_or_insert_global_type_idx(MathicType::Bool),
+        ExprStmtKind::Logical { .. } => func.get_or_insert_type_idx(MathicType::Bool),
         ExprStmtKind::Unary { rhs, .. } => lower_expression_type(func, &rhs.kind, None, span)?,
         ExprStmtKind::Assign { expr, .. } | ExprStmtKind::StructSet { rhs: expr, .. } => {
             lower_expression_type(func, &expr.kind, None, span)?
@@ -834,7 +831,7 @@ fn lower_expression_type(
             let sym_expr_ty = func.get_type(sym_expr_ty_idx, callee.span)?;
 
             if let MathicType::SymbolicExpr(inner_ty) = sym_expr_ty {
-                func.get_or_insert_global_type_idx(MathicType::Numeric(inner_ty))
+                func.get_or_insert_type_idx(MathicType::Numeric(inner_ty))
             } else {
                 return Err(LoweringError::MismatchedType {
                     expected: MathicType::SymbolicExpr(NumericTy::Sint(SintTy::Isize)),

@@ -8,7 +8,13 @@ use crate::{
         symbols::{DeclTable, SymbolTableBuilder, TypeIndex},
         types::MathicType,
     },
-    parser::{Span, ast::IrModule},
+    parser::{
+        Span,
+        ast::{
+            IrModule,
+            declaration::{FuncDecl, StructDecl},
+        },
+    },
 };
 
 pub mod adts;
@@ -19,6 +25,107 @@ pub mod ir_walk;
 pub mod symbols;
 pub mod types;
 pub mod value;
+
+pub trait Builder {
+    fn get_module(&self, idx: usize) -> Option<&Arc<IrModule>>;
+
+    fn _get_function_decl(&self, name: &str) -> Option<&(FuncDecl, Option<usize>)>;
+    fn get_struct_decl(&self, name: &str) -> Option<&(StructDecl, Option<usize>)>;
+
+    fn add_function(&mut self, func: Function);
+
+    fn get_type(&self, idx: TypeIndex, span: Span) -> Result<MathicType, LoweringError>;
+
+    fn add_adt(&mut self, name: String, adt: Adt) -> usize;
+    fn get_adt(&self, adt_type_idx: TypeIndex, span: Span) -> Result<&Adt, LoweringError>;
+
+    fn get_or_insert_type_idx(&mut self, ty: MathicType) -> TypeIndex;
+    fn get_user_def_type(&self, name: &str) -> Option<TypeIndex>;
+
+    fn get_mangled_name(&self, module: &str, name: &str) -> String;
+
+    fn get_ir_builder(&mut self) -> &mut IrBuilder;
+}
+
+/// Helper struct to build the IR.
+#[derive(Debug, Default)]
+pub struct IrBuilder {
+    pub module_name: String,
+    pub decl_table: DeclTable,
+    pub sym_table: SymbolTableBuilder,
+}
+
+impl IrBuilder {
+    pub fn new(module_name: String, modules: Vec<Arc<IrModule>>) -> Self {
+        Self {
+            module_name,
+            sym_table: SymbolTableBuilder::default(),
+            decl_table: DeclTable::new(modules),
+        }
+    }
+
+    pub fn build(self) -> Ir {
+        let sym_table = self.sym_table.build();
+
+        Ir {
+            types: sym_table.types,
+            functions: sym_table.functions,
+            adts: sym_table.adts,
+        }
+    }
+}
+
+impl Builder for IrBuilder {
+    fn get_module(&self, idx: usize) -> Option<&Arc<IrModule>> {
+        self.decl_table.get_module(idx)
+    }
+
+    fn _get_function_decl(&self, name: &str) -> Option<&(FuncDecl, Option<usize>)> {
+        self.decl_table.get_function_decl(name)
+    }
+
+    fn get_struct_decl(&self, name: &str) -> Option<&(StructDecl, Option<usize>)> {
+        self.decl_table.get_struct_decl(name)
+    }
+
+    fn add_function(&mut self, func: Function) {
+        self.sym_table.functions.insert(func.name.clone(), func);
+    }
+
+    fn get_type(&self, idx: TypeIndex, span: Span) -> Result<MathicType, LoweringError> {
+        self.sym_table
+            .get_type(idx.idx)
+            .ok_or(LoweringError::UndeclaredType { span })
+    }
+
+    fn add_adt(&mut self, name: String, adt: Adt) -> usize {
+        self.sym_table.add_adt(name, adt, false)
+    }
+
+    fn get_adt(&self, adt_type_idx: TypeIndex, span: Span) -> Result<&Adt, LoweringError> {
+        let adt_ty = self.get_type(adt_type_idx, span)?;
+
+        self.sym_table
+            .get_adt(adt_ty)
+            .ok_or(LoweringError::UndeclaredType { span })
+    }
+
+    fn get_or_insert_type_idx(&mut self, ty: MathicType) -> TypeIndex {
+        self.sym_table.get_or_insert_type_idx(ty, false)
+    }
+
+    fn get_user_def_type(&self, name: &str) -> Option<TypeIndex> {
+        self.sym_table.user_def_types.get(name).copied()
+    }
+
+    fn get_mangled_name(&self, module: &str, name: &str) -> String {
+        format!("{}::{}", module, name)
+    }
+
+    fn get_ir_builder(&mut self) -> &mut IrBuilder {
+        self
+    }
+}
 
 /// Mathic's IR (MATHIR).
 #[derive(Debug, Default)]
@@ -47,66 +154,5 @@ impl Ir {
 
     pub fn get_functions_mut(&mut self) -> &mut [Function] {
         &mut self.functions
-    }
-}
-
-/// Helper struct to build the IR.
-#[derive(Debug, Default)]
-pub struct IrBuilder {
-    pub module_name: String,
-    pub decl_table: DeclTable,
-    pub sym_table: SymbolTableBuilder,
-}
-
-impl IrBuilder {
-    pub fn new(module_name: String, modules: Vec<Arc<IrModule>>) -> Self {
-        Self {
-            module_name,
-            sym_table: SymbolTableBuilder::default(),
-            decl_table: DeclTable::new(modules),
-        }
-    }
-
-    pub fn add_function(&mut self, func: Function) {
-        self.sym_table.functions.insert(func.name.clone(), func);
-    }
-
-    pub fn get_type(&self, idx: TypeIndex, span: Span) -> Result<MathicType, LoweringError> {
-        self.sym_table
-            .get_type(idx.idx)
-            .ok_or(LoweringError::UndeclaredType { span })
-    }
-
-    pub fn add_adt(&mut self, name: String, adt: Adt) -> usize {
-        self.sym_table.add_adt(name, adt, false)
-    }
-
-    pub fn get_adt(&self, adt_type_idx: TypeIndex, span: Span) -> Result<&Adt, LoweringError> {
-        let adt_ty = self.get_type(adt_type_idx, span)?;
-
-        self.sym_table
-            .get_adt(adt_ty)
-            .ok_or(LoweringError::UndeclaredType { span })
-    }
-
-    pub fn get_or_insert_type_idx(&mut self, ty: MathicType) -> TypeIndex {
-        self.sym_table.get_or_insert_type(ty, false)
-    }
-
-    pub fn get_user_def_type(&self, name: &str) -> Option<TypeIndex> {
-        self.sym_table.user_def_types.get(name).copied()
-    }
-
-    pub fn get_mangled_name(&self, module: &str, name: &str) -> String {
-        format!("{}::{}", module, name)
-    }
-
-    pub fn build(self) -> Ir {
-        let sym_table = self.sym_table.build();
-        Ir {
-            types: sym_table.types,
-            functions: sym_table.functions,
-            adts: sym_table.adts,
-        }
     }
 }
