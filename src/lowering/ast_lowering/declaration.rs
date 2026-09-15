@@ -3,12 +3,12 @@ use std::collections::HashSet;
 use crate::{
     diagnostics::LoweringError,
     lowering::{
-        ast_lowering::{expression, statement},
+        ast_lowering::{expression, lower_ast_type, statement},
         ir::{
             Builder,
             function::{FunctionBuilder, LocalKind},
             instruction::{LValInstruct, RValueKind},
-            types::{MathicType, lower_ast_type},
+            types::MathicType,
             value::Value,
         },
     },

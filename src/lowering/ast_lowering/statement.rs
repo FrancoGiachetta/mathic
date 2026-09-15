@@ -1,13 +1,12 @@
 use crate::{
     diagnostics::LoweringError,
     lowering::{
-        ast_lowering::declaration::lower_sym_decl,
+        ast_lowering::{declaration::lower_sym_decl, lower_ast_type},
         ir::{
             Builder,
             adts::{Adt, StructAdt, StructField},
             basic_block::{BlockId, Terminator},
             function::FunctionBuilder,
-            types::lower_ast_type,
         },
     },
     parser::{
@@ -90,7 +89,7 @@ fn lower_declaration(
 }
 
 pub fn lower_struct(
-    builder: &mut impl Builder,
+    builder: &mut dyn Builder,
     struct_decl: &StructDecl,
 ) -> Result<usize, LoweringError> {
     let StructDecl { name, fields, span } = struct_decl;

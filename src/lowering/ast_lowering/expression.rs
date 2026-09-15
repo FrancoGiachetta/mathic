@@ -3,18 +3,17 @@ use std::collections::{HashMap, HashSet};
 use crate::{
     diagnostics::LoweringError,
     lowering::{
+        ast_lowering::lower_ast_type,
         ir::{
             Builder,
             basic_block::Terminator,
             function::{FunctionBuilder, LocalKind},
             instruction::{InitInstruct, LValInstruct, RValInstruct, RValueKind},
             symbols::TypeIndex,
-            types::{
-                FloatTy, MathicType, NumericTy, SintTy, UintTy, lower_ast_type, resolve_struct_type,
-            },
+            types::{FloatTy, MathicType, NumericTy, SintTy, UintTy},
             value::{ConstExpr, NumericConst, Value, ValueModifier},
         },
-        utils::{resolve_external_func, resolve_external_struct},
+        utils::{resolve_external_func, resolve_external_struct, resolve_struct_type},
     },
     parser::{
         Span,

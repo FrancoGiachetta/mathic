@@ -1,12 +1,9 @@
 use crate::{
     diagnostics::LoweringError,
     lowering::{
-        ast_lowering::statement::lower_struct,
+        ast_lowering::{lower_ast_type, statement::lower_struct},
         ir::{
-            Builder, IrBuilder,
-            function::FunctionBuilder,
-            symbols::TypeIndex,
-            types::{MathicType, lower_ast_type},
+            Builder, IrBuilder, function::FunctionBuilder, symbols::TypeIndex, types::MathicType,
         },
     },
     parser::{
@@ -128,6 +125,46 @@ pub fn resolve_external_struct(
     }
 }
 
+/// Resolves a struct type.
+///
+/// Order of resolution:
+/// 1. Types already registered in the function's symbol table, i.e. function
+///    local ADTs and top-level structs previously seen in the same module.
+/// 2. External structs keyed by their mangled name (`module::Struct`).
+/// 3. Otherwise the struct is registered on demand.
+pub fn resolve_struct_type(
+    builder: &mut impl Builder,
+    name: &str,
+    span: Span,
+) -> Result<TypeIndex, LoweringError> {
+    if let Some(ty) = builder.get_user_def_type(name) {
+        return Ok(ty);
+    }
+
+    let Some((strct, module_idx)) = builder.get_struct_decl(name).cloned() else {
+        return Err(LoweringError::UndeclaredType { span });
+    };
+
+    let key = match module_idx {
+        None => strct.name.clone(),
+        Some(idx) => {
+            let module = builder
+                .get_module(idx)
+                .unwrap_or_else(|| panic!("module index {} should be valid", idx));
+
+            builder.get_mangled_name(&module.module_name, &strct.name)
+        }
+    };
+
+    // The struct may already be resolved (e.g. by a prior struct init or a
+    // type annotation), keyed by its mangled name.
+    if let Some(ty) = builder.get_user_def_type(&key) {
+        return Ok(ty);
+    }
+
+    get_or_insert_struct_type(builder, &strct, module_idx, span)
+}
+
 /// Registers a [`StructDecl`]'s ADT type, deduplicating by name.
 ///
 /// A struct local to the current module is registered under its plain name
@@ -135,7 +172,7 @@ pub fn resolve_external_struct(
 /// module-qualified name (e.g. `util::Point`), mirroring how function symbols
 /// are mangled in the IR. Returns the struct's [`TypeIndex`].
 pub fn get_or_insert_struct_type(
-    builder: &mut impl Builder,
+    builder: &mut dyn Builder,
     strct_decl: &StructDecl,
     module_idx: Option<usize>,
     span: Span,
