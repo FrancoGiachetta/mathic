@@ -46,6 +46,7 @@ impl DeclTable {
             ..Default::default()
         }
     }
+
     pub fn add_func_decl(
         &mut self,
         func: FuncDecl,
@@ -172,7 +173,11 @@ impl SymbolTableBuilder {
         self.types.get(idx)
     }
 
-    pub fn get_or_insert_type(&mut self, ty: MathicType, is_local: bool) -> TypeIndex {
+    pub fn get_type_idx(&self, ty: MathicType, is_local: bool) -> Option<TypeIndex> {
+        self.get_type_index(ty, is_local)
+    }
+
+    pub fn get_or_insert_type_idx(&mut self, ty: MathicType, is_local: bool) -> TypeIndex {
         self.get_type_index(ty, is_local)
             .unwrap_or_else(|| TypeIndex {
                 idx: self.types.insert(ty),

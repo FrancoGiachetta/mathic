@@ -3,6 +3,7 @@ use crate::{
     lowering::{
         ast_lowering::{expression, statement},
         ir::{
+            Builder,
             basic_block::Terminator,
             function::{FunctionBuilder, LocalKind},
             instruction::{LValInstruct, RValInstruct, RValueKind},
@@ -152,7 +153,7 @@ pub fn lower_for(
             rhs: Box::new(end_val),
             span: Span::from(start.span.start..end.span.end),
         },
-        func.get_or_insert_global_type_idx(MathicType::Bool),
+        func.get_or_insert_type_idx(MathicType::Bool),
     );
 
     let extra_instructions = vec![LValInstruct::Assign {

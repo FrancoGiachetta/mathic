@@ -1,8 +1,13 @@
 use crate::{
     diagnostics::LoweringError,
     lowering::{
-        ir::{IrBuilder, function::FunctionBuilder, symbols::TypeIndex, types::MathicType},
-        lower_top_level_ast_type, lower_top_level_struct,
+        ast_lowering::statement::lower_struct,
+        ir::{
+            Builder, IrBuilder,
+            function::FunctionBuilder,
+            symbols::TypeIndex,
+            types::{MathicType, lower_ast_type},
+        },
     },
     parser::{
         Span,
@@ -18,7 +23,7 @@ pub fn add_extern_function(
     span: Span,
 ) -> Result<(), LoweringError> {
     let return_ty = match &func.return_ty {
-        Some(ty) => lower_top_level_ast_type(ir_builder, ty, span)?,
+        Some(ty) => lower_ast_type(ir_builder, ty, span)?,
         None => ir_builder.get_or_insert_type_idx(MathicType::Void),
     };
     let mangled_function_name = ir_builder.get_mangled_name(module_path, &func.name);
@@ -130,7 +135,7 @@ pub fn resolve_external_struct(
 /// module-qualified name (e.g. `util::Point`), mirroring how function symbols
 /// are mangled in the IR. Returns the struct's [`TypeIndex`].
 pub fn get_or_insert_struct_type(
-    ir_builder: &mut IrBuilder,
+    builder: &mut impl Builder,
     strct_decl: &StructDecl,
     module_idx: Option<usize>,
     span: Span,
@@ -138,24 +143,24 @@ pub fn get_or_insert_struct_type(
     let key = match module_idx {
         None => strct_decl.name.clone(),
         Some(idx) => {
-            let module = ir_builder
-                .decl_table
+            let module = builder
                 .get_module(idx)
                 .unwrap_or_else(|| panic!("module index {} should be valid", idx));
 
-            ir_builder.get_mangled_name(&module.module_name, &strct_decl.name)
+            builder.get_mangled_name(&module.module_name, &strct_decl.name)
         }
     };
 
-    if let Some(ty) = ir_builder.get_user_def_type(&key) {
+    if let Some(ty) = builder.get_user_def_type(&key) {
         return Ok(ty);
     }
 
     let mut strct = strct_decl.clone();
-    strct.name = key.clone();
-    lower_top_level_struct(ir_builder, &strct)?;
 
-    ir_builder
+    strct.name = key.clone();
+    lower_struct(builder, &strct)?;
+
+    builder
         .get_user_def_type(&key)
         .ok_or(LoweringError::UndeclaredType { span })
 }
