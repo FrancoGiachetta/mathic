@@ -1,8 +1,10 @@
 use crate::{
     diagnostics::LoweringError,
     lowering::{
-        ast_lowering::declaration::{lower_inner_struct, lower_sym_decl},
+        ast_lowering::{declaration::lower_sym_decl, lower_ast_type},
         ir::{
+            Builder,
+            adts::{Adt, StructAdt, StructField},
             basic_block::{BlockId, Terminator},
             function::FunctionBuilder,
         },
@@ -10,14 +12,14 @@ use crate::{
     parser::{
         Span,
         ast::{
-            declaration::DeclStmt,
+            declaration::{DeclStmt, StructDecl},
             statement::{BlockStmt, Stmt, StmtKind},
         },
     },
 };
 
 use super::control_flow::{lower_for, lower_if, lower_while};
-use super::declaration::{lower_inner_function, lower_var_declaration};
+use super::declaration::{lower_function, lower_var_declaration};
 use super::expression::lower_expr;
 
 pub fn lower_stmt(func: &mut FunctionBuilder, stmt: &Stmt) -> Result<(), LoweringError> {
@@ -77,14 +79,39 @@ fn lower_declaration(
             lower_var_declaration(func, var_decl, *span)?;
         }
         DeclStmt::Struct(struct_decl) => {
-            let _ = lower_inner_struct(func, struct_decl)?;
+            let _ = lower_struct(func, struct_decl)?;
         }
         DeclStmt::ExpandDecl(expand_block_) => unimplemented!(),
         DeclStmt::Sym(sym_decl) => lower_sym_decl(func, sym_decl, *span)?,
-        DeclStmt::Func(func_decl) => lower_inner_function(func, func_decl, *span)?,
+        DeclStmt::Func(func_decl) => lower_function(func, func_decl)?,
     }
 
     Ok(())
+}
+
+pub fn lower_struct(
+    builder: &mut dyn Builder,
+    struct_decl: &StructDecl,
+) -> Result<usize, LoweringError> {
+    let StructDecl { name, fields, span } = struct_decl;
+
+    let mut adt = StructAdt {
+        name: name.clone(),
+        fields: Vec::new(),
+        _span: *span,
+    };
+
+    for field in fields {
+        adt.fields.push(StructField {
+            name: field.name.clone(),
+            ty: lower_ast_type(builder, &field.ty, field.span)?,
+            _is_pub: field.is_pub,
+        });
+    }
+
+    let idx = builder.add_adt(adt.name.clone(), Adt::Struct(adt));
+
+    Ok(idx)
 }
 
 pub fn lower_block(
