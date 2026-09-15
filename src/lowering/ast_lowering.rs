@@ -83,7 +83,7 @@ pub fn lower_ast_type(
 
                     match builder.get_struct_decl(other).cloned() {
                         Some((s, module_idx)) => {
-                            let builder: &mut dyn Builder = if module_idx.is_some() {
+                            let builder = if module_idx.is_some() {
                                 builder.get_ir_builder()
                             } else {
                                 builder
