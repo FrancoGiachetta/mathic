@@ -286,8 +286,7 @@ impl MathicCompiler {
                 }
             }
         };
-        dbg!(ast);
-        todo!();
+
         // AST lowering and semantic checks.
         let ir = match lowering::lower_program(&ast) {
             Ok(ir) => ir,

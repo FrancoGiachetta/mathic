@@ -81,7 +81,7 @@ fn lower_declaration(
         DeclStmt::Struct(struct_decl) => {
             let _ = lower_struct(func, struct_decl)?;
         }
-        DeclStmt::ExpandDecl(expand_block_) => unimplemented!(),
+        DeclStmt::ExpandDecl(_expand_block) => unimplemented!(),
         DeclStmt::Sym(sym_decl) => lower_sym_decl(func, sym_decl, *span)?,
         DeclStmt::Func(func_decl) => lower_function(func, func_decl)?,
     }

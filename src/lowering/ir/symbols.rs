@@ -157,6 +157,7 @@ pub struct SymbolTable {
 #[derive(Clone, Debug, Default)]
 pub struct SymbolTableBuilder {
     types: TypeTable,
+    pub self_ty: Option<TypeIndex>,
     pub locals: Vec<Local>,
     pub local_indexes: HashMap<String, usize>,
     pub functions: HashMap<FuncId, Function>,

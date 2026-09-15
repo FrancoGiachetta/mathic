@@ -119,7 +119,9 @@ fn lower_call(
 ) -> Result<RValInstruct, LoweringError> {
     let mut arg_values: Vec<RValInstruct> = Vec::new();
     let (func_prototype, module_idx) = match &callee.kind {
-        ExprStmtKind::Primary(PrimaryExpr::Ident(ident)) => func.get_function_decl(ident, span)?,
+        ExprStmtKind::Primary(PrimaryExpr::Ident(ident)) => {
+            func.get_function_decl(ident, None, span)?
+        }
         ExprStmtKind::Primary(PrimaryExpr::Path(path)) => {
             // We are referencing a function from another module, so we resolve
             // it directly and declare it as external.
@@ -806,7 +808,7 @@ fn lower_expression_type(
         ExprStmtKind::Call { callee, .. } => {
             let (func_decl, _) = match &callee.kind {
                 ExprStmtKind::Primary(PrimaryExpr::Ident(ident)) => {
-                    func.get_function_decl(ident, span)?
+                    func.get_function_decl(ident, None, span)?
                 }
                 ExprStmtKind::Primary(PrimaryExpr::Path(path)) => {
                     let (func_decl, module_idx) = resolve_external_func(func.ir_builder, path)?;
