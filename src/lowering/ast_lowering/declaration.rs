@@ -129,11 +129,9 @@ pub fn lower_function(builder: &mut impl Builder, stmt: &FuncDecl) -> Result<(),
     for stmt in body.iter() {
         match &stmt.kind {
             StmtKind::Decl(DeclStmt::Func(f)) => {
-                inner_func.decl_table.add_func_decl(f.clone(), None, None)?
+                inner_func.add_function_decl(f.clone(), None, None)?
             }
-            StmtKind::Decl(DeclStmt::Struct(s)) => {
-                inner_func.decl_table.add_struct_decl(s.clone(), None)?
-            }
+            StmtKind::Decl(DeclStmt::Struct(s)) => inner_func.add_struct_decl(s.clone(), None)?,
             _ => {}
         }
     }

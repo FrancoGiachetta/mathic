@@ -78,16 +78,14 @@ fn lower_import(ir_builder: &mut IrBuilder, import_path: &Path) -> Result<(), Lo
                 },
             )?;
             let module = ir_builder
-                .decl_table
                 .get_module(module_idx)
                 .cloned()
-                .expect("module idx should be valid");
+                .unwrap_or_else(|| panic!("module index {} should be valid", module_idx));
 
             (module.items.clone(), module_idx, module)
         } else {
             let (item, module_idx) = utils::resolve_path(ir_builder, import_path)?;
             let module = ir_builder
-                .decl_table
                 .get_module(module_idx)
                 .cloned()
                 .unwrap_or_else(|| panic!("module index {} should be valid", module_idx));
@@ -98,9 +96,7 @@ fn lower_import(ir_builder: &mut IrBuilder, import_path: &Path) -> Result<(), Lo
         for item in items {
             match item {
                 TopLevelItem::Func(func) => {
-                    ir_builder
-                        .decl_table
-                        .add_func_decl(func.clone(), None, Some(module_idx))?;
+                    ir_builder.add_function_decl(func.clone(), None, Some(module_idx))?;
                     utils::add_extern_function(
                         ir_builder,
                         &module.module_name,
@@ -108,9 +104,9 @@ fn lower_import(ir_builder: &mut IrBuilder, import_path: &Path) -> Result<(), Lo
                         import_path.span,
                     )?;
                 }
-                TopLevelItem::Struct(strct) => ir_builder
-                    .decl_table
-                    .add_struct_decl(strct.clone(), Some(module_idx))?,
+                TopLevelItem::Struct(strct) => {
+                    ir_builder.add_struct_decl(strct.clone(), Some(module_idx))?
+                }
                 _ => {}
             }
         }

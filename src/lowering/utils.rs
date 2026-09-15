@@ -87,9 +87,8 @@ pub fn resolve_external_func(
                 method_of: None,
             });
             let declared_by_import = ir_builder
-                .decl_table
-                .get_function_decl(&func.name, None)
-                .is_some_and(|(_, module)| *module == Some(module_idx));
+                .get_function_decl(&func.name, None, path.span)
+                .is_ok_and(|(_, module)| module == Some(module_idx));
 
             if !(declared_by_path || declared_by_import) {
                 add_extern_function(ir_builder, &module_path, &func, path.span)?;
