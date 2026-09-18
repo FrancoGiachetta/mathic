@@ -5,12 +5,15 @@ mod utils;
 use crate::{
     diagnostics::LoweringError,
     lowering::{
-        ast_lowering::{declaration::lower_function, statement::lower_struct},
+        ast_lowering::{
+            declaration::{lower_expand_block, lower_function},
+            statement::lower_struct,
+        },
         ir::{Builder, Ir, IrBuilder},
     },
     parser::ast::{
         IrModule,
-        declaration::{Path, TopLevelItem},
+        declaration::{ExpandDecl, Path, TopLevelItem},
     },
 };
 use tracing::instrument;
@@ -30,7 +33,22 @@ pub fn lower_program(program: &IrModule) -> Result<Ir, LoweringError> {
     // of a not yet declared function.
     for item in program.items.iter() {
         match item {
-            TopLevelItem::ExpandBlock(_) => todo!(),
+            TopLevelItem::ExpandBlock(expand_decl) => {
+                let ExpandDecl {
+                    adt_name, methods, ..
+                } = expand_decl;
+
+                // The ADT must have been defined before the `expand` block.
+                let adt_ty = ir_builder.get_user_def_type(&adt_name.join("::")).ok_or(
+                    LoweringError::UndeclaredType {
+                        span: adt_name.span,
+                    },
+                )?;
+
+                for m in methods {
+                    ir_builder.add_function_decl(m.clone(), Some(adt_ty), None)?
+                }
+            }
             TopLevelItem::Func(f) => ir_builder.add_function_decl(f.clone(), None, None)?,
             TopLevelItem::Import(imp) => lower_import(&mut ir_builder, imp)?,
             TopLevelItem::Struct(s) => ir_builder.add_struct_decl(s.clone(), None)?,
@@ -39,7 +57,10 @@ pub fn lower_program(program: &IrModule) -> Result<Ir, LoweringError> {
 
     for item in program.items.iter() {
         match item {
-            TopLevelItem::Func(f) => lower_function(&mut ir_builder, f)?,
+            TopLevelItem::ExpandBlock(expand_block) => {
+                lower_expand_block(&mut ir_builder, expand_block)?
+            }
+            TopLevelItem::Func(f) => lower_function(&mut ir_builder, f, None)?,
             TopLevelItem::Struct(s) => {
                 let _ = lower_struct(&mut ir_builder, s)?;
             }

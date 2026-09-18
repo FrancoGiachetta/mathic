@@ -150,6 +150,10 @@ impl Builder for FunctionBuilder<'_> {
         self.sym_table.self_ty
     }
 
+    fn set_self_ty_idx(&mut self, ty: Option<TypeIndex>) {
+        self.sym_table.self_ty = ty;
+    }
+
     fn add_adt(&mut self, name: String, adt: Adt) -> usize {
         self.sym_table.add_adt(name, adt, true)
     }

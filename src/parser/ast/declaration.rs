@@ -1,4 +1,7 @@
-use crate::parser::{Span, ast::expression::ExprStmt, ast::statement::Stmt};
+use crate::parser::{
+    Span,
+    ast::{expression::ExprStmt, statement::Stmt},
+};
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum TopLevelItem {
@@ -20,7 +23,7 @@ pub enum DeclStmt {
     Var(VarDecl),
     Sym(SymDecl),
     Struct(StructDecl),
-    ExpandDecl(ExpandDecl),
+    ExpandBlock(ExpandDecl),
     Func(FuncDecl),
 }
 

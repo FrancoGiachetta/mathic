@@ -1,7 +1,10 @@
 use crate::{
     diagnostics::LoweringError,
     lowering::{
-        ast_lowering::{declaration::lower_sym_decl, lower_ast_type},
+        ast_lowering::{
+            declaration::{lower_expand_block, lower_sym_decl},
+            lower_ast_type,
+        },
         ir::{
             Builder,
             adts::{Adt, StructAdt, StructField},
@@ -81,9 +84,9 @@ fn lower_declaration(
         DeclStmt::Struct(struct_decl) => {
             let _ = lower_struct(func, struct_decl)?;
         }
-        DeclStmt::ExpandDecl(_expand_block) => unimplemented!(),
+        DeclStmt::ExpandBlock(expand_block) => lower_expand_block(func, expand_block)?,
         DeclStmt::Sym(sym_decl) => lower_sym_decl(func, sym_decl, *span)?,
-        DeclStmt::Func(func_decl) => lower_function(func, func_decl)?,
+        DeclStmt::Func(func_decl) => lower_function(func, func_decl, None)?,
     }
 
     Ok(())

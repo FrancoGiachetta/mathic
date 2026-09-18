@@ -58,6 +58,7 @@ pub trait Builder {
     fn get_type(&self, idx: TypeIndex, span: Span) -> Result<MathicType, LoweringError>;
 
     fn get_self_ty_idx(&self) -> Option<TypeIndex>;
+    fn set_self_ty_idx(&mut self, ty: Option<TypeIndex>);
 
     fn add_adt(&mut self, name: String, adt: Adt) -> usize;
     fn get_adt(&self, adt_type_idx: TypeIndex, span: Span) -> Result<&Adt, LoweringError>;
@@ -162,6 +163,10 @@ impl Builder for IrBuilder {
 
     fn get_self_ty_idx(&self) -> Option<TypeIndex> {
         self.sym_table.self_ty
+    }
+
+    fn set_self_ty_idx(&mut self, ty: Option<TypeIndex>) {
+        self.sym_table.self_ty = ty;
     }
 
     fn add_adt(&mut self, name: String, adt: Adt) -> usize {

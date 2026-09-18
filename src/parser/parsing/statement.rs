@@ -50,7 +50,7 @@ impl<'a> MathicParser<'a> {
                 let expand_block = self.parse_expand_block()?;
                 let span = Span::from_merged_spans(start_span, self.current_span());
 
-                (StmtKind::Decl(DeclStmt::ExpandDecl(expand_block)), span)
+                (StmtKind::Decl(DeclStmt::ExpandBlock(expand_block)), span)
             }
             Token::Sym => {
                 let sym = self.parse_sym_decl()?;
