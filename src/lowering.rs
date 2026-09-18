@@ -5,12 +5,15 @@ mod utils;
 use crate::{
     diagnostics::LoweringError,
     lowering::{
-        ast_lowering::{declaration::lower_function, statement::lower_struct},
-        ir::{Ir, IrBuilder},
+        ast_lowering::{
+            declaration::{lower_expand_block, lower_function},
+            statement::lower_struct,
+        },
+        ir::{Builder, Ir, IrBuilder},
     },
     parser::ast::{
         IrModule,
-        declaration::{Path, TopLevelItem},
+        declaration::{ExpandDecl, Path, TopLevelItem},
     },
 };
 use tracing::instrument;
@@ -30,15 +33,34 @@ pub fn lower_program(program: &IrModule) -> Result<Ir, LoweringError> {
     // of a not yet declared function.
     for item in program.items.iter() {
         match item {
-            TopLevelItem::Func(f) => ir_builder.decl_table.add_func_decl(f.clone(), None)?,
+            TopLevelItem::ExpandBlock(expand_decl) => {
+                let ExpandDecl {
+                    adt_name, methods, ..
+                } = expand_decl;
+
+                // The ADT must have been defined before the `expand` block.
+                let adt_ty = ir_builder.get_user_def_type(&adt_name.join("::")).ok_or(
+                    LoweringError::UndeclaredType {
+                        span: adt_name.span,
+                    },
+                )?;
+
+                for m in methods {
+                    ir_builder.add_function_decl(m.clone(), Some(adt_ty), None)?
+                }
+            }
+            TopLevelItem::Func(f) => ir_builder.add_function_decl(f.clone(), None, None)?,
             TopLevelItem::Import(imp) => lower_import(&mut ir_builder, imp)?,
-            TopLevelItem::Struct(s) => ir_builder.decl_table.add_struct_decl(s.clone(), None)?,
+            TopLevelItem::Struct(s) => ir_builder.add_struct_decl(s.clone(), None)?,
         }
     }
 
     for item in program.items.iter() {
         match item {
-            TopLevelItem::Func(f) => lower_function(&mut ir_builder, f)?,
+            TopLevelItem::ExpandBlock(expand_block) => {
+                lower_expand_block(&mut ir_builder, expand_block)?
+            }
+            TopLevelItem::Func(f) => lower_function(&mut ir_builder, f, None)?,
             TopLevelItem::Struct(s) => {
                 let _ = lower_struct(&mut ir_builder, s)?;
             }
@@ -77,16 +99,14 @@ fn lower_import(ir_builder: &mut IrBuilder, import_path: &Path) -> Result<(), Lo
                 },
             )?;
             let module = ir_builder
-                .decl_table
                 .get_module(module_idx)
                 .cloned()
-                .expect("module idx should be valid");
+                .unwrap_or_else(|| panic!("module index {} should be valid", module_idx));
 
             (module.items.clone(), module_idx, module)
         } else {
             let (item, module_idx) = utils::resolve_path(ir_builder, import_path)?;
             let module = ir_builder
-                .decl_table
                 .get_module(module_idx)
                 .cloned()
                 .unwrap_or_else(|| panic!("module index {} should be valid", module_idx));
@@ -97,9 +117,7 @@ fn lower_import(ir_builder: &mut IrBuilder, import_path: &Path) -> Result<(), Lo
         for item in items {
             match item {
                 TopLevelItem::Func(func) => {
-                    ir_builder
-                        .decl_table
-                        .add_func_decl(func.clone(), Some(module_idx))?;
+                    ir_builder.add_function_decl(func.clone(), None, Some(module_idx))?;
                     utils::add_extern_function(
                         ir_builder,
                         &module.module_name,
@@ -107,9 +125,9 @@ fn lower_import(ir_builder: &mut IrBuilder, import_path: &Path) -> Result<(), Lo
                         import_path.span,
                     )?;
                 }
-                TopLevelItem::Struct(strct) => ir_builder
-                    .decl_table
-                    .add_struct_decl(strct.clone(), Some(module_idx))?,
+                TopLevelItem::Struct(strct) => {
+                    ir_builder.add_struct_decl(strct.clone(), Some(module_idx))?
+                }
                 _ => {}
             }
         }

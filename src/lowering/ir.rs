@@ -4,7 +4,7 @@ use crate::{
     diagnostics::LoweringError,
     lowering::ir::{
         adts::Adt,
-        function::Function,
+        function::{FuncId, Function},
         symbols::{DeclTable, SymbolTableBuilder, TypeIndex},
         types::MathicType,
     },
@@ -29,12 +29,36 @@ pub mod value;
 pub trait Builder {
     fn get_module(&self, idx: usize) -> Option<&Arc<IrModule>>;
 
-    fn _get_function_decl(&self, name: &str) -> Option<&(FuncDecl, Option<usize>)>;
-    fn get_struct_decl(&self, name: &str) -> Option<&(StructDecl, Option<usize>)>;
+    fn get_function_decl(
+        &self,
+        name: &str,
+        method_of: Option<TypeIndex>,
+        span: Span,
+    ) -> Result<(FuncDecl, Option<usize>), LoweringError>;
+    fn add_function_decl(
+        &mut self,
+        func: FuncDecl,
+        method_of: Option<TypeIndex>,
+        module_idx: Option<usize>,
+    ) -> Result<(), LoweringError>;
 
-    fn add_function(&mut self, func: Function);
+    fn get_struct_decl(
+        &self,
+        name: &str,
+        span: Span,
+    ) -> Result<(StructDecl, Option<usize>), LoweringError>;
+    fn add_struct_decl(
+        &mut self,
+        strct: StructDecl,
+        module_idx: Option<usize>,
+    ) -> Result<(), LoweringError>;
+
+    fn add_function(&mut self, func: Function, method_of: Option<TypeIndex>);
 
     fn get_type(&self, idx: TypeIndex, span: Span) -> Result<MathicType, LoweringError>;
+
+    fn get_self_ty_idx(&self) -> Option<TypeIndex>;
+    fn set_self_ty_idx(&mut self, ty: Option<TypeIndex>);
 
     fn add_adt(&mut self, name: String, adt: Adt) -> usize;
     fn get_adt(&self, adt_type_idx: TypeIndex, span: Span) -> Result<&Adt, LoweringError>;
@@ -80,22 +104,69 @@ impl Builder for IrBuilder {
         self.decl_table.get_module(idx)
     }
 
-    fn _get_function_decl(&self, name: &str) -> Option<&(FuncDecl, Option<usize>)> {
-        self.decl_table.get_function_decl(name)
+    fn get_function_decl(
+        &self,
+        name: &str,
+        method_of: Option<TypeIndex>,
+        span: Span,
+    ) -> Result<(FuncDecl, Option<usize>), LoweringError> {
+        self.decl_table
+            .get_function_decl(name, method_of)
+            .cloned()
+            .ok_or(LoweringError::UndeclaredFunction {
+                name: name.to_string(),
+                span,
+            })
     }
 
-    fn get_struct_decl(&self, name: &str) -> Option<&(StructDecl, Option<usize>)> {
-        self.decl_table.get_struct_decl(name)
+    fn add_function_decl(
+        &mut self,
+        func: FuncDecl,
+        method_of: Option<TypeIndex>,
+        module_idx: Option<usize>,
+    ) -> Result<(), LoweringError> {
+        self.decl_table.add_func_decl(func, method_of, module_idx)
     }
 
-    fn add_function(&mut self, func: Function) {
-        self.sym_table.functions.insert(func.name.clone(), func);
+    fn get_struct_decl(
+        &self,
+        name: &str,
+        span: Span,
+    ) -> Result<(StructDecl, Option<usize>), LoweringError> {
+        self.decl_table
+            .get_struct_decl(name)
+            .cloned()
+            .ok_or(LoweringError::UndeclaredType { span })
+    }
+
+    fn add_struct_decl(
+        &mut self,
+        strct: StructDecl,
+        module_idx: Option<usize>,
+    ) -> Result<(), LoweringError> {
+        self.decl_table.add_struct_decl(strct, module_idx)
+    }
+
+    fn add_function(&mut self, func: Function, method_of: Option<TypeIndex>) {
+        let func_id = FuncId {
+            name: func.name.clone(),
+            method_of,
+        };
+        self.sym_table.functions.insert(func_id, func);
     }
 
     fn get_type(&self, idx: TypeIndex, span: Span) -> Result<MathicType, LoweringError> {
         self.sym_table
             .get_type(idx.idx)
             .ok_or(LoweringError::UndeclaredType { span })
+    }
+
+    fn get_self_ty_idx(&self) -> Option<TypeIndex> {
+        self.sym_table.self_ty
+    }
+
+    fn set_self_ty_idx(&mut self, ty: Option<TypeIndex>) {
+        self.sym_table.self_ty = ty;
     }
 
     fn add_adt(&mut self, name: String, adt: Adt) -> usize {

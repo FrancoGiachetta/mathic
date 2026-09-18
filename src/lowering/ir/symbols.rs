@@ -7,7 +7,7 @@ use crate::{
     diagnostics::LoweringError,
     lowering::ir::{
         adts::Adt,
-        function::{Function, Local, LocalKind},
+        function::{FuncId, Function, Local, LocalKind},
         types::MathicType,
     },
     parser::{
@@ -24,11 +24,10 @@ use crate::{
 /// Use to store function, struct and enum declarations to allow for
 /// forward referencing.
 #[derive(Debug, Clone, Default)]
-#[allow(dead_code)]
 pub struct DeclTable {
     pub name_to_module: HashMap<String, usize>,
     pub modules: Vec<Arc<IrModule>>,
-    functions: HashMap<String, (FuncDecl, Option<usize>)>,
+    functions: HashMap<FuncId, (FuncDecl, Option<usize>)>,
     structs: HashMap<String, (StructDecl, Option<usize>)>,
 }
 
@@ -50,18 +49,22 @@ impl DeclTable {
     pub fn add_func_decl(
         &mut self,
         func: FuncDecl,
+        method_of: Option<TypeIndex>,
         module_idx: Option<usize>,
     ) -> Result<(), LoweringError> {
-        let name = func.name.clone();
+        let func_id = FuncId {
+            name: func.name.clone(),
+            method_of,
+        };
 
-        if self.functions.contains_key(&name) {
+        if self.functions.contains_key(&func_id) {
             return Err(LoweringError::DuplicateDeclaration {
-                name,
+                name: func_id.name,
                 span: func.span,
             });
         }
 
-        self.functions.insert(name, (func, module_idx));
+        self.functions.insert(func_id, (func, module_idx));
 
         Ok(())
     }
@@ -84,8 +87,16 @@ impl DeclTable {
         Ok(())
     }
 
-    pub fn get_function_decl(&self, name: &str) -> Option<&(FuncDecl, Option<usize>)> {
-        self.functions.get(name)
+    pub fn get_function_decl(
+        &self,
+        name: &str,
+        method_of: Option<TypeIndex>,
+    ) -> Option<&(FuncDecl, Option<usize>)> {
+        let func_id = FuncId {
+            name: name.to_owned(),
+            method_of,
+        };
+        self.functions.get(&func_id)
     }
 
     pub fn get_struct_decl(&self, name: &str) -> Option<&(StructDecl, Option<usize>)> {
@@ -101,7 +112,7 @@ impl DeclTable {
     }
 }
 
-#[derive(Default, Debug, Clone, Copy, PartialEq, Eq)]
+#[derive(Default, Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub struct TypeIndex {
     pub idx: usize,
     pub is_local: bool,
@@ -146,9 +157,10 @@ pub struct SymbolTable {
 #[derive(Clone, Debug, Default)]
 pub struct SymbolTableBuilder {
     types: TypeTable,
+    pub self_ty: Option<TypeIndex>,
     pub locals: Vec<Local>,
     pub local_indexes: HashMap<String, usize>,
-    pub functions: HashMap<String, Function>,
+    pub functions: HashMap<FuncId, Function>,
     pub user_def_types: HashMap<String, TypeIndex>,
     pub adts: Vec<Adt>,
 }
@@ -181,8 +193,12 @@ impl SymbolTableBuilder {
             })
     }
 
-    pub fn add_function(&mut self, func: Function) {
-        self.functions.insert(func.name.clone(), func);
+    pub fn add_function(&mut self, func: Function, method_of: Option<TypeIndex>) {
+        let func_id = FuncId {
+            name: func.name.clone(),
+            method_of,
+        };
+        self.functions.insert(func_id, func);
     }
 
     pub fn get_user_def_type(&self, name: &str) -> Option<TypeIndex> {

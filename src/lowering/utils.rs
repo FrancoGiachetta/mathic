@@ -3,7 +3,10 @@ use crate::{
     lowering::{
         ast_lowering::{lower_ast_type, statement::lower_struct},
         ir::{
-            Builder, IrBuilder, function::FunctionBuilder, symbols::TypeIndex, types::MathicType,
+            Builder, IrBuilder,
+            function::{FuncId, FunctionBuilder},
+            symbols::TypeIndex,
+            types::MathicType,
         },
     },
     parser::{
@@ -34,7 +37,7 @@ pub fn add_extern_function(
     )?
     .build();
 
-    ir_builder.add_function(extern_func);
+    ir_builder.add_function(extern_func, None);
 
     Ok(())
 }
@@ -79,11 +82,13 @@ pub fn resolve_external_func(
 
             // The function may already be declared by a path call (mangled
             // name) or by an import (non-mangled name).
-            let declared_by_path = ir_builder.sym_table.functions.contains_key(&mangled_name);
+            let declared_by_path = ir_builder.sym_table.functions.contains_key(&FuncId {
+                name: mangled_name,
+                method_of: None,
+            });
             let declared_by_import = ir_builder
-                .decl_table
-                .get_function_decl(&func.name)
-                .is_some_and(|(_, module)| *module == Some(module_idx));
+                .get_function_decl(&func.name, None, path.span)
+                .is_ok_and(|(_, module)| module == Some(module_idx));
 
             if !(declared_by_path || declared_by_import) {
                 add_extern_function(ir_builder, &module_path, &func, path.span)?;
@@ -141,9 +146,7 @@ pub fn resolve_struct_type(
         return Ok(ty);
     }
 
-    let Some((strct, module_idx)) = builder.get_struct_decl(name).cloned() else {
-        return Err(LoweringError::UndeclaredType { span });
-    };
+    let (strct, module_idx) = builder.get_struct_decl(name, span)?;
 
     let key = match module_idx {
         None => strct.name.clone(),
