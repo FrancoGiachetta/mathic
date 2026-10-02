@@ -509,6 +509,7 @@ fn lower_adt_init(
 
         return Err(LoweringError::MissingStructFields { missing, span });
     }
+
     for (name, expr) in fields {
         let (rvalue, rvalue_ty_idx) = lower_expr(func, expr, adt_body.get_field_ty(name))?;
         let field_ty_idx =
@@ -521,9 +522,9 @@ fn lower_adt_init(
 
         if field_ty_idx != rvalue_ty_idx {
             return Err(LoweringError::MismatchedType {
-                expected: func.get_type(field_ty_idx, span)?,
-                found: func.get_type(rvalue_ty_idx, span)?,
-                span,
+                expected: func.get_type(field_ty_idx, expr.span)?,
+                found: func.get_type(rvalue_ty_idx, expr.span)?,
+                span: expr.span,
             });
         }
 

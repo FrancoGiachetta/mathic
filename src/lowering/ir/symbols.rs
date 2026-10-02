@@ -162,7 +162,7 @@ pub struct SymbolTableBuilder {
     pub local_indexes: HashMap<String, usize>,
     pub functions: HashMap<FuncId, Function>,
     pub user_def_types: HashMap<String, TypeIndex>,
-    pub adts: Vec<Adt>,
+    pub adts: Vec<Option<Adt>>,
 }
 
 impl SymbolTableBuilder {
@@ -171,7 +171,7 @@ impl SymbolTableBuilder {
             types: self.types.types,
             locals: self.locals,
             functions: self.functions.into_values().collect(),
-            adts: self.adts,
+            adts: self.adts.into_iter().map(Option::unwrap).collect(),
         }
     }
 
@@ -205,19 +205,36 @@ impl SymbolTableBuilder {
         self.user_def_types.get(name).copied()
     }
 
-    pub fn add_adt(&mut self, name: String, adt: Adt, is_local: bool) -> usize {
-        let index = self.adts.len();
-
-        let adt_type_idx = self.types.insert(MathicType::Adt { index, is_local });
-
-        self.user_def_types.insert(
-            name,
-            TypeIndex {
-                idx: adt_type_idx,
+    // Inserts an user defined type. Since the adt won't be registered yet, it
+    // pushes a placeholder in `adts` so that the type index inserted does not
+    // get corrupted.
+    pub fn insert_user_def_type(&mut self, name: String, is_local: bool) -> TypeIndex {
+        let adt_idx = self.adts.len();
+        let ty_idx = TypeIndex {
+            idx: self.types.insert(MathicType::Adt {
+                index: adt_idx,
                 is_local,
-            },
-        );
-        self.adts.push(adt);
+            }),
+            is_local,
+        };
+
+        self.user_def_types.insert(name, ty_idx);
+        self.adts.push(None);
+
+        ty_idx
+    }
+
+    pub fn add_adt(&mut self, name: String, adt: Adt) -> usize {
+        let Some(MathicType::Adt { index, .. }) = self
+            .get_user_def_type(&name)
+            .and_then(|ty_idx| self.types.get(ty_idx.idx))
+        else {
+            panic!("internal error: expected ADT type in get_adt")
+        };
+
+        unsafe {
+            *self.adts.get_unchecked_mut(index) = Some(adt);
+        }
 
         index
     }
@@ -227,7 +244,7 @@ impl SymbolTableBuilder {
             panic!("internal error: expected ADT type in get_adt")
         };
 
-        self.adts.get(index)
+        unsafe { self.adts.get_unchecked(index).as_ref() }
     }
 
     pub fn add_local(

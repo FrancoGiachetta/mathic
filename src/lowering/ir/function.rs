@@ -130,6 +130,8 @@ impl Builder for FunctionBuilder<'_> {
         strct: StructDecl,
         module_idx: Option<usize>,
     ) -> Result<(), LoweringError> {
+        self.sym_table
+            .insert_user_def_type(strct.name.clone(), true);
         self.decl_table.add_struct_decl(strct, module_idx)
     }
 
@@ -155,7 +157,7 @@ impl Builder for FunctionBuilder<'_> {
     }
 
     fn add_adt(&mut self, name: String, adt: Adt) -> usize {
-        self.sym_table.add_adt(name, adt, true)
+        self.sym_table.add_adt(name, adt)
     }
 
     fn get_adt(&self, adt_type_idx: TypeIndex, span: Span) -> Result<&Adt, LoweringError> {
@@ -180,6 +182,17 @@ impl Builder for FunctionBuilder<'_> {
         self.sym_table
             .get_user_def_type(name)
             .or(self.ir_builder.sym_table.get_user_def_type(name))
+    }
+
+    fn get_user_def_type_or_insert(&mut self, name: &str) -> TypeIndex {
+        self.sym_table
+            .get_user_def_type(name)
+            .or(self.ir_builder.sym_table.get_user_def_type(name))
+            .unwrap_or(self.sym_table.insert_user_def_type(name.to_string(), true))
+    }
+
+    fn insert_user_def_type(&mut self, name: String) -> TypeIndex {
+        self.sym_table.insert_user_def_type(name, true)
     }
 
     fn get_mangled_name(&self, module: &str, name: &str) -> String {

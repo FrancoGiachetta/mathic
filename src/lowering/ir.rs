@@ -47,6 +47,8 @@ pub trait Builder {
         name: &str,
         span: Span,
     ) -> Result<(StructDecl, Option<usize>), LoweringError>;
+    // Registers a struct declaration in the declaration table and also type
+    // index in the type table.
     fn add_struct_decl(
         &mut self,
         strct: StructDecl,
@@ -64,7 +66,10 @@ pub trait Builder {
     fn get_adt(&self, adt_type_idx: TypeIndex, span: Span) -> Result<&Adt, LoweringError>;
 
     fn get_or_insert_type_idx(&mut self, ty: MathicType) -> TypeIndex;
+
     fn get_user_def_type(&self, name: &str) -> Option<TypeIndex>;
+    fn get_user_def_type_or_insert(&mut self, name: &str) -> TypeIndex;
+    fn insert_user_def_type(&mut self, name: String) -> TypeIndex;
 
     fn get_mangled_name(&self, module: &str, name: &str) -> String;
 
@@ -144,6 +149,8 @@ impl Builder for IrBuilder {
         strct: StructDecl,
         module_idx: Option<usize>,
     ) -> Result<(), LoweringError> {
+        self.sym_table
+            .insert_user_def_type(strct.name.clone(), false);
         self.decl_table.add_struct_decl(strct, module_idx)
     }
 
@@ -170,7 +177,7 @@ impl Builder for IrBuilder {
     }
 
     fn add_adt(&mut self, name: String, adt: Adt) -> usize {
-        self.sym_table.add_adt(name, adt, false)
+        self.sym_table.add_adt(name, adt)
     }
 
     fn get_adt(&self, adt_type_idx: TypeIndex, span: Span) -> Result<&Adt, LoweringError> {
@@ -187,6 +194,18 @@ impl Builder for IrBuilder {
 
     fn get_user_def_type(&self, name: &str) -> Option<TypeIndex> {
         self.sym_table.user_def_types.get(name).copied()
+    }
+
+    fn insert_user_def_type(&mut self, name: String) -> TypeIndex {
+        self.sym_table.insert_user_def_type(name, false)
+    }
+
+    fn get_user_def_type_or_insert(&mut self, name: &str) -> TypeIndex {
+        self.sym_table
+            .user_def_types
+            .get(name)
+            .cloned()
+            .unwrap_or(self.sym_table.insert_user_def_type(name.to_string(), false))
     }
 
     fn get_mangled_name(&self, module: &str, name: &str) -> String {

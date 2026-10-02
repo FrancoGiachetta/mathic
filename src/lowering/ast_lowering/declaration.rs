@@ -37,10 +37,7 @@ pub fn lower_var_declaration(
 
     let var_ty = func.get_type(var_ty_idx, span)?;
     let expr_ty = func.get_type(expr_ty_idx, span)?;
-    println!(
-        "lower_var_declaration: var_ty = {:?}, expr_ty = {:?}",
-        var_ty, expr_ty
-    );
+
     if expr_ty_idx != var_ty_idx {
         return Err(LoweringError::MismatchedType {
             expected: var_ty,
@@ -164,15 +161,10 @@ pub fn lower_function(
                 DeclStmt::Struct(s) => inner_func.add_struct_decl(s.clone(), None)?,
                 DeclStmt::ExpandBlock(expand_decl) => {
                     let ExpandDecl {
-                        adt_name,
-                        methods,
-                        span,
+                        adt_name, methods, ..
                     } = expand_decl;
 
-                    // The ADT must have been defined before the `expand` block.
-                    let adt_ty = inner_func
-                        .get_user_def_type(&adt_name.join("::"))
-                        .ok_or(LoweringError::UndeclaredType { span: *span })?;
+                    let adt_ty = inner_func.get_user_def_type_or_insert(&adt_name.join("::"));
 
                     for m in methods {
                         inner_func.add_function_decl(m.clone(), Some(adt_ty), None)?

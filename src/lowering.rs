@@ -38,12 +38,7 @@ pub fn lower_program(program: &IrModule) -> Result<Ir, LoweringError> {
                     adt_name, methods, ..
                 } = expand_decl;
 
-                // The ADT must have been defined before the `expand` block.
-                let adt_ty = ir_builder.get_user_def_type(&adt_name.join("::")).ok_or(
-                    LoweringError::UndeclaredType {
-                        span: adt_name.span,
-                    },
-                )?;
+                let adt_ty = ir_builder.get_user_def_type_or_insert(&adt_name.join("::"));
 
                 for m in methods {
                     ir_builder.add_function_decl(m.clone(), Some(adt_ty), None)?
@@ -61,9 +56,7 @@ pub fn lower_program(program: &IrModule) -> Result<Ir, LoweringError> {
                 lower_expand_block(&mut ir_builder, expand_block)?
             }
             TopLevelItem::Func(f) => lower_function(&mut ir_builder, f, None)?,
-            TopLevelItem::Struct(s) => {
-                let _ = lower_struct(&mut ir_builder, s)?;
-            }
+            TopLevelItem::Struct(s) => lower_struct(&mut ir_builder, s)?,
             _ => {}
         }
     }
@@ -126,7 +119,9 @@ fn lower_import(ir_builder: &mut IrBuilder, import_path: &Path) -> Result<(), Lo
                     )?;
                 }
                 TopLevelItem::Struct(strct) => {
-                    ir_builder.add_struct_decl(strct.clone(), Some(module_idx))?
+                    ir_builder.add_struct_decl(strct.clone(), Some(module_idx))?;
+                    // We need to lower it here becasue there's no declaration of the struct afterwards.
+                    lower_struct(ir_builder, &strct)?;
                 }
                 _ => {}
             }
