@@ -38,13 +38,19 @@ impl<'a> MathicParser<'a> {
             }
             Token::Let => {
                 let var = self.parse_var_decl()?;
-                let span = Span::from_merged_spans(start_span, var.expr.span);
+                let span = Span::from_merged_spans(start_span, self.current_span());
                 (StmtKind::Decl(DeclStmt::Var(var)), span)
             }
             Token::Struct => {
                 let struct_decl = self.parse_struct()?;
                 let span = Span::from_merged_spans(start_span, self.current_span());
                 (StmtKind::Decl(DeclStmt::Struct(struct_decl)), span)
+            }
+            Token::Expand => {
+                let expand_block = self.parse_expand_block()?;
+                let span = Span::from_merged_spans(start_span, self.current_span());
+
+                (StmtKind::Decl(DeclStmt::ExpandBlock(expand_block)), span)
             }
             Token::Sym => {
                 let sym = self.parse_sym_decl()?;

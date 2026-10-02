@@ -53,6 +53,7 @@ pub fn lower_expr(
             field_name,
             rhs,
         } => lower_struct_set(func, lhs, field_name, rhs, expr.span)?,
+        ExprStmtKind::MethodCall { callee: _, args: _ } => unimplemented!(),
     };
 
     Ok((
@@ -118,7 +119,9 @@ fn lower_call(
 ) -> Result<RValInstruct, LoweringError> {
     let mut arg_values: Vec<RValInstruct> = Vec::new();
     let (func_prototype, module_idx) = match &callee.kind {
-        ExprStmtKind::Primary(PrimaryExpr::Ident(ident)) => func.get_function_decl(ident, span)?,
+        ExprStmtKind::Primary(PrimaryExpr::Ident(ident)) => {
+            func.get_function_decl(ident, None, span)?
+        }
         ExprStmtKind::Primary(PrimaryExpr::Path(path)) => {
             // We are referencing a function from another module, so we resolve
             // it directly and declare it as external.
@@ -172,7 +175,13 @@ fn lower_call(
     let mangled_callee_name = {
         let module_name = match module_idx {
             None => &func.ir_builder.module_name,
-            Some(idx) => &func.ir_builder.decl_table.modules[idx].module_name,
+            Some(idx) => {
+                &func
+                    .ir_builder
+                    .get_module(idx)
+                    .unwrap_or_else(|| panic!("module index {} should be valid", idx))
+                    .module_name
+            }
         };
         func.ir_builder.get_mangled_name(module_name, &callee_name)
     };
@@ -500,6 +509,7 @@ fn lower_adt_init(
 
         return Err(LoweringError::MissingStructFields { missing, span });
     }
+
     for (name, expr) in fields {
         let (rvalue, rvalue_ty_idx) = lower_expr(func, expr, adt_body.get_field_ty(name))?;
         let field_ty_idx =
@@ -512,9 +522,9 @@ fn lower_adt_init(
 
         if field_ty_idx != rvalue_ty_idx {
             return Err(LoweringError::MismatchedType {
-                expected: func.get_type(field_ty_idx, span)?,
-                found: func.get_type(rvalue_ty_idx, span)?,
-                span,
+                expected: func.get_type(field_ty_idx, expr.span)?,
+                found: func.get_type(rvalue_ty_idx, expr.span)?,
+                span: expr.span,
             });
         }
 
@@ -805,7 +815,7 @@ fn lower_expression_type(
         ExprStmtKind::Call { callee, .. } => {
             let (func_decl, _) = match &callee.kind {
                 ExprStmtKind::Primary(PrimaryExpr::Ident(ident)) => {
-                    func.get_function_decl(ident, span)?
+                    func.get_function_decl(ident, None, span)?
                 }
                 ExprStmtKind::Primary(PrimaryExpr::Path(path)) => {
                     let (func_decl, module_idx) = resolve_external_func(func.ir_builder, path)?;
@@ -818,6 +828,7 @@ fn lower_expression_type(
                 None => func.get_or_insert_type_idx(MathicType::Void),
             }
         }
+        ExprStmtKind::MethodCall { callee: _, args: _ } => unimplemented!(),
         ExprStmtKind::Group(expr_stmt) => lower_expression_type(func, &expr_stmt.kind, None, span)?,
         ExprStmtKind::Index { .. } => todo!(),
         ExprStmtKind::Logical { .. } => func.get_or_insert_type_idx(MathicType::Bool),

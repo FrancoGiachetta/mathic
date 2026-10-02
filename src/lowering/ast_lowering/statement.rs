@@ -1,7 +1,10 @@
 use crate::{
     diagnostics::LoweringError,
     lowering::{
-        ast_lowering::{declaration::lower_sym_decl, lower_ast_type},
+        ast_lowering::{
+            declaration::{lower_expand_block, lower_sym_decl},
+            lower_ast_type,
+        },
         ir::{
             Builder,
             adts::{Adt, StructAdt, StructField},
@@ -78,11 +81,10 @@ fn lower_declaration(
         DeclStmt::Var(var_decl) => {
             lower_var_declaration(func, var_decl, *span)?;
         }
-        DeclStmt::Struct(struct_decl) => {
-            let _ = lower_struct(func, struct_decl)?;
-        }
+        DeclStmt::Struct(struct_decl) => lower_struct(func, struct_decl)?,
+        DeclStmt::ExpandBlock(expand_block) => lower_expand_block(func, expand_block)?,
         DeclStmt::Sym(sym_decl) => lower_sym_decl(func, sym_decl, *span)?,
-        DeclStmt::Func(func_decl) => lower_function(func, func_decl)?,
+        DeclStmt::Func(func_decl) => lower_function(func, func_decl, None)?,
     }
 
     Ok(())
@@ -91,7 +93,7 @@ fn lower_declaration(
 pub fn lower_struct(
     builder: &mut dyn Builder,
     struct_decl: &StructDecl,
-) -> Result<usize, LoweringError> {
+) -> Result<(), LoweringError> {
     let StructDecl { name, fields, span } = struct_decl;
 
     let mut adt = StructAdt {
@@ -108,9 +110,9 @@ pub fn lower_struct(
         });
     }
 
-    let idx = builder.add_adt(adt.name.clone(), Adt::Struct(adt));
+    builder.add_adt(adt.name.clone(), Adt::Struct(adt));
 
-    Ok(idx)
+    Ok(())
 }
 
 pub fn lower_block(

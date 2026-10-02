@@ -8,6 +8,7 @@ use crate::{
             Builder,
             function::{FunctionBuilder, LocalKind},
             instruction::{LValInstruct, RValueKind},
+            symbols::TypeIndex,
             types::MathicType,
             value::Value,
         },
@@ -15,7 +16,7 @@ use crate::{
     parser::{
         Span,
         ast::{
-            declaration::{DeclStmt, FuncDecl, SymDecl, VarDecl},
+            declaration::{DeclStmt, ExpandDecl, FuncDecl, SymDecl, VarDecl},
             statement::StmtKind,
         },
     },
@@ -36,10 +37,7 @@ pub fn lower_var_declaration(
 
     let var_ty = func.get_type(var_ty_idx, span)?;
     let expr_ty = func.get_type(expr_ty_idx, span)?;
-    println!(
-        "lower_var_declaration: var_ty = {:?}, expr_ty = {:?}",
-        var_ty, expr_ty
-    );
+
     if expr_ty_idx != var_ty_idx {
         return Err(LoweringError::MismatchedType {
             expected: var_ty,
@@ -99,7 +97,37 @@ pub fn lower_sym_decl(
     Ok(())
 }
 
-pub fn lower_function(builder: &mut impl Builder, stmt: &FuncDecl) -> Result<(), LoweringError> {
+pub fn lower_expand_block(
+    builder: &mut impl Builder,
+    expand_block: &ExpandDecl,
+) -> Result<(), LoweringError> {
+    let ExpandDecl {
+        adt_name, methods, ..
+    } = expand_block;
+
+    let assoc_ty =
+        builder
+            .get_user_def_type(&adt_name.join("::"))
+            .ok_or(LoweringError::UndeclaredType {
+                span: adt_name.span,
+            })?;
+
+    let old_self_ty = builder.get_self_ty_idx();
+
+    builder.set_self_ty_idx(Some(assoc_ty));
+    for m in methods {
+        lower_function(builder, m, Some(assoc_ty))?;
+    }
+    builder.set_self_ty_idx(old_self_ty);
+
+    Ok(())
+}
+
+pub fn lower_function(
+    builder: &mut impl Builder,
+    stmt: &FuncDecl,
+    method_of: Option<TypeIndex>,
+) -> Result<(), LoweringError> {
     let FuncDecl {
         name,
         params,
@@ -127,14 +155,23 @@ pub fn lower_function(builder: &mut impl Builder, stmt: &FuncDecl) -> Result<(),
     // to reference function no yet declared. For example, a function call
     // of a not yet declared function.
     for stmt in body.iter() {
-        match &stmt.kind {
-            StmtKind::Decl(DeclStmt::Func(f)) => {
-                inner_func.decl_table.add_func_decl(f.clone(), None)?
+        if let StmtKind::Decl(decl_stmt) = &stmt.kind {
+            match decl_stmt {
+                DeclStmt::Func(f) => inner_func.add_function_decl(f.clone(), None, None)?,
+                DeclStmt::Struct(s) => inner_func.add_struct_decl(s.clone(), None)?,
+                DeclStmt::ExpandBlock(expand_decl) => {
+                    let ExpandDecl {
+                        adt_name, methods, ..
+                    } = expand_decl;
+
+                    let adt_ty = inner_func.get_user_def_type_or_insert(&adt_name.join("::"));
+
+                    for m in methods {
+                        inner_func.add_function_decl(m.clone(), Some(adt_ty), None)?
+                    }
+                }
+                _ => {}
             }
-            StmtKind::Decl(DeclStmt::Struct(s)) => {
-                inner_func.decl_table.add_struct_decl(s.clone(), None)?
-            }
-            _ => {}
         }
     }
 
@@ -144,7 +181,7 @@ pub fn lower_function(builder: &mut impl Builder, stmt: &FuncDecl) -> Result<(),
 
     let inner_func = inner_func.build();
 
-    builder.add_function(inner_func);
+    builder.add_function(inner_func, method_of);
 
     Ok(())
 }

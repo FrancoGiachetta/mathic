@@ -1,7 +1,9 @@
 use crate::parser::{
     MathicParser, ParserResult, Span,
     ast::{
-        declaration::{AstType, FuncDecl, Param, Path, StructDecl, StructField, SymDecl, VarDecl},
+        declaration::{
+            AstType, ExpandDecl, FuncDecl, Param, Path, StructDecl, StructField, SymDecl, VarDecl,
+        },
         statement::BlockStmt,
     },
     token::Token,
@@ -25,6 +27,31 @@ impl<'a> MathicParser<'a> {
         };
 
         Ok(ty)
+    }
+
+    pub fn parse_expand_block(&self) -> ParserResult<ExpandDecl> {
+        let start_span = self.next()?.span;
+        let mut methods = Vec::new();
+
+        let adt_name = self.parse_path()?;
+
+        self.consume_token(Token::LBrace)?;
+
+        while let Some(tk) = self.peek()?
+            && tk.token == Token::Df
+        {
+            methods.push(self.parse_func()?);
+        }
+
+        self.consume_token(Token::RBrace)?;
+
+        let span = Span::from_merged_spans(start_span, self.current_span());
+
+        Ok(ExpandDecl {
+            adt_name,
+            methods,
+            span,
+        })
     }
 
     pub fn parse_func(&self) -> ParserResult<FuncDecl> {
@@ -131,15 +158,29 @@ impl<'a> MathicParser<'a> {
     }
 
     fn parse_params(&self) -> ParserResult<Vec<Param>> {
-        let identifier = self.consume_token(Token::Ident)?;
-        self.consume_token(Token::Colon)?;
-        let ty = self.parse_type()?;
+        let first_param = {
+            let lookahead = self.consume_token(Token::Ident)?;
 
-        let mut params = vec![Param {
-            name: identifier.lexeme.to_string(),
-            span: identifier.span,
-            ty,
-        }];
+            match lookahead.lexeme {
+                "self" => Param {
+                    name: lookahead.lexeme.to_string(),
+                    ty: AstType::SelfType,
+                    span: lookahead.span,
+                },
+                _ => {
+                    self.consume_token(Token::Colon)?;
+                    let ty = self.parse_type()?;
+
+                    Param {
+                        name: lookahead.lexeme.to_string(),
+                        ty,
+                        span: lookahead.span,
+                    }
+                }
+            }
+        };
+
+        let mut params = vec![first_param];
 
         while self.match_token(Token::Comma)?.is_some() {
             let identifier = self.consume_token(Token::Ident)?;
@@ -148,8 +189,8 @@ impl<'a> MathicParser<'a> {
 
             params.push(Param {
                 name: identifier.lexeme.to_string(),
-                span: identifier.span,
                 ty,
+                span: identifier.span,
             });
         }
 

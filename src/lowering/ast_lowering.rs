@@ -81,22 +81,20 @@ pub fn lower_ast_type(
                         return Ok(ty);
                     }
 
-                    match builder.get_struct_decl(other).cloned() {
-                        Some((s, module_idx)) => {
-                            let builder = if module_idx.is_some() {
-                                builder.get_ir_builder()
-                            } else {
-                                builder
-                            };
+                    let (s, module_idx) = builder.get_struct_decl(other, span)?;
 
-                            get_or_insert_struct_type(builder, &s, module_idx, span)?
-                        }
-                        None => {
-                            return Err(LoweringError::UndeclaredType { span });
-                        }
-                    }
+                    let builder = if module_idx.is_some() {
+                        builder.get_ir_builder()
+                    } else {
+                        builder
+                    };
+
+                    get_or_insert_struct_type(builder, &s, module_idx, span)?
                 }
             }
         }
+        AstType::SelfType => builder
+            .get_self_ty_idx()
+            .ok_or(LoweringError::NoAssociatedSelfType { span })?,
     })
 }

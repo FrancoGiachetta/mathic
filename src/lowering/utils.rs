@@ -3,7 +3,10 @@ use crate::{
     lowering::{
         ast_lowering::{lower_ast_type, statement::lower_struct},
         ir::{
-            Builder, IrBuilder, function::FunctionBuilder, symbols::TypeIndex, types::MathicType,
+            Builder, IrBuilder,
+            function::{FuncId, FunctionBuilder},
+            symbols::TypeIndex,
+            types::MathicType,
         },
     },
     parser::{
@@ -34,7 +37,7 @@ pub fn add_extern_function(
     )?
     .build();
 
-    ir_builder.add_function(extern_func);
+    ir_builder.add_function(extern_func, None);
 
     Ok(())
 }
@@ -79,13 +82,15 @@ pub fn resolve_external_func(
 
             // The function may already be declared by a path call (mangled
             // name) or by an import (non-mangled name).
-            let declared_by_path = ir_builder.sym_table.functions.contains_key(&mangled_name);
+            let declared_by_path = ir_builder.sym_table.functions.contains_key(&FuncId {
+                name: mangled_name,
+                method_of: None,
+            });
             let declared_by_import = ir_builder
-                .decl_table
-                .get_function_decl(&func.name)
-                .is_some_and(|(_, module)| *module == Some(module_idx));
+                .get_function_decl(&func.name, None, path.span)
+                .is_ok_and(|(_, module)| module == Some(module_idx));
 
-            if !(declared_by_path || declared_by_import) {
+            if !declared_by_path && !declared_by_import {
                 add_extern_function(ir_builder, &module_path, &func, path.span)?;
             }
 
@@ -114,6 +119,18 @@ pub fn resolve_external_struct(
 
     match item {
         TopLevelItem::Struct(strct) => {
+            // The struct may already be resolved (by a prior import
+            // keyed by its (not mangled) name.
+            if ir_builder
+                .get_struct_decl(&strct.name, path.span)
+                .is_ok_and(|(_, mod_idx)| mod_idx == Some(module_idx))
+            {
+                let ty_idx = ir_builder
+                    .get_user_def_type(&strct.name)
+                    .expect("user defined type should be registered");
+                return Ok((ty_idx, module_idx));
+            }
+
             let adt_ty =
                 get_or_insert_struct_type(ir_builder, &strct, Some(module_idx), path.span)?;
             Ok((adt_ty, module_idx))
@@ -141,26 +158,7 @@ pub fn resolve_struct_type(
         return Ok(ty);
     }
 
-    let Some((strct, module_idx)) = builder.get_struct_decl(name).cloned() else {
-        return Err(LoweringError::UndeclaredType { span });
-    };
-
-    let key = match module_idx {
-        None => strct.name.clone(),
-        Some(idx) => {
-            let module = builder
-                .get_module(idx)
-                .unwrap_or_else(|| panic!("module index {} should be valid", idx));
-
-            builder.get_mangled_name(&module.module_name, &strct.name)
-        }
-    };
-
-    // The struct may already be resolved (e.g. by a prior struct init or a
-    // type annotation), keyed by its mangled name.
-    if let Some(ty) = builder.get_user_def_type(&key) {
-        return Ok(ty);
-    }
+    let (strct, module_idx) = builder.get_struct_decl(name, span)?;
 
     get_or_insert_struct_type(builder, &strct, module_idx, span)
 }
@@ -175,7 +173,7 @@ pub fn get_or_insert_struct_type(
     builder: &mut dyn Builder,
     strct_decl: &StructDecl,
     module_idx: Option<usize>,
-    span: Span,
+    _span: Span,
 ) -> Result<TypeIndex, LoweringError> {
     let key = match module_idx {
         None => strct_decl.name.clone(),
@@ -188,6 +186,8 @@ pub fn get_or_insert_struct_type(
         }
     };
 
+    // The struct may already be resolved (e.g. by a prior struct init or a
+    // type annotation), keyed by its mangled name.
     if let Some(ty) = builder.get_user_def_type(&key) {
         return Ok(ty);
     }
@@ -195,11 +195,14 @@ pub fn get_or_insert_struct_type(
     let mut strct = strct_decl.clone();
 
     strct.name = key.clone();
+
+    // Insert the user type so the type index is available when lowering the
+    // struct afterwards.
+    let ty_idx = builder.insert_user_def_type(key);
+
     lower_struct(builder, &strct)?;
 
-    builder
-        .get_user_def_type(&key)
-        .ok_or(LoweringError::UndeclaredType { span })
+    Ok(ty_idx)
 }
 
 /// Finds a top level item within a module.

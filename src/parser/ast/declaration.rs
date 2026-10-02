@@ -1,10 +1,21 @@
-use crate::parser::{Span, ast::expression::ExprStmt, ast::statement::Stmt};
+use crate::parser::{
+    Span,
+    ast::{expression::ExprStmt, statement::Stmt},
+};
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum TopLevelItem {
     Func(FuncDecl),
     Import(Path),
     Struct(StructDecl),
+    ExpandBlock(ExpandDecl),
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct ExpandDecl {
+    pub adt_name: Path,
+    pub methods: Vec<FuncDecl>,
+    pub span: Span,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -12,6 +23,7 @@ pub enum DeclStmt {
     Var(VarDecl),
     Sym(SymDecl),
     Struct(StructDecl),
+    ExpandBlock(ExpandDecl),
     Func(FuncDecl),
 }
 
@@ -55,8 +67,8 @@ pub struct FuncDecl {
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Param {
     pub name: String,
-    pub span: Span,
     pub ty: AstType,
+    pub span: Span,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -69,6 +81,7 @@ pub struct Path {
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum AstType {
+    SelfType,
     Type {
         ty: String,
         inner: Option<Box<AstType>>,
@@ -82,6 +95,7 @@ impl TopLevelItem {
             TopLevelItem::Func(item) => item.name.clone(),
             TopLevelItem::Struct(item) => item.name.clone(),
             TopLevelItem::Import(item) => item.join("_"),
+            _ => panic!(),
         }
     }
 }
