@@ -26,6 +26,12 @@ impl Adt {
         }
     }
 
+    pub fn get_adt_name(&self) -> String {
+        match self {
+            Adt::Struct(s) => s.name.clone(),
+        }
+    }
+
     pub fn get_field_names(&self) -> Vec<String> {
         match self {
             Adt::Struct(s) => s.fields.iter().map(|f| f.name.clone()).collect(),

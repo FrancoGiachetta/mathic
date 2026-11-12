@@ -198,7 +198,7 @@ pub fn get_or_insert_struct_type(
 
     // Insert the user type so the type index is available when lowering the
     // struct afterwards.
-    let ty_idx = builder.insert_user_def_type(key);
+    let ty_idx = builder.insert_user_def_type(key, strct.span)?;
 
     lower_struct(builder, &strct)?;
 

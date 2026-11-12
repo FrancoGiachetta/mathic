@@ -112,6 +112,8 @@ pub fn lower_expand_block(
                 span: adt_name.span,
             })?;
 
+    // Save the actual self_ty, if any, to restore it after lowering all the
+    // methods.
     let old_self_ty = builder.get_self_ty_idx();
 
     builder.set_self_ty_idx(Some(assoc_ty));
@@ -161,10 +163,13 @@ pub fn lower_function(
                 DeclStmt::Struct(s) => inner_func.add_struct_decl(s.clone(), None)?,
                 DeclStmt::ExpandBlock(expand_decl) => {
                     let ExpandDecl {
-                        adt_name, methods, ..
+                        adt_name,
+                        methods,
+                        span,
                     } = expand_decl;
 
-                    let adt_ty = inner_func.get_user_def_type_or_insert(&adt_name.join("::"));
+                    let adt_ty =
+                        inner_func.get_user_def_type_or_insert(&adt_name.join("::"), *span)?;
 
                     for m in methods {
                         inner_func.add_function_decl(m.clone(), Some(adt_ty), None)?

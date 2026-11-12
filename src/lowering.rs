@@ -35,10 +35,12 @@ pub fn lower_program(program: &IrModule) -> Result<Ir, LoweringError> {
         match item {
             TopLevelItem::ExpandBlock(expand_decl) => {
                 let ExpandDecl {
-                    adt_name, methods, ..
+                    adt_name,
+                    methods,
+                    span,
                 } = expand_decl;
 
-                let adt_ty = ir_builder.get_user_def_type_or_insert(&adt_name.join("::"));
+                let adt_ty = ir_builder.get_user_def_type_or_insert(&adt_name.join("::"), *span)?;
 
                 for m in methods {
                     ir_builder.add_function_decl(m.clone(), Some(adt_ty), None)?
@@ -120,8 +122,8 @@ fn lower_import(ir_builder: &mut IrBuilder, import_path: &Path) -> Result<(), Lo
                 }
                 TopLevelItem::Struct(strct) => {
                     ir_builder.add_struct_decl(strct.clone(), Some(module_idx))?;
-                    // We need to lower it here becasue there's no declaration of the struct afterwards.
-                    lower_struct(ir_builder, &strct)?;
+                    // // We need to lower it here becasue there's no declaration of the struct afterwards.
+                    // lower_struct(ir_builder, &strct)?;
                 }
                 _ => {}
             }

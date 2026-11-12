@@ -208,7 +208,15 @@ impl SymbolTableBuilder {
     // Inserts an user defined type. Since the adt won't be registered yet, it
     // pushes a placeholder in `adts` so that the type index inserted does not
     // get corrupted.
-    pub fn insert_user_def_type(&mut self, name: String, is_local: bool) -> TypeIndex {
+    pub fn insert_user_def_type(
+        &mut self,
+        name: String,
+        is_local: bool,
+        span: Span,
+    ) -> Result<TypeIndex, LoweringError> {
+        if self.user_def_types.contains_key(&name) {
+            return Err(LoweringError::DuplicateDeclaration { name, span });
+        }
         let adt_idx = self.adts.len();
         let ty_idx = TypeIndex {
             idx: self.types.insert(MathicType::Adt {
@@ -221,7 +229,7 @@ impl SymbolTableBuilder {
         self.user_def_types.insert(name, ty_idx);
         self.adts.push(None);
 
-        ty_idx
+        Ok(ty_idx)
     }
 
     pub fn add_adt(&mut self, name: String, adt: Adt) -> usize {

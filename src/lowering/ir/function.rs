@@ -131,7 +131,7 @@ impl Builder for FunctionBuilder<'_> {
         module_idx: Option<usize>,
     ) -> Result<(), LoweringError> {
         self.sym_table
-            .insert_user_def_type(strct.name.clone(), true);
+            .insert_user_def_type(strct.name.clone(), true, strct.span)?;
         self.decl_table.add_struct_decl(strct, module_idx)
     }
 
@@ -149,7 +149,11 @@ impl Builder for FunctionBuilder<'_> {
     }
 
     fn get_self_ty_idx(&self) -> Option<TypeIndex> {
-        self.sym_table.self_ty
+        if let Some(ty) = self.sym_table.self_ty {
+            Some(ty)
+        } else {
+            self.ir_builder.get_self_ty_idx()
+        }
     }
 
     fn set_self_ty_idx(&mut self, ty: Option<TypeIndex>) {
@@ -179,20 +183,33 @@ impl Builder for FunctionBuilder<'_> {
     }
 
     fn get_user_def_type(&self, name: &str) -> Option<TypeIndex> {
-        self.sym_table
+        self.ir_builder
+            .sym_table
             .get_user_def_type(name)
-            .or(self.ir_builder.sym_table.get_user_def_type(name))
+            .or(self.sym_table.get_user_def_type(name))
     }
 
-    fn get_user_def_type_or_insert(&mut self, name: &str) -> TypeIndex {
-        self.sym_table
+    fn get_user_def_type_or_insert(
+        &mut self,
+        name: &str,
+        span: Span,
+    ) -> Result<TypeIndex, LoweringError> {
+        Ok(self
+            .sym_table
             .get_user_def_type(name)
-            .or(self.ir_builder.sym_table.get_user_def_type(name))
-            .unwrap_or(self.sym_table.insert_user_def_type(name.to_string(), true))
+            .or_else(|| self.ir_builder.sym_table.get_user_def_type(name))
+            .unwrap_or(
+                self.sym_table
+                    .insert_user_def_type(name.to_string(), true, span)?,
+            ))
     }
 
-    fn insert_user_def_type(&mut self, name: String) -> TypeIndex {
-        self.sym_table.insert_user_def_type(name, true)
+    fn insert_user_def_type(
+        &mut self,
+        name: String,
+        span: Span,
+    ) -> Result<TypeIndex, LoweringError> {
+        self.sym_table.insert_user_def_type(name, true, span)
     }
 
     fn get_mangled_name(&self, module: &str, name: &str) -> String {

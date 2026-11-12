@@ -33,7 +33,7 @@ pub fn lower_expr(
         ExprStmtKind::Group(expr) => {
             return lower_expr(func, expr, ty_hint);
         }
-        ExprStmtKind::Call { callee, args } => lower_call(func, callee, args, expr.span)?,
+        ExprStmtKind::Call { callee, args } => lower_call(func, callee, args, None, expr.span)?,
         ExprStmtKind::Assign {
             name,
             expr: assign_expr,
@@ -53,7 +53,9 @@ pub fn lower_expr(
             field_name,
             rhs,
         } => lower_struct_set(func, lhs, field_name, rhs, expr.span)?,
-        ExprStmtKind::MethodCall { callee: _, args: _ } => unimplemented!(),
+        ExprStmtKind::MethodCall { self_val, callee } => {
+            lower_method_call(func, self_val, callee, expr.span)?
+        }
     };
 
     Ok((
@@ -111,16 +113,33 @@ fn lower_assignment(
     ))
 }
 
+fn lower_method_call(
+    func: &mut FunctionBuilder,
+    self_val: &ExprStmt,
+    callee: &ExprStmt,
+    span: Span,
+) -> Result<RValInstruct, LoweringError> {
+    let ExprStmtKind::Call { callee, args } = &callee.kind else {
+        unreachable!()
+    };
+    let self_val_lowered = lower_expr(func, self_val, None)?;
+
+    lower_call(func, callee, args, Some(self_val_lowered), span)
+}
+
 fn lower_call(
     func: &mut FunctionBuilder,
     callee: &ExprStmt,
     func_args: &[ExprStmt],
+    self_val: Option<(RValInstruct, TypeIndex)>,
     span: Span,
 ) -> Result<RValInstruct, LoweringError> {
     let mut arg_values: Vec<RValInstruct> = Vec::new();
+
     let (func_prototype, module_idx) = match &callee.kind {
         ExprStmtKind::Primary(PrimaryExpr::Ident(ident)) => {
-            func.get_function_decl(ident, None, span)?
+            let method_of = self_val.as_ref().map(|(_, ty)| *ty);
+            func.get_function_decl(ident, method_of, span)?
         }
         ExprStmtKind::Primary(PrimaryExpr::Path(path)) => {
             // We are referencing a function from another module, so we resolve
@@ -131,6 +150,11 @@ fn lower_call(
         }
         _ => unreachable!(),
     };
+
+    if let Some((val, _)) = self_val {
+        arg_values.push(val);
+    }
+
     let callee_name = func_prototype.name;
 
     if func_prototype.params.len() != func_args.len() {
@@ -183,6 +207,7 @@ fn lower_call(
                     .module_name
             }
         };
+
         func.ir_builder.get_mangled_name(module_name, &callee_name)
     };
 
@@ -828,7 +853,10 @@ fn lower_expression_type(
                 None => func.get_or_insert_type_idx(MathicType::Void),
             }
         }
-        ExprStmtKind::MethodCall { callee: _, args: _ } => unimplemented!(),
+        ExprStmtKind::MethodCall {
+            self_val: _,
+            callee: _,
+        } => unimplemented!(),
         ExprStmtKind::Group(expr_stmt) => lower_expression_type(func, &expr_stmt.kind, None, span)?,
         ExprStmtKind::Index { .. } => todo!(),
         ExprStmtKind::Logical { .. } => func.get_or_insert_type_idx(MathicType::Bool),
