@@ -134,7 +134,7 @@ fn lower_call(
     self_val: Option<(RValInstruct, TypeIndex)>,
     span: Span,
 ) -> Result<RValInstruct, LoweringError> {
-    let (mut func_prototype, module_idx) = match &callee.kind {
+    let (func_prototype, module_idx) = match &callee.kind {
         ExprStmtKind::Primary(PrimaryExpr::Ident(ident)) => {
             let method_of = self_val.as_ref().map(|(_, ty)| *ty);
             func.get_function_decl(ident, method_of, span)?
