@@ -159,7 +159,7 @@ fn compile_path(path: PathBuf, compiler_opts: CompilerOpts) -> Result<(), EulerE
     let executor = MathicJITExecutor::new(vec![module], compiler_opts)?;
 
     tracing::debug!("Executor Created");
-    let result = executor.call_function("main::main");
+    let result = executor.call_function("program::main");
 
     tracing::debug!("Execution Done");
     println!("RESULT: {:?}", result);

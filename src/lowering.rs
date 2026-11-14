@@ -123,7 +123,7 @@ fn lower_import(ir_builder: &mut IrBuilder, import_path: &Path) -> Result<(), Lo
                 TopLevelItem::Struct(strct) => {
                     ir_builder.add_struct_decl(strct.clone(), Some(module_idx))?;
                     // // We need to lower it here becasue there's no declaration of the struct afterwards.
-                    // lower_struct(ir_builder, &strct)?;
+                    lower_struct(ir_builder, &strct)?;
                 }
                 _ => {}
             }

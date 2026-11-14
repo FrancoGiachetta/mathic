@@ -1,4 +1,4 @@
-use std::sync::Arc;
+use std::{fmt::Debug, sync::Arc};
 
 use crate::{
     diagnostics::LoweringError,
@@ -26,7 +26,7 @@ pub mod symbols;
 pub mod types;
 pub mod value;
 
-pub trait Builder {
+pub trait Builder: Debug {
     fn get_module(&self, idx: usize) -> Option<&Arc<IrModule>>;
 
     fn get_function_decl(
@@ -217,13 +217,12 @@ impl Builder for IrBuilder {
         name: &str,
         span: Span,
     ) -> Result<TypeIndex, LoweringError> {
-        Ok(self
-            .sym_table
-            .get_user_def_type(name)
-            .unwrap_or(
-                self.sym_table
-                    .insert_user_def_type(name.to_string(), false, span)?,
-            ))
+        Ok(match self.sym_table.get_user_def_type(name) {
+            Some(ty) => ty,
+            None => self
+                .sym_table
+                .insert_user_def_type(name.to_string(), false, span)?,
+        })
     }
 
     fn get_mangled_name(&self, module: &str, name: &str) -> String {

@@ -19,16 +19,18 @@ expand Point {
     }
 }
 
-df main() {
-    let point_1: Point = Point {
+df main() u32 {
+    let p1: Point = Point {
         x: 5,
         y: 5
     };
 
-    let point_2: Point = Point {
+    let p2: Point = Point {
         x: 10,
         y: 10
     };
 
-    return point_1.add(point_2);
+    let add: Point = p1.add(p2);
+
+    return add.x;
 }

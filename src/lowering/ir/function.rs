@@ -222,6 +222,7 @@ impl Builder for FunctionBuilder<'_> {
 }
 
 /// Helper struct to build a Function.
+#[derive(Debug)]
 pub struct FunctionBuilder<'glb> {
     pub name: String,
     pub decl_table: DeclTable,

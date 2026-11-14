@@ -134,9 +134,7 @@ fn lower_call(
     self_val: Option<(RValInstruct, TypeIndex)>,
     span: Span,
 ) -> Result<RValInstruct, LoweringError> {
-    let mut arg_values: Vec<RValInstruct> = Vec::new();
-
-    let (func_prototype, module_idx) = match &callee.kind {
+    let (mut func_prototype, module_idx) = match &callee.kind {
         ExprStmtKind::Primary(PrimaryExpr::Ident(ident)) => {
             let method_of = self_val.as_ref().map(|(_, ty)| *ty);
             func.get_function_decl(ident, method_of, span)?
@@ -151,13 +149,31 @@ fn lower_call(
         _ => unreachable!(),
     };
 
-    if let Some((val, _)) = self_val {
-        arg_values.push(val);
-    }
+    // Skip the self param if present.
+    let prototype_params = if self_val.is_some() {
+        let mut iter = func_prototype.params.iter();
+        iter.next();
+        iter
+    } else {
+        func_prototype.params.iter()
+    };
+
+    // If there's a ´self_val´ it means that the funcion call is actually a
+    // method call, so we add the self value as the first argument.
+    let mut arg_values: Vec<RValInstruct> = match self_val {
+        Some((val, _)) => {
+            let mut args = Vec::with_capacity(func_args.len() + 1);
+            args.push(val);
+            args
+        }
+        None => Vec::with_capacity(func_args.len()),
+    };
 
     let callee_name = func_prototype.name;
 
-    if func_prototype.params.len() != func_args.len() {
+    // We use ´args_values´'s capacity because it already takes into account
+    // the self arg.
+    if func_prototype.params.len() != arg_values.capacity() {
         return Err(LoweringError::WrongArgumentCount {
             name: callee_name.to_string(),
             expected: func_prototype.params.len(),
@@ -166,7 +182,7 @@ fn lower_call(
         });
     }
 
-    for (arg, param) in func_args.iter().zip(func_prototype.params.iter()) {
+    for (arg, param) in func_args.iter().zip(prototype_params) {
         let param_ty_idx = lower_ast_type(func, &param.ty, param.span)?;
         let (arg_val, arg_ty_idx) = lower_expr(func, arg, Some(param_ty_idx))?;
 
@@ -853,10 +869,21 @@ fn lower_expression_type(
                 None => func.get_or_insert_type_idx(MathicType::Void),
             }
         }
-        ExprStmtKind::MethodCall {
-            self_val: _,
-            callee: _,
-        } => unimplemented!(),
+        ExprStmtKind::MethodCall { self_val, callee } => {
+            let ExprStmtKind::Call { callee, .. } = &callee.kind else {
+                unreachable!();
+            };
+            let ExprStmtKind::Primary(PrimaryExpr::Ident(ident)) = &callee.kind else {
+                unreachable!()
+            };
+
+            let self_ty = lower_expression_type(func, &self_val.kind, None, span)?;
+            let (func_decl, _) = func.get_function_decl(ident, Some(self_ty), span)?;
+            match func_decl.return_ty {
+                Some(ty) => lower_ast_type(func, &ty, span)?,
+                None => func.get_or_insert_type_idx(MathicType::Void),
+            }
+        }
         ExprStmtKind::Group(expr_stmt) => lower_expression_type(func, &expr_stmt.kind, None, span)?,
         ExprStmtKind::Index { .. } => todo!(),
         ExprStmtKind::Logical { .. } => func.get_or_insert_type_idx(MathicType::Bool),

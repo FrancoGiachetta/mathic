@@ -137,7 +137,6 @@ pub fn lower_function(
         return_ty,
         ..
     } = stmt;
-
     let func_name = builder.get_ir_builder().module_name.clone();
     let mangled_function_name = builder.get_mangled_name(&func_name, name);
 
