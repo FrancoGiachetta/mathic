@@ -28,7 +28,6 @@ pub enum LocalKind {
 
 /// MATHIR's representation of local variables.
 #[derive(Debug, Clone)]
-#[allow(dead_code)]
 pub struct Local {
     pub local_idx: usize,
     pub kind: LocalKind,
@@ -38,9 +37,14 @@ pub struct Local {
     pub symbols: HashSet<usize>,
 }
 
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+pub struct FuncId {
+    pub name: String,
+    pub method_of: Option<TypeIndex>,
+}
+
 /// MATHIR's representation of a function.
 #[derive(Debug, Clone)]
-#[allow(dead_code)]
 pub struct Function {
     pub name: String,
     sym_table: SymbolTable,
@@ -82,22 +86,57 @@ impl Builder for FunctionBuilder<'_> {
         self.ir_builder.get_module(idx)
     }
 
-    fn _get_function_decl(&self, name: &str) -> Option<&(FuncDecl, Option<usize>)> {
+    fn get_function_decl(
+        &self,
+        name: &str,
+        method_of: Option<TypeIndex>,
+        span: Span,
+    ) -> Result<(FuncDecl, Option<usize>), LoweringError> {
         self.ir_builder
             .decl_table
-            .get_function_decl(name)
-            .or_else(|| self.decl_table.get_function_decl(name))
+            .get_function_decl(name, method_of)
+            .or_else(|| self.decl_table.get_function_decl(name, method_of))
+            .cloned()
+            .ok_or(LoweringError::UndeclaredFunction {
+                name: name.to_string(),
+                span,
+            })
     }
 
-    fn get_struct_decl(&self, name: &str) -> Option<&(StructDecl, Option<usize>)> {
+    fn add_function_decl(
+        &mut self,
+        func: FuncDecl,
+        method_of: Option<TypeIndex>,
+        module_idx: Option<usize>,
+    ) -> Result<(), LoweringError> {
+        self.decl_table.add_func_decl(func, method_of, module_idx)
+    }
+
+    fn get_struct_decl(
+        &self,
+        name: &str,
+        span: Span,
+    ) -> Result<(StructDecl, Option<usize>), LoweringError> {
         self.ir_builder
             .decl_table
             .get_struct_decl(name)
             .or_else(|| self.decl_table.get_struct_decl(name))
+            .cloned()
+            .ok_or(LoweringError::UndeclaredType { span })
     }
 
-    fn add_function(&mut self, func: Function) {
-        self.sym_table.add_function(func);
+    fn add_struct_decl(
+        &mut self,
+        strct: StructDecl,
+        module_idx: Option<usize>,
+    ) -> Result<(), LoweringError> {
+        self.sym_table
+            .insert_user_def_type(strct.name.clone(), true, strct.span)?;
+        self.decl_table.add_struct_decl(strct, module_idx)
+    }
+
+    fn add_function(&mut self, func: Function, method_of: Option<TypeIndex>) {
+        self.sym_table.add_function(func, method_of);
     }
 
     fn get_type(&self, idx: TypeIndex, span: Span) -> Result<MathicType, LoweringError> {
@@ -109,8 +148,20 @@ impl Builder for FunctionBuilder<'_> {
         .ok_or(LoweringError::UndeclaredType { span })
     }
 
+    fn get_self_ty_idx(&self) -> Option<TypeIndex> {
+        if let Some(ty) = self.sym_table.self_ty {
+            Some(ty)
+        } else {
+            self.ir_builder.get_self_ty_idx()
+        }
+    }
+
+    fn set_self_ty_idx(&mut self, ty: Option<TypeIndex>) {
+        self.sym_table.self_ty = ty;
+    }
+
     fn add_adt(&mut self, name: String, adt: Adt) -> usize {
-        self.sym_table.add_adt(name, adt, true)
+        self.sym_table.add_adt(name, adt)
     }
 
     fn get_adt(&self, adt_type_idx: TypeIndex, span: Span) -> Result<&Adt, LoweringError> {
@@ -132,9 +183,33 @@ impl Builder for FunctionBuilder<'_> {
     }
 
     fn get_user_def_type(&self, name: &str) -> Option<TypeIndex> {
-        self.sym_table
+        self.ir_builder
+            .sym_table
             .get_user_def_type(name)
-            .or(self.ir_builder.sym_table.get_user_def_type(name))
+            .or(self.sym_table.get_user_def_type(name))
+    }
+
+    fn get_user_def_type_or_insert(
+        &mut self,
+        name: &str,
+        span: Span,
+    ) -> Result<TypeIndex, LoweringError> {
+        Ok(self
+            .sym_table
+            .get_user_def_type(name)
+            .or_else(|| self.ir_builder.sym_table.get_user_def_type(name))
+            .unwrap_or(
+                self.sym_table
+                    .insert_user_def_type(name.to_string(), true, span)?,
+            ))
+    }
+
+    fn insert_user_def_type(
+        &mut self,
+        name: String,
+        span: Span,
+    ) -> Result<TypeIndex, LoweringError> {
+        self.sym_table.insert_user_def_type(name, true, span)
     }
 
     fn get_mangled_name(&self, module: &str, name: &str) -> String {
@@ -147,6 +222,7 @@ impl Builder for FunctionBuilder<'_> {
 }
 
 /// Helper struct to build a Function.
+#[derive(Debug)]
 pub struct FunctionBuilder<'glb> {
     pub name: String,
     pub decl_table: DeclTable,
@@ -211,23 +287,6 @@ impl<'ir> FunctionBuilder<'ir> {
             return_ty: self.return_ty,
             span: self.span,
             is_external: self.is_external,
-        }
-    }
-
-    pub fn get_function_decl(
-        &self,
-        name: &str,
-        span: Span,
-    ) -> Result<(FuncDecl, Option<usize>), LoweringError> {
-        match self.decl_table.get_function_decl(name).cloned() {
-            Some(f) => Ok(f),
-            None => match self.ir_builder.decl_table.get_function_decl(name).cloned() {
-                Some(f) => Ok(f),
-                None => Err(LoweringError::UndeclaredFunction {
-                    name: name.to_string(),
-                    span,
-                }),
-            },
         }
     }
 

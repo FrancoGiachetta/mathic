@@ -45,6 +45,12 @@ pub enum ExpectedToken {
     Custom(String),
 }
 
+impl From<Token> for ExpectedToken {
+    fn from(value: Token) -> Self {
+        Self::Token(value)
+    }
+}
+
 impl Display for ExpectedToken {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
         match self {

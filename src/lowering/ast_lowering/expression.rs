@@ -33,7 +33,7 @@ pub fn lower_expr(
         ExprStmtKind::Group(expr) => {
             return lower_expr(func, expr, ty_hint);
         }
-        ExprStmtKind::Call { callee, args } => lower_call(func, callee, args, expr.span)?,
+        ExprStmtKind::Call { callee, args } => lower_call(func, callee, args, None, expr.span)?,
         ExprStmtKind::Assign {
             name,
             expr: assign_expr,
@@ -53,6 +53,9 @@ pub fn lower_expr(
             field_name,
             rhs,
         } => lower_struct_set(func, lhs, field_name, rhs, expr.span)?,
+        ExprStmtKind::MethodCall { self_val, callee } => {
+            lower_method_call(func, self_val, callee, expr.span)?
+        }
     };
 
     Ok((
@@ -110,15 +113,32 @@ fn lower_assignment(
     ))
 }
 
+fn lower_method_call(
+    func: &mut FunctionBuilder,
+    self_val: &ExprStmt,
+    callee: &ExprStmt,
+    span: Span,
+) -> Result<RValInstruct, LoweringError> {
+    let ExprStmtKind::Call { callee, args } = &callee.kind else {
+        unreachable!()
+    };
+    let self_val_lowered = lower_expr(func, self_val, None)?;
+
+    lower_call(func, callee, args, Some(self_val_lowered), span)
+}
+
 fn lower_call(
     func: &mut FunctionBuilder,
     callee: &ExprStmt,
     func_args: &[ExprStmt],
+    self_val: Option<(RValInstruct, TypeIndex)>,
     span: Span,
 ) -> Result<RValInstruct, LoweringError> {
-    let mut arg_values: Vec<RValInstruct> = Vec::new();
     let (func_prototype, module_idx) = match &callee.kind {
-        ExprStmtKind::Primary(PrimaryExpr::Ident(ident)) => func.get_function_decl(ident, span)?,
+        ExprStmtKind::Primary(PrimaryExpr::Ident(ident)) => {
+            let method_of = self_val.as_ref().map(|(_, ty)| *ty);
+            func.get_function_decl(ident, method_of, span)?
+        }
         ExprStmtKind::Primary(PrimaryExpr::Path(path)) => {
             // We are referencing a function from another module, so we resolve
             // it directly and declare it as external.
@@ -128,9 +148,32 @@ fn lower_call(
         }
         _ => unreachable!(),
     };
+
+    // Skip the self param if present.
+    let prototype_params = if self_val.is_some() {
+        let mut iter = func_prototype.params.iter();
+        iter.next();
+        iter
+    } else {
+        func_prototype.params.iter()
+    };
+
+    // If there's a ´self_val´ it means that the funcion call is actually a
+    // method call, so we add the self value as the first argument.
+    let mut arg_values: Vec<RValInstruct> = match self_val {
+        Some((val, _)) => {
+            let mut args = Vec::with_capacity(func_args.len() + 1);
+            args.push(val);
+            args
+        }
+        None => Vec::with_capacity(func_args.len()),
+    };
+
     let callee_name = func_prototype.name;
 
-    if func_prototype.params.len() != func_args.len() {
+    // We use ´args_values´'s capacity because it already takes into account
+    // the self arg.
+    if func_prototype.params.len() != arg_values.capacity() {
         return Err(LoweringError::WrongArgumentCount {
             name: callee_name.to_string(),
             expected: func_prototype.params.len(),
@@ -139,7 +182,7 @@ fn lower_call(
         });
     }
 
-    for (arg, param) in func_args.iter().zip(func_prototype.params.iter()) {
+    for (arg, param) in func_args.iter().zip(prototype_params) {
         let param_ty_idx = lower_ast_type(func, &param.ty, param.span)?;
         let (arg_val, arg_ty_idx) = lower_expr(func, arg, Some(param_ty_idx))?;
 
@@ -172,8 +215,15 @@ fn lower_call(
     let mangled_callee_name = {
         let module_name = match module_idx {
             None => &func.ir_builder.module_name,
-            Some(idx) => &func.ir_builder.decl_table.modules[idx].module_name,
+            Some(idx) => {
+                &func
+                    .ir_builder
+                    .get_module(idx)
+                    .unwrap_or_else(|| panic!("module index {} should be valid", idx))
+                    .module_name
+            }
         };
+
         func.ir_builder.get_mangled_name(module_name, &callee_name)
     };
 
@@ -500,6 +550,7 @@ fn lower_adt_init(
 
         return Err(LoweringError::MissingStructFields { missing, span });
     }
+
     for (name, expr) in fields {
         let (rvalue, rvalue_ty_idx) = lower_expr(func, expr, adt_body.get_field_ty(name))?;
         let field_ty_idx =
@@ -512,9 +563,9 @@ fn lower_adt_init(
 
         if field_ty_idx != rvalue_ty_idx {
             return Err(LoweringError::MismatchedType {
-                expected: func.get_type(field_ty_idx, span)?,
-                found: func.get_type(rvalue_ty_idx, span)?,
-                span,
+                expected: func.get_type(field_ty_idx, expr.span)?,
+                found: func.get_type(rvalue_ty_idx, expr.span)?,
+                span: expr.span,
             });
         }
 
@@ -805,7 +856,7 @@ fn lower_expression_type(
         ExprStmtKind::Call { callee, .. } => {
             let (func_decl, _) = match &callee.kind {
                 ExprStmtKind::Primary(PrimaryExpr::Ident(ident)) => {
-                    func.get_function_decl(ident, span)?
+                    func.get_function_decl(ident, None, span)?
                 }
                 ExprStmtKind::Primary(PrimaryExpr::Path(path)) => {
                     let (func_decl, module_idx) = resolve_external_func(func.ir_builder, path)?;
@@ -813,6 +864,21 @@ fn lower_expression_type(
                 }
                 _ => unreachable!(),
             };
+            match func_decl.return_ty {
+                Some(ty) => lower_ast_type(func, &ty, span)?,
+                None => func.get_or_insert_type_idx(MathicType::Void),
+            }
+        }
+        ExprStmtKind::MethodCall { self_val, callee } => {
+            let ExprStmtKind::Call { callee, .. } = &callee.kind else {
+                unreachable!();
+            };
+            let ExprStmtKind::Primary(PrimaryExpr::Ident(ident)) = &callee.kind else {
+                unreachable!()
+            };
+
+            let self_ty = lower_expression_type(func, &self_val.kind, None, span)?;
+            let (func_decl, _) = func.get_function_decl(ident, Some(self_ty), span)?;
             match func_decl.return_ty {
                 Some(ty) => lower_ast_type(func, &ty, span)?,
                 None => func.get_or_insert_type_idx(MathicType::Void),

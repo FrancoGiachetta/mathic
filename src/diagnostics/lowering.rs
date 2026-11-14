@@ -61,6 +61,9 @@ pub enum LoweringError {
 
     #[error("The substitution is missing some symbols")]
     MissingSymbols { missing: String, span: Span },
+
+    #[error("invalid use of `self` parameter")]
+    NoAssociatedSelfType { span: Span },
 }
 
 pub fn format_lowering_error<'err>(
@@ -137,6 +140,12 @@ pub fn format_lowering_error<'err>(
         LoweringError::MissingSymbols { missing, span } => (
             "S014",
             format!("provide a value for the missing symbols: {missing}"),
+            span,
+        ),
+        LoweringError::NoAssociatedSelfType { span } => (
+            "S015",
+            "the `self` parameter can only be used in functions declared in `trait` or `expand` blocks"
+                .to_string(),
             span,
         ),
     };

@@ -63,6 +63,8 @@ pub enum Token {
     If,
     #[token("else")]
     Else,
+    #[token("expand")]
+    Expand,
     #[token("while")]
     While,
     #[token("for")]

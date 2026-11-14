@@ -21,6 +21,10 @@ pub enum ExprStmtKind {
         expr: Box<ExprStmt>,
         fields: HashMap<String, ExprStmt>,
     },
+    MethodCall {
+        self_val: Box<ExprStmt>,
+        callee: Box<ExprStmt>,
+    },
     Call {
         callee: Box<ExprStmt>,
         args: Vec<ExprStmt>,
